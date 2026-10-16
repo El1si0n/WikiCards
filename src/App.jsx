@@ -316,7 +316,7 @@ export default function App() {
               id="firstHeading"
               className="wiki-serif text-[28.8px] font-normal text-[#101418] leading-[1.375] m-0 p-0"
             >
-              Bienvenue sur Wikipédia
+              Bienvenue sur WikiCards
             </h1>
 
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[14px] font-bold text-[#3366cc] rounded-[2px] select-none">
@@ -484,7 +484,7 @@ export default function App() {
 
             <div className="relative z-10 pl-0 sm:pl-[135px]">
               <div className="text-[23px] font-semibold text-[#202122] leading-[1.2]">
-                Wikipédia
+                WikiCards
               </div>
               <div className="text-[13px] text-[#3366cc] mt-0.5">
                 L'encyclopédie libre que vous pouvez collectionner
