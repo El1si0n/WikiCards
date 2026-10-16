@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --wiki-bg: #ffffff;
+    --wiki-bg-subtle: #f8f9fa;
+    --wiki-text: #202122;
+    --wiki-text-muted: #54595d;
+    --wiki-link: #3366cc;
+    --wiki-link-hover: #447ff5;
+    --wiki-border: #a2a9b1;
+    --wiki-border-light: #eaecf0;
+    --wiki-border-card: #c8ccd1;
+    --wiki-accent-line: #a7d7f9;
+    --font-wiki-serif: 'Linux Libertine', 'Georgia', 'Times New Roman', Times, serif;
+    --font-wiki-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-wiki-sans);
+    background-color: var(--wiki-bg);
+    color: var(--wiki-text);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+/* Typographie des titres principaux et encadrés façon Wikipédia Accueil */
+.wiki-serif {
+  font-family: var(--font-wiki-serif);
+}
+
+.wiki-smallcaps {
+  font-family: var(--font-wiki-serif);
+  font-variant: small-caps;
+  letter-spacing: 0.03em;
+}
+
+/* Bandeau d'accueil officiel de fr.wikipedia.org */
+.wiki-welcome-banner {
+  background: linear-gradient(90deg, #f8f9fa 0%, #eef5fb 55%, #ddecf9 100%);
+  border-bottom: 1px solid #c8ccd1;
+}
+
+/* Liens style Wikipédia */
+.wiki-link {
+  color: #3366cc;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wiki-link:hover {
+  text-decoration: underline;
+}
