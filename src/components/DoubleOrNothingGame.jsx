@@ -249,14 +249,14 @@ export default function DoubleOrNothingGame({
     <div className="space-y-5">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* COLONNE GAUCHE (4 col) : Carte sélectionnée */}
-        <div className="lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
+        <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
           <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-            <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
               Carte sélectionnée
             </span>
           </div>
 
-          <div className="flex-1 flex items-center justify-center min-h-[452px]">
+          <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px]">
             {displayedCard ? (
               <div
                 className="w-full max-w-[272px]"
@@ -273,7 +273,7 @@ export default function DoubleOrNothingGame({
                 />
               </div>
             ) : (
-              <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
                 <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
                   Cliquez sur une carte dans le classeur ci-dessous pour tenter
                   de la dupliquer à 50&nbsp;%.
@@ -284,7 +284,7 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE CENTRALE (4 col) : Jauge 50/50 */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
+        <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
               Jauge de probabilité
@@ -531,14 +531,14 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE DROITE (4 col) : Carte cible (Double exemplaire) */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
+        <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-            <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
               Carte cible
             </span>
           </div>
 
-          <div className="flex-1 flex items-center justify-center min-h-[452px] w-full">
+          <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px] w-full">
             {spinState === 'won' && displayedCard ? (
               <div className="w-full max-w-[272px]">
                 <WikiCard
@@ -551,7 +551,7 @@ export default function DoubleOrNothingGame({
               </div>
             ) : (
               <div
-                className="relative w-full max-w-[272px] h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                className="relative w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
                   background: activeTier.cardBg,
                   border:

@@ -704,7 +704,7 @@ export default function SocialHub({
             {/* Vitrine du joueur visité */}
             <div className="pt-2 border-t border-[#eaecf0]">
               <h3 className="wiki-smallcaps mb-3">Vitrine du collectionneur</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 justify-items-center">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
                 {peerShowcaseCards.map((card, idx) => (
                   <div
                     key={idx}

@@ -801,31 +801,31 @@ export default function App() {
       />
 
       {/* mw-page-container : Conteneur officiel Vector 2022 */}
-      <div className="mw-page-container flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-[44px] pt-[18px] pb-[82px]">
+      <div className="mw-page-container flex-1 w-full max-w-[1440px] mx-auto px-2.5 sm:px-[44px] pt-[12px] sm:pt-[18px] pb-[60px] sm:pb-[82px]">
         <div className="mw-content-container">
           <main id="content" className="mw-body">
             {/* mw-body-header vector-page-titlebar : Titre H1 "Bienvenue sur Wikipédia" + indicateur "Wikipédia FR" */}
-            <header className="mw-body-header vector-page-titlebar pb-[2px]">
+            <header className="mw-body-header vector-page-titlebar pb-[2px] flex items-center justify-between gap-2">
               <h1
                 id="firstHeading"
-                className="firstHeading mw-first-heading wiki-serif text-[28.8px] font-normal text-[#101418] leading-[1.375] m-0 p-0"
+                className="firstHeading mw-first-heading wiki-serif text-[22px] sm:text-[28.8px] font-normal text-[#101418] leading-[1.375] m-0 p-0 truncate"
               >
                 {activeTab === 'profile'
                   ? 'Utilisateur'
                   : 'Bienvenue sur WikiCards'}
               </h1>
 
-              <div className="inline-flex items-center gap-1.5 px-2 py-1 text-[14px] font-bold text-[#3366cc] rounded-[2px] select-none">
-                <Languages className="w-[18px] h-[18px] stroke-[2]" />
+              <div className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 text-[12px] sm:text-[14px] font-bold text-[#3366cc] rounded-[2px] select-none shrink-0">
+                <Languages className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] stroke-[2]" />
                 <span>Wikipédia&nbsp;FR</span>
               </div>
             </header>
 
             {/* vector-page-toolbar : Onglets 14px + Ombre inférieure #c8ccd1 (exactement comme load.php) */}
             <div className="vector-page-toolbar mb-[16px]">
-              <div className="vector-page-toolbar-container items-center min-h-[35px]">
-                {/* left-navigation : Accueil | Classeur | WikiSino | Social | Marché | Profil */}
-                <div id="left-navigation" className="flex flex-wrap items-center gap-[16px]">
+              <div className="vector-page-toolbar-container flex items-center justify-between min-h-[35px] overflow-hidden">
+                {/* left-navigation : Onglets défilables horizontalement sur mobile */}
+                <div id="left-navigation" className="flex items-center gap-[10px] sm:gap-[16px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 max-w-full">
                   <button
                     type="button"
                     onClick={() => setActiveTab('booster')}
@@ -883,8 +883,8 @@ export default function App() {
                 </div>
 
                 {/* right-navigation : Lire | Ouvrir une page au hasard | Menu Outils (⋮) */}
-                <div id="right-navigation" className="flex items-center gap-[16px]">
-                  <span className="vector-tab-link selected">Lire</span>
+                <div id="right-navigation" className="flex items-center gap-[8px] sm:gap-[16px] shrink-0 ml-2">
+                  <span className="vector-tab-link selected hidden xs:inline-flex">Lire</span>
                   <a
                     href="https://fr.wikipedia.org/wiki/Sp%C3%A9cial:Page_au_hasard"
                     target="_blank"
@@ -1437,9 +1437,9 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Grille 4 colonnes (lg:grid-cols-4) avec cartes au format compact */}
+                    {/* Grille 2 colonnes sur mobile, jusqu'à 4 sur grand écran (lg:grid-cols-4) avec cartes au format compact */}
                     {filteredAndSortedCollection.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 justify-items-center">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
                         {filteredAndSortedCollection.map((card) => (
                           <WikiCard
                             key={card.id}

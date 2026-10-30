@@ -481,8 +481,8 @@ export default function WikiSino({
     <div className="space-y-5">
       <section className="accueil_2017_cadre">
         {/* En-tête avec navigation style onglets Wikipédia Vector 2022 */}
-        <div className="wiki-cadre-header flex flex-wrap items-center justify-between gap-4">
-          <h2 className="wiki-smallcaps m-0">
+        <div className="wiki-cadre-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="wiki-smallcaps m-0 text-[18px] sm:text-[20px]">
             {activeGame === 'upgrader'
               ? 'Upgrader de cartes'
               : activeGame === 'higher_lower'
@@ -490,7 +490,7 @@ export default function WikiSino({
               : 'Quitte ou Double'}
           </h2>
 
-          <div className="flex items-center gap-5 text-[14px]">
+          <div className="flex items-center gap-2.5 sm:gap-5 text-[13px] sm:text-[14px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 max-w-full">
             <button
               type="button"
               onClick={() => setActiveGame('upgrader')}
@@ -498,7 +498,7 @@ export default function WikiSino({
                 activeGame === 'upgrader' ? 'selected' : ''
               }`}
             >
-              Upgrader de cartes
+              Upgrader
             </button>
             <button
               type="button"

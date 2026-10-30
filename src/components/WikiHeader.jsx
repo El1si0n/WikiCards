@@ -69,13 +69,13 @@ export default function WikiHeader({
 
   return (
     <div className="vector-header-container w-full bg-white">
-      <header className="mw-header max-w-[1440px] mx-auto px-4 sm:px-[44px] min-h-[50px] py-[8px] flex items-center justify-between gap-[16px]">
+      <header className="mw-header max-w-[1440px] mx-auto px-2 sm:px-[44px] min-h-[50px] py-[6px] sm:py-[8px] flex items-center justify-between gap-[8px] sm:gap-[16px]">
         {/* vector-header-start : Bouton menu cyclique + Logo officiel Wikipédia */}
-        <div className="vector-header-start flex items-center gap-[20px] shrink-0">
+        <div className="vector-header-start flex items-center gap-[8px] sm:gap-[20px] shrink-0">
           <button
             type="button"
             onClick={handleCycleTabs}
-            className="w-[32px] h-[32px] -ml-[6px] flex items-center justify-center text-[#202122] hover:bg-[#eaecf0] active:bg-[#dadde3] rounded-[2px] cursor-pointer transition-colors"
+            className="w-[32px] h-[32px] -ml-[2px] sm:-ml-[6px] flex items-center justify-center text-[#202122] hover:bg-[#eaecf0] active:bg-[#dadde3] rounded-[2px] cursor-pointer transition-colors"
             title="Changer de menu (balayer les onglets)"
             aria-label="Menu principal"
           >
@@ -88,14 +88,14 @@ export default function WikiHeader({
             className="mw-logo flex items-center text-left cursor-pointer"
           >
             <img
-              className="mw-logo-icon w-[50px] h-[50px] object-contain mr-[10px]"
+              className="mw-logo-icon w-[34px] h-[34px] sm:w-[50px] sm:h-[50px] object-contain mr-[6px] sm:mr-[10px]"
               src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
               alt=""
               aria-hidden="true"
               height="50"
               width="50"
             />
-            <span className="mw-logo-container flex flex-col justify-center">
+            <span className="mw-logo-container hidden sm:flex flex-col justify-center">
               <img
                 className="mw-logo-wordmark block mx-auto"
                 alt="Wikipédia"
@@ -115,19 +115,19 @@ export default function WikiHeader({
         </div>
 
         {/* vector-header-end : Barre de recherche Codex + Outils personnels à droite */}
-        <div className="vector-header-end flex-1 flex items-center justify-between ml-2 sm:ml-[24px]">
-          {/* Barre de recherche Codex */}
+        <div className="vector-header-end flex-1 flex items-center justify-end sm:justify-between ml-1 sm:ml-[24px] gap-2">
+          {/* Barre de recherche Codex (compressible sur mobile) */}
           <div
             id="p-search"
             role="search"
-            className="vector-search-box w-full max-w-[500px]"
+            className="vector-search-box flex-1 max-w-[160px] xs:max-w-[220px] sm:max-w-[500px]"
           >
             <form
               onSubmit={handleSearchSubmit}
               className="flex items-center w-full"
             >
               <div className="relative flex-1 flex items-center">
-                <Search className="w-[18px] h-[18px] text-[#72777d] absolute left-[9px] pointer-events-none stroke-[2]" />
+                <Search className="w-[15px] h-[15px] sm:w-[18px] sm:h-[18px] text-[#72777d] absolute left-[7px] sm:left-[9px] pointer-events-none stroke-[2]" />
                 <input
                   type="search"
                   value={searchQuery}
@@ -137,32 +137,34 @@ export default function WikiHeader({
                       setActiveTab('classeur');
                     }
                   }}
-                  placeholder="Rechercher sur Wikipédia"
+                  placeholder="Rechercher..."
                   aria-label="Rechercher sur Wikipédia"
-                  className="w-full h-[32px] pl-[34px] pr-[8px] text-[14px] text-[#202122] placeholder-[#72777d] bg-white border border-[#a2a9b1] hover:border-[#72777d] rounded-l-[2px] focus:border-[#3366cc] focus:outline-none focus:shadow-[inset_0_0_0_1px_#3366cc] transition-colors"
+                  className="w-full h-[32px] pl-[26px] sm:pl-[34px] pr-[6px] text-[12px] sm:text-[14px] text-[#202122] placeholder-[#72777d] bg-white border border-[#a2a9b1] hover:border-[#72777d] rounded-l-[2px] focus:border-[#3366cc] focus:outline-none focus:shadow-[inset_0_0_0_1px_#3366cc] transition-colors"
                 />
               </div>
               <button
                 type="submit"
-                className="h-[32px] px-[11px] bg-[#f8f9fa] hover:bg-[#eaecf0] active:bg-[#dadde3] text-[#202122] font-bold text-[14px] border border-l-0 border-[#a2a9b1] hover:border-[#72777d] rounded-r-[2px] cursor-pointer transition-colors shrink-0"
+                className="h-[32px] px-2 sm:px-[11px] bg-[#f8f9fa] hover:bg-[#eaecf0] active:bg-[#dadde3] text-[#202122] font-bold text-[12px] sm:text-[14px] border border-l-0 border-[#a2a9b1] hover:border-[#72777d] rounded-r-[2px] cursor-pointer transition-colors shrink-0"
+                title="Lancer la recherche"
               >
-                Rechercher
+                <span className="hidden md:inline">Rechercher</span>
+                <Search className="w-3.5 h-3.5 md:hidden" />
               </button>
             </form>
           </div>
 
           {/* vector-user-links : Solde de Wikithunes + Cloche Notifications + Profil */}
           <nav
-            className="vector-user-links flex items-center gap-[10px] text-[14px] shrink-0 ml-4"
+            className="vector-user-links flex items-center gap-[6px] sm:gap-[10px] text-[13px] sm:text-[14px] shrink-0"
             aria-label="Outils personnels"
           >
             {/* Solde Wikithunes */}
             <div
-              className="h-[32px] px-[10px] bg-[#f8f9fa] border border-[#a2a9b1] rounded-[2px] inline-flex items-center gap-1.5 text-[#202122] font-bold text-[14px]"
+              className="h-[32px] px-[6px] sm:px-[10px] bg-[#f8f9fa] border border-[#a2a9b1] rounded-[2px] inline-flex items-center gap-1 sm:gap-1.5 text-[#202122] font-bold text-[12px] sm:text-[14px]"
               title="Votre solde de Wikithunes"
             >
               <span>{new Intl.NumberFormat('fr-FR').format(wikithunes)}</span>
-              <WikithuneIcon className="w-[15px] h-[15px] text-[#3366cc]" />
+              <WikithuneIcon className="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] text-[#3366cc]" />
             </div>
 
             {/* Onglet Cloche de Notifications */}
@@ -188,7 +190,7 @@ export default function WikiHeader({
 
               {/* Popover / Panneau de notifications */}
               {isNotifOpen && (
-                <div className="absolute right-0 top-[38px] w-[320px] sm:w-[360px] bg-white border border-[#a2a9b1] rounded-[2px] shadow-lg z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 top-[38px] w-[calc(100vw-24px)] sm:w-[360px] max-w-[360px] bg-white border border-[#a2a9b1] rounded-[2px] shadow-lg z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#f8f9fa] border-b border-[#eaecf0]">
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-[13px] text-[#202122]">
@@ -207,7 +209,7 @@ export default function WikiHeader({
                         className="text-[11.5px] text-[#3366cc] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
                       >
                         <CheckCheck className="w-3.5 h-3.5" />
-                        <span>Tout marquer comme lu</span>
+                        <span>Tout marquer</span>
                       </button>
                     )}
                   </div>
@@ -268,11 +270,11 @@ export default function WikiHeader({
               )}
             </div>
 
-            {/* Profil Utilisateur */}
+            {/* Profil Utilisateur (icône seule sur mobile, avec pseudo sur écran plus large) */}
             <button
               type="button"
               onClick={() => setActiveTab('profile')}
-              className={`h-[32px] px-[10px] rounded-[2px] border inline-flex items-center gap-2 text-[13.5px] font-medium cursor-pointer transition-colors ${
+              className={`h-[32px] px-[6px] sm:px-[10px] rounded-[2px] border inline-flex items-center gap-1.5 sm:gap-2 text-[13.5px] font-medium cursor-pointer transition-colors ${
                 activeTab === 'profile'
                   ? 'bg-[#eaf3ff] border-[#3366cc] text-[#3366cc] font-bold'
                   : 'bg-[#f8f9fa] hover:bg-[#eaecf0] border-[#a2a9b1] text-[#202122]'
@@ -287,7 +289,7 @@ export default function WikiHeader({
                 alt=""
                 className="w-[18px] h-[18px] rounded-[1px] object-cover shrink-0"
               />
-              <span className="max-w-[110px] truncate">
+              <span className="hidden sm:inline max-w-[110px] truncate">
                 {userProfile?.username || 'Mon profil'}
               </span>
             </button>

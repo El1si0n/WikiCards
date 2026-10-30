@@ -687,7 +687,7 @@ export default function BoosterOpening({
             </div>
 
             {/* Pile de cartes */}
-            <div className="relative z-10 flex items-center justify-center w-full max-w-[360px] min-h-[515px]">
+            <div className="relative z-10 flex items-center justify-center w-full max-w-[340px] sm:max-w-[360px] min-h-[460px] sm:min-h-[515px] px-2">
               {/* La vraie PROCHAINE carte (derrière la carte actuelle) */}
               {nextCard && (
                 <motion.div
