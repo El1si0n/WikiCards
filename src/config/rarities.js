@@ -1,9 +1,17 @@
+export const BOOSTER_PRICE = 100;
+export const ICONIC_BOOSTER_PRICE = 500;
+export const INITIAL_WIKITHUNES = 3000;
+export const DAILY_REWARD_AMOUNT = 250;
+export const SHINY_RECYCLE_MULTIPLIER = 3;
+export const ICONIC_PACK_CHANCE = 0.015; // 1,5 % de chance (1 à 2 %) que le prochain booster soit un Booster Iconique
+
 export const RARITY_TIERS = [
   {
     code: 'C',
     name: 'Commun',
-    thresholdLabel: 'Moins de 50 vues / mois',
+    thresholdLabel: 'Moins de 50 vues',
     dropRate: '52 %',
+    recycleValue: 10,
     minViews: 0,
     maxViews: 49,
     badgeBg: '#d9faec',
@@ -21,8 +29,9 @@ export const RARITY_TIERS = [
   {
     code: 'PC',
     name: 'Peu Commun',
-    thresholdLabel: 'À partir de 50 vues / mois',
+    thresholdLabel: 'À partir de 50 vues',
     dropRate: '30 %',
+    recycleValue: 25,
     minViews: 50,
     maxViews: 249,
     badgeBg: '#d5e8fa',
@@ -40,8 +49,9 @@ export const RARITY_TIERS = [
   {
     code: 'R',
     name: 'Rare',
-    thresholdLabel: 'À partir de 250 vues / mois',
+    thresholdLabel: 'À partir de 250 vues',
     dropRate: '12 %',
+    recycleValue: 60,
     minViews: 250,
     maxViews: 999,
     badgeBg: '#e2d6fc',
@@ -59,8 +69,9 @@ export const RARITY_TIERS = [
   {
     code: 'SR',
     name: 'Super Rare',
-    thresholdLabel: 'À partir de 1 000 vues / mois',
+    thresholdLabel: 'À partir de 1 000 vues',
     dropRate: '4,2 %',
+    recycleValue: 150,
     minViews: 1000,
     maxViews: 4999,
     badgeBg: '#fbd0e5',
@@ -78,8 +89,9 @@ export const RARITY_TIERS = [
   {
     code: 'UR',
     name: 'Ultra Rare',
-    thresholdLabel: 'À partir de 5 000 vues / mois',
+    thresholdLabel: 'À partir de 5 000 vues',
     dropRate: '1,5 %',
+    recycleValue: 400,
     minViews: 5000,
     maxViews: 19999,
     badgeBg: '#ffe2b0',
@@ -97,8 +109,9 @@ export const RARITY_TIERS = [
   {
     code: 'L',
     name: 'Légendaire',
-    thresholdLabel: 'À partir de 20 000 vues / mois',
+    thresholdLabel: 'À partir de 20 000 vues',
     dropRate: '0,3 %',
+    recycleValue: 1000,
     minViews: 20000,
     maxViews: Infinity,
     badgeBg: '#ffea5a',
@@ -126,6 +139,13 @@ export function getRarityByViews(views = 0) {
 
 export function getRarityByCode(code) {
   return RARITY_TIERS.find((t) => t.code === code) || RARITY_TIERS[0];
+}
+
+export function getCardRecycleValue(card) {
+  if (!card) return 10;
+  const tier = getRarityByCode(card.rarity);
+  const base = tier.recycleValue || 10;
+  return card.isShiny ? base * SHINY_RECYCLE_MULTIPLIER : base;
 }
 
 export const DEMO_CARDS = [];

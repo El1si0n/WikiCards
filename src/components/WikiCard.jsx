@@ -1,6 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Eye, ExternalLink, Star } from 'lucide-react';
-import { getRarityByCode, getRarityByViews } from '../config/rarities';
+import { Eye, ExternalLink, Star, Check, Sparkles } from 'lucide-react';
+import {
+  getRarityByCode,
+  getRarityByViews,
+  getCardRecycleValue,
+} from '../config/rarities';
+import WikithuneIcon from './WikithuneIcon';
 
 /**
  * Formate l'extrait Wikipédia pour garantir uniquement des phrases complètes
@@ -138,6 +143,16 @@ export default function WikiCard({
   isFavorite = false,
   duplicateCount = 1,
   compact = false, // true dans le classeur (4 cartes par ligne)
+  mini = false, // true dans le classeur de l'Upgrader (6 cartes par ligne)
+  trade = false, // true dans les propositions d'échanges
+  isRecycleMode = false,
+  isSelectedForRecycle = false,
+  onSelectForRecycle,
+  onSelectCard,
+  isSelected = false,
+  isDisabledSelection = false,
+  selectionBadgeText = null,
+  hideViewsAndRarity = false,
 }) {
   const cardRef = useRef(null);
   const [imgError, setImgError] = useState(false);
@@ -149,14 +164,47 @@ export default function WikiCard({
     isHovered: false,
   });
 
-  const tier = card.rarity
+  const baseTier = card.rarity
     ? getRarityByCode(card.rarity)
     : getRarityByViews(card.views || 0);
 
-  // Taille de police 100 % uniforme sur toutes les cartes (aucune variation d'une carte à l'autre)
-  const maxChars = compact ? 315 : 365;
+  const tier = hideViewsAndRarity
+    ? {
+        code: '?',
+        name: 'Mystère',
+        thresholdLabel: 'Fréquentation cachée',
+        badgeBg: '#e2e8f0',
+        badgeText: '#1e293b',
+        cardBg:
+          'linear-gradient(155deg, #e2e8f0 0%, #cbd5e1 52%, #94a3b8 100%)',
+        waveColor1: 'rgba(255, 255, 255, 0.45)',
+        waveColor2: 'rgba(15, 23, 42, 0.10)',
+        borderColor: '#94a3b8',
+        shadowColor: 'rgba(71, 85, 105, 0.24)',
+        foilGradient:
+          'linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%)',
+        textColor: '#0f172a',
+        subTextColor: '#1e293b',
+        dividerColor: 'rgba(15, 23, 42, 0.16)',
+      }
+    : baseTier;
+
+  // Détecte si la carte est Shiny (soit flag isShiny, soit l'image est un .gif)
+  const isShiny = Boolean(
+    card.isShiny || card.isGif || /\.gif(\?|$|\/)/i.test(card.image || '')
+  );
+  const recycleValue = getCardRecycleValue({ ...card, isShiny });
+  const isProtectedInRecycleMode =
+    isRecycleMode && isFavorite && duplicateCount <= 1;
+
+  // Taille de police 100 % uniforme sur toutes les cartes
+  const maxChars = trade ? 70 : mini ? 130 : compact ? 315 : 365;
   const fullText = formatCompleteExtract(card.extract, maxChars);
-  const descriptionTypography = compact
+  const descriptionTypography = trade
+    ? 'text-[9.5px] leading-[1.25] line-clamp-2'
+    : mini
+    ? 'text-[10.8px] leading-[1.3]'
+    : compact
     ? 'text-[12.5px] leading-[1.38]'
     : 'text-[13.5px] leading-[1.42]';
 
@@ -177,214 +225,466 @@ export default function WikiCard({
   };
 
   const handleMouseLeave = () => {
-    setTilt({ rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, isHovered: false });
+    setTilt({
+      rotateX: 0,
+      rotateY: 0,
+      glareX: 50,
+      glareY: 50,
+      isHovered: false,
+    });
   };
 
-  const formattedViews = new Intl.NumberFormat('fr-FR').format(card.views ?? 0);
-  const isHighTier = tier.code === 'L' || tier.code === 'UR' || tier.code === 'SR';
+  const handleCardClick = () => {
+    if (isRecycleMode && onSelectForRecycle && !isProtectedInRecycleMode) {
+      onSelectForRecycle(card);
+      return;
+    }
+    if (onSelectCard && !isDisabledSelection) {
+      onSelectCard(card);
+    }
+  };
+
+  const formattedViews = hideViewsAndRarity
+    ? '?'
+    : new Intl.NumberFormat('fr-FR').format(card.views ?? 0);
+  const isHighTier =
+    tier.code === 'L' || tier.code === 'UR' || tier.code === 'SR';
+  const showSelectedDim = isSelectedForRecycle || isSelected;
 
   return (
     <div
+      onClick={handleCardClick}
       className={`relative select-none w-full mx-auto ${
-        compact ? 'max-w-[272px]' : 'max-w-[330px]'
+        trade
+          ? 'max-w-[155px]'
+          : mini
+          ? 'max-w-[215px]'
+          : compact
+          ? 'max-w-[272px]'
+          : 'max-w-[330px]'
+      } ${
+        isRecycleMode
+          ? isProtectedInRecycleMode
+            ? 'opacity-55 cursor-not-allowed'
+            : 'cursor-pointer'
+          : onSelectCard
+          ? isDisabledSelection
+            ? 'opacity-50 cursor-not-allowed'
+            : 'cursor-pointer'
+          : ''
       }`}
       style={{ perspective: '1100px' }}
     >
-      <article
+      {/* Enveloppe externe : Cadre métal brossé si la carte est GIF (.gif) */}
+      <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className={`relative w-full ${
-          compact ? 'h-[446px] rounded-[15px]' : 'h-[500px] rounded-[18px]'
-        } overflow-hidden flex flex-col transition-transform duration-200 ease-out`}
+        className={`relative w-full transition-transform duration-200 ease-out ${
+          trade
+            ? 'rounded-[10px]'
+            : mini
+            ? 'rounded-[13px]'
+            : compact
+            ? 'rounded-[16px]'
+            : 'rounded-[19px]'
+        } ${isShiny ? 'wiki-shiny-frame p-[3px]' : ''}`}
         style={{
-          background: tier.cardBg,
-          border:
-            tier.code === 'L'
-              ? '2px solid #f5d442'
-              : tier.code === 'UR'
-              ? '1.5px solid #f5a642'
-              : `1px solid ${tier.borderColor}`,
-          boxShadow: tilt.isHovered
+          boxShadow: isShiny
+            ? tilt.isHovered
+              ? `0 18px 38px -6px rgba(30, 41, 59, 0.45), 0 0 18px rgba(148, 163, 184, 0.45)`
+              : `0 10px 26px -6px rgba(30, 41, 59, 0.32), 0 2px 8px rgba(0,0,0,0.12)`
+            : tilt.isHovered
             ? `0 18px 34px -8px ${tier.shadowColor}, 0 4px 12px rgba(0,0,0,0.10)`
             : `0 8px 20px -6px ${tier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
           transform: tilt.isHovered
             ? `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) translateY(-4px)`
-            : 'rotateX(0deg) rotateY(0deg) translateY(0px)',
+            : 'none',
         }}
       >
-        {/* 1. PARTIE SUPÉRIEURE : IMAGE DE LA PAGE WIKIPÉDIA */}
-        <div
-          className={`relative w-full ${
-            compact ? 'h-[168px]' : 'h-[192px]'
-          } shrink-0 overflow-hidden`}
+        <article
+          className={`wiki-card-item relative w-full ${
+            trade
+              ? 'h-[220px] rounded-[9px]'
+              : mini
+              ? 'h-[316px] rounded-[11px]'
+              : compact
+              ? 'h-[446px] rounded-[14px]'
+              : 'h-[500px] rounded-[17px]'
+          } overflow-hidden flex flex-col ${
+            isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
+          }`}
           style={{
-            background:
-              card.imageContain || !card.image || imgError
-                ? tier.code === 'L'
-                  ? 'radial-gradient(circle at 50% 45%, #8f6b10 0%, #4d3803 100%)'
-                  : 'rgba(15, 23, 42, 0.14)'
-                : '#18181b',
+            background: isShiny ? undefined : tier.cardBg,
+            border: isShiny
+              ? '1.5px solid rgba(255, 255, 255, 0.85)'
+              : tier.code === 'L'
+              ? '2px solid #f5d442'
+              : tier.code === 'UR'
+              ? '1.5px solid #f5a642'
+              : `1px solid ${tier.borderColor}`,
           }}
         >
-          {/* Ondes subtiles derrière le logo Wikipédia quand pas d'image ou image détourée */}
-          {(card.imageContain || !card.image || imgError) && (
-            <RarityWavePattern
-              code={tier.code}
-              waveColor1={tier.waveColor1}
-              waveColor2={tier.waveColor2}
+          {/* Voile sombre lors de la sélection */}
+          {showSelectedDim && (
+            <div
+              className="absolute inset-0 pointer-events-none z-20 rounded-[inherit] transition-opacity duration-200"
+              style={{
+                background: isSelected
+                  ? 'linear-gradient(180deg, rgba(51, 102, 204, 0.10) 0%, rgba(15, 23, 42, 0.25) 100%)'
+                  : 'linear-gradient(180deg, rgba(0, 107, 36, 0.08) 0%, rgba(15, 23, 42, 0.25) 100%)',
+              }}
             />
           )}
 
-          {card.image && !imgError ? (
-            <img
-              src={card.image}
-              alt={card.title}
-              onError={() => setImgError(true)}
-              loading="lazy"
-              className={`w-full h-full ${
-                card.imageContain
-                  ? 'object-contain p-3.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]'
-                  : 'object-cover'
-              }`}
-            />
-          ) : (
-            /* Fallback officiel Globe Wikipédia conservé pour les pages sans image */
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 relative z-10">
-              <img
-                src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
-                alt="Wikipédia"
-                className={`${
-                  compact ? 'w-16 h-16' : 'w-20 h-20'
-                } object-contain opacity-85 drop-shadow-md`}
-              />
-            </div>
-          )}
-
-          {/* Badge de Rareté en haut à gauche */}
-          <div
-            className={`absolute top-2.5 left-2.5 z-20 ${
-              compact ? 'min-w-[32px] h-[24px] px-2 text-[12px]' : 'min-w-[36px] h-[27px] px-2.5 text-[13px]'
-            } rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
-            style={{
-              backgroundColor: tier.badgeBg,
-              color: tier.badgeText,
-            }}
-            title={`${tier.name} (${tier.thresholdLabel})`}
-          >
-            {tier.code}
-          </div>
-
-          {/* Actions en haut à droite : Doublons + Étoile Favori */}
-          <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5">
+          {/* Actions en haut à droite placées EN DEHORS du filtre grayscale */}
+          <div className="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5">
             {duplicateCount > 1 && (
-              <span className="px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-xs text-white text-[11px] font-bold">
+              <span
+                className={`px-2 py-0.5 rounded-[2px] bg-black/65 backdrop-blur-xs text-white text-[11px] font-bold ${
+                  showSelectedDim ? 'grayscale opacity-65' : ''
+                }`}
+              >
                 ×{duplicateCount}
               </span>
             )}
-            {onToggleFavorite && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(card.id);
-                }}
-                aria-label="Ajouter aux favoris"
-                className="w-7 h-7 rounded-full bg-black/25 hover:bg-black/45 backdrop-blur-xs flex items-center justify-center text-white transition-colors cursor-pointer"
+
+            {selectionBadgeText ? (
+              <div
+                className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs transition-colors ${
+                  isSelected
+                    ? 'bg-[#3366cc] text-white border border-[#2a4b8d]'
+                    : 'bg-black/65 text-white border border-white/40'
+                }`}
               >
-                <Star
-                  className={`w-4 h-4 ${
-                    isFavorite ? 'fill-[#ffea5a] text-[#ffea5a]' : 'text-white/90'
+                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                <span>{selectionBadgeText}</span>
+              </div>
+            ) : isRecycleMode ? (
+              isProtectedInRecycleMode ? (
+                <span
+                  className="px-2 py-0.5 rounded-[2px] bg-black/65 text-[#ffea5a] text-[10.5px] font-bold"
+                  title="Retirez cette carte de vos favoris si vous souhaitez la recycler"
+                >
+                  ★ Protégée
+                </span>
+              ) : (
+                <div
+                  className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs transition-colors ${
+                    isSelectedForRecycle
+                      ? 'bg-[#006b24] text-white border border-[#00571d]'
+                      : 'bg-black/65 text-white border border-white/40 hover:bg-black/80'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`w-3.5 h-3.5 rounded-[2px] flex items-center justify-center border ${
+                      isSelectedForRecycle
+                        ? 'bg-white text-[#006b24] border-white'
+                        : 'border-white/70'
+                    }`}
+                  >
+                    {isSelectedForRecycle && (
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    )}
+                  </span>
+                  <span>+{recycleValue}</span>
+                  <WikithuneIcon className="w-3 h-3 text-white" />
+                </div>
+              )
+            ) : (
+              onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(card.id);
+                  }}
+                  aria-label="Ajouter aux favoris"
+                  className="w-7 h-7 rounded-full bg-black/25 hover:bg-black/45 backdrop-blur-xs flex items-center justify-center text-white transition-colors cursor-pointer"
+                >
+                  <Star
+                    className={`w-4 h-4 ${
+                      isFavorite
+                        ? 'fill-[#ffea5a] text-[#ffea5a]'
+                        : 'text-white/90'
+                    }`}
+                  />
+                </button>
+              )
             )}
           </div>
-        </div>
 
-        {/* 2. PARTIE INFÉRIEURE : FOND TEXTURÉ + TITRE + DESCRIPTION COMPLÈTE + PIED */}
-        <div
-          className={`relative flex-1 flex flex-col justify-between ${
-            compact ? 'px-3.5 pt-3 pb-2.5' : 'px-4 pt-3.5 pb-3'
-          } overflow-hidden`}
-        >
-          {/* Texture d'ondes organiques propre à la rareté */}
-          <RarityWavePattern
-            code={tier.code}
-            waveColor1={tier.waveColor1}
-            waveColor2={tier.waveColor2}
-          />
-
-          {/* Reflet Holographique / Foil interactif pour les raretés SR, UR, L */}
-          {isHighTier && (
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-              style={{
-                opacity: tilt.isHovered ? 0.85 : tier.code === 'L' ? 0.35 : 0.15,
-                background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.55) 0%, transparent 60%), ${tier.foilGradient}`,
-                mixBlendMode: 'soft-light',
-              }}
-            />
-          )}
-
-          {/* Contenu textuel (Titre et Description agrandis pour une lecture optimale) */}
-          <div className="relative z-10 flex-1 flex flex-col min-h-0">
-            <h3
-              className={`font-extrabold ${
-                compact ? 'text-[17.5px]' : 'text-[19.5px]'
-              } leading-[1.18] tracking-[-0.01em] mb-1.5 line-clamp-2`}
-              style={{ color: tier.textColor }}
-            >
-              {card.title}
-            </h3>
-
-            <p
-              className={`${descriptionTypography} font-normal m-0`}
-              style={{ color: tier.subTextColor }}
-            >
-              {fullText}
-            </p>
-          </div>
-
-          {/* 3. PIED DE CARTE : VUES WIKIPÉDIA + LIEN DIRECT */}
+          {/* Contenu visuel de la carte (effet de grisage stylé et élégant lors de la sélection) */}
           <div
-            className="relative z-10 pt-2 mt-1.5 flex items-center justify-between gap-1.5 border-t"
-            style={{ borderColor: tier.dividerColor }}
+            className={`w-full flex-1 flex flex-col min-h-0 transition-all duration-200 ${
+              showSelectedDim
+                ? 'grayscale-[85%] opacity-55 contrast-95'
+                : ''
+            }`}
+            style={{
+              background: isShiny ? undefined : tier.cardBg,
+            }}
           >
+            {/* 1. PARTIE SUPÉRIEURE : IMAGE DE LA PAGE WIKIPÉDIA */}
             <div
-              className={`flex items-center gap-1 font-bold ${
-                compact ? 'text-[12px]' : 'text-[13px]'
-              }`}
-              style={{ color: tier.textColor }}
-              title={`Fréquentation de la page : ${formattedViews} vues (${tier.name})`}
+              className={`relative w-full ${
+                trade
+                  ? 'h-[85px]'
+                  : mini
+                  ? 'h-[112px]'
+                  : compact
+                  ? 'h-[168px]'
+                  : 'h-[192px]'
+              } shrink-0 overflow-hidden`}
+              style={{
+                background:
+                  card.imageContain || !card.image || imgError
+                    ? tier.code === 'L'
+                      ? 'radial-gradient(circle at 50% 45%, #8f6b10 0%, #4d3803 100%)'
+                      : 'rgba(15, 23, 42, 0.14)'
+                    : '#18181b',
+              }}
             >
-              <Eye className="w-3.5 h-3.5 opacity-80 shrink-0" />
-              <span>{formattedViews} vues</span>
+              {/* Ondes subtiles derrière le logo Wikipédia quand pas d'image ou image détourée */}
+              {(card.imageContain || !card.image || imgError) && (
+                <RarityWavePattern
+                  code={tier.code}
+                  waveColor1={
+                    isShiny ? 'rgba(255, 255, 255, 0.55)' : tier.waveColor1
+                  }
+                  waveColor2={
+                    isShiny ? 'rgba(30, 41, 59, 0.16)' : tier.waveColor2
+                  }
+                />
+              )}
+
+              {card.image && !imgError ? (
+                <img
+                  src={card.image}
+                  alt={card.title}
+                  onError={() => setImgError(true)}
+                  loading="lazy"
+                  className={`w-full h-full ${
+                    card.imageContain
+                      ? 'object-contain p-3.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]'
+                      : 'object-cover'
+                  }`}
+                />
+              ) : (
+                /* Fallback officiel Globe Wikipédia conservé pour les pages sans image */
+                <div className="w-full h-full flex flex-col items-center justify-center p-3 relative z-10">
+                  <img
+                    src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
+                    alt="Wikipédia"
+                    className={`${
+                      trade
+                        ? 'w-9 h-9'
+                        : mini
+                        ? 'w-12 h-12'
+                        : compact
+                        ? 'w-16 h-16'
+                        : 'w-20 h-20'
+                    } object-contain opacity-85 drop-shadow-md`}
+                  />
+                </div>
+              )}
+
+              {/* Badges en haut à gauche : Rareté + Badge Métal GIF (si .gif) */}
+              <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
+                <div
+                  className={`${
+                    trade
+                      ? 'min-w-[20px] h-[17px] px-1 text-[9.5px]'
+                      : mini
+                      ? 'min-w-[26px] h-[20px] px-1.5 text-[10.5px]'
+                      : compact
+                      ? 'min-w-[32px] h-[24px] px-2 text-[12px]'
+                      : 'min-w-[36px] h-[27px] px-2.5 text-[13px]'
+                  } rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
+                  style={{
+                    backgroundColor: tier.badgeBg,
+                    color: tier.badgeText,
+                  }}
+                  title={`${tier.name} (${tier.thresholdLabel})`}
+                >
+                  {tier.code}
+                </div>
+
+                {isShiny && (
+                  <div
+                    className={`wiki-shiny-badge ${
+                      mini
+                        ? 'h-[20px] px-1.5 text-[9.5px]'
+                        : compact
+                        ? 'h-[24px] px-2 text-[10.5px]'
+                        : 'h-[27px] px-2.5 text-[11.5px]'
+                    } rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
+                    title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
+                  >
+                    <Sparkles className="w-2.5 h-2.5 shrink-0 text-[#e2e8f0]" />
+                    <span>GIF</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <a
-              href={
-                card.url ||
-                `https://fr.wikipedia.org/wiki/${encodeURIComponent(card.title)}`
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center gap-1 ${
-                compact ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-[12px]'
-              } rounded-[6px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.54)',
-                color: tier.textColor,
-                border: `1px solid ${tier.dividerColor}`,
-              }}
+            {/* 2. PARTIE INFÉRIEURE : FOND TEXTURÉ (MÉTAL BROSSÉ SI GIF) + TITRE + DESCRIPTION + PIED */}
+            <div
+              className={`relative flex-1 flex flex-col justify-between ${
+                mini
+                  ? 'px-2.5 pt-2 pb-2'
+                  : compact
+                  ? 'px-3.5 pt-3 pb-2.5'
+                  : 'px-4 pt-3.5 pb-3'
+              } overflow-hidden`}
             >
-              <span>Lire sur Wikipédia</span>
-              <ExternalLink className="w-3 h-3 shrink-0" />
-            </a>
+              {/* Texture d'ondes organiques (argentée/titane si carte GIF métal) */}
+              <RarityWavePattern
+                code={tier.code}
+                waveColor1={
+                  isShiny ? 'rgba(255, 255, 255, 0.55)' : tier.waveColor1
+                }
+                waveColor2={
+                  isShiny ? 'rgba(15, 23, 42, 0.12)' : tier.waveColor2
+                }
+              />
+
+              {/* Reflet Métal Brossé (style Carte Bancaire Métal / Titane) pour les cartes GIF (.gif) */}
+              {isShiny && (
+                <>
+                  {/* Liseré d'usinage métallique interne */}
+                  <div
+                    className="absolute inset-x-2 inset-y-1.5 rounded-[10px] pointer-events-none border border-white/45"
+                    style={{
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
+                    }}
+                  />
+                  {/* Faisceau spéculaire métallique réagissant à l'inclinaison */}
+                  <div
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                    style={{
+                      opacity: tilt.isHovered ? 0.9 : 0.65,
+                      background: `
+                        radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.25) 38%, transparent 65%),
+                        linear-gradient(118deg, transparent 18%, rgba(255, 255, 255, 0.55) 44%, rgba(255, 255, 255, 0.88) 50%, rgba(148, 163, 184, 0.35) 56%, transparent 80%)
+                      `,
+                      mixBlendMode: 'soft-light',
+                    }}
+                  />
+                </>
+              )}
+
+              {/* Reflet Holographique / Foil interactif pour les raretés SR, UR, L classiques */}
+              {isHighTier && !isShiny && (
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                  style={{
+                    opacity: tilt.isHovered
+                      ? 0.85
+                      : tier.code === 'L'
+                      ? 0.35
+                      : 0.15,
+                    background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.55) 0%, transparent 60%), ${tier.foilGradient}`,
+                    mixBlendMode: 'soft-light',
+                  }}
+                />
+              )}
+
+              {/* Contenu textuel */}
+              <div className="relative z-10 flex-1 flex flex-col min-h-0">
+                <h3
+                  className={`font-extrabold ${
+                    trade
+                      ? 'text-[11.5px] mb-0.5'
+                      : mini
+                      ? 'text-[13.5px] mb-1'
+                      : compact
+                      ? 'text-[17.5px] mb-1.5'
+                      : 'text-[19.5px] mb-1.5'
+                  } leading-[1.18] tracking-[-0.01em] line-clamp-2`}
+                  style={{
+                    color: isShiny ? '#0f172a' : tier.textColor,
+                    textShadow: isShiny
+                      ? '0 1px 0 rgba(255,255,255,0.65)'
+                      : undefined,
+                  }}
+                >
+                  {card.title}
+                </h3>
+
+                <p
+                  className={`${descriptionTypography} font-normal m-0`}
+                  style={{ color: isShiny ? '#1e293b' : tier.subTextColor }}
+                >
+                  {fullText}
+                </p>
+              </div>
+
+              {/* 3. PIED DE CARTE : VUES WIKIPÉDIA + LIEN DIRECT */}
+              <div
+                className={`relative z-10 ${
+                  trade ? 'pt-1 mt-0.5' : mini ? 'pt-1.5 mt-1' : 'pt-2 mt-1.5'
+                } flex items-center justify-between gap-1 border-t`}
+                style={{
+                  borderColor: isShiny
+                    ? 'rgba(15, 23, 42, 0.22)'
+                    : tier.dividerColor,
+                }}
+              >
+                <div
+                  className={`flex items-center gap-1 font-bold ${
+                    trade
+                      ? 'text-[9px]'
+                      : mini
+                      ? 'text-[10.5px]'
+                      : compact
+                      ? 'text-[12px]'
+                      : 'text-[13px]'
+                  }`}
+                  style={{ color: isShiny ? '#0f172a' : tier.textColor }}
+                  title={`Fréquentation de la page : ${formattedViews} vues (${tier.name})`}
+                >
+                  <Eye className="w-3 h-3 opacity-80 shrink-0" />
+                  <span>{formattedViews} vues</span>
+                </div>
+
+                <a
+                  href={
+                    card.url ||
+                    `https://fr.wikipedia.org/wiki/${encodeURIComponent(
+                      card.title
+                    )}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`inline-flex items-center gap-1 ${
+                    trade
+                      ? 'px-1 py-0.2 text-[8.5px]'
+                      : mini
+                      ? 'px-1.5 py-0.5 text-[9.5px]'
+                      : compact
+                      ? 'px-2 py-0.5 text-[11px]'
+                      : 'px-2.5 py-1 text-[12px]'
+                  } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                  style={{
+                    backgroundColor: isShiny
+                      ? 'rgba(255, 255, 255, 0.68)'
+                      : 'rgba(255, 255, 255, 0.54)',
+                    color: isShiny ? '#0f172a' : tier.textColor,
+                    border: `1px solid ${
+                      isShiny ? 'rgba(15, 23, 42, 0.24)' : tier.dividerColor
+                    }`,
+                  }}
+                >
+                  <span>{trade || mini ? 'Wikipédia' : 'Lire sur Wikipédia'}</span>
+                  <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                </a>
+              </div>
+            </div>
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
   );
 }

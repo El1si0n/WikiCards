@@ -12,7 +12,8 @@ Conçue avec un profond respect de l'identité visuelle de **Wikipédia (thème 
 - 📈 **Rareté Fondée sur la Fréquentation Réelle** : Fini les statistiques de combat artificielles (PV, attaque, défense). La valeur d'une carte dépend du nombre réel de lecteurs du sujet.
 - 📦 **Simulation de Booster Ultra-Réaliste** : Sachet métallisé thermoscellé en 3D, animation de déchirure, ouverture carte par carte et suspense garanti.
 - 🔊 **Moteur Sonore Procédural (Web Audio API)** : Effets audio cristallins (froissement de sachet, glissement de carte, accords musicaux par rareté) générés en temps réel sans téléchargement de fichiers MP3.
-- 🗃️ **Classeur Complet & Portabilité** : Organisation avec favoris prioritaires, recherche plein texte, filtres par rareté, tris multiples et import/export JSON sans aucune dépendance à un serveur.
+- 🔑 **Code Unique & Sauvegarde Cloud Légère** : Connexion par Code Unique (`WIKI-XXXX`) sauvegardant votre profil, vos Wikithunes et votre collection.
+- 🎰 **Le WikiSino & Marché Multijoueur** : Mini-jeux de casino (Roulette, Machine à sous, Quitte ou Double) et place de marché d'enchères entre joueurs.
 
 ---
 
@@ -98,25 +99,32 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 
 ```text
 WikiCards/
-├── public/                 # Assets statiques publics
+├── data/                   # Données multijoueur (marché, échanges, utilisateurs)
+├── server/
+│   └── apiHandler.js       # Logique API REST (/api/users, /api/trades, /api/market)
 ├── src/
-│   ├── assets/             # Images et logos
 │   ├── components/
-│   │   ├── BoosterOpening.jsx  # Composant du booster (3D, déchirure, carrousel de tirage)
-│   │   ├── WikiCard.jsx        # Carte à collectionner (tilt 3D, foil, raretés, extrait)
-│   │   └── WikiHeader.jsx      # En-tête style Wikipédia Vector 2022 avec recherche Codex
+│   │   ├── AuthGateway.jsx     # Écran de connexion / création par Code Unique
+│   │   ├── BoosterOpening.jsx  # Booster 3D, déchirure et tirage animé
+│   │   ├── WikiCard.jsx        # Carte (tilt 3D, reflets foil, badge de rareté)
+│   │   ├── WikiHeader.jsx      # En-tête officiel Vector 2022
+│   │   ├── WikiSino.jsx        # Casino (Roulette, Machine à sous, Quitte ou double)
+│   │   ├── SocialHub.jsx       # Réseau communautaire et propositions d'échanges
+│   │   ├── AuctionMarket.jsx   # Place de marché et système d'enchères
+│   │   └── UserProfile.jsx     # Profil joueur, vitrine de collection et statistiques
 │   ├── config/
-│   │   └── rarities.js     # Définition des paliers de rareté, couleurs, seuils et drop rates
+│   │   ├── rarities.js     # Paliers de rareté, taux de tirage, économie
+│   │   └── themes.js       # Détection thématique des articles (Histoire, Sciences...)
 │   ├── services/
-│   │   ├── sound.js        # Moteur procédural Web Audio API (effets sonores sans MP3)
-│   │   └── wikipedia.js    # Client API MediaWiki (tirages aléatoires, résumé, vues 30j)
-│   ├── App.jsx             # Logique centrale, gestion du classeur, onglets et filtres
-│   ├── index.css           # Thème global, styles Wikipédia Vector et Tailwind v4
-│   └── main.jsx            # Point d'entrée de l'application React
-├── index.html              # Gabarit HTML
-├── package.json            # Dépendances et scripts npm
-├── vite.config.js          # Configuration Vite avec plugin React et Tailwind
-└── README.md               # Documentation du projet
+│   │   ├── sound.js        # Moteur sonore Web Audio API
+│   │   ├── userStorage.js  # Gestion des comptes, profil et synchronisation API
+│   │   └── wikipedia.js    # Client API MediaWiki et Wikimedia Pageviews
+│   ├── App.jsx             # Orchestration globale
+│   ├── index.css           # Styles Vector 2022 et Tailwind CSS v4
+│   └── main.jsx            # Point d'entrée React
+├── server.js               # Serveur HTTP Node.js autonome pour la production
+├── vite.config.js          # Configuration Vite (dev server & build)
+└── README.md
 ```
 
 ---
@@ -124,7 +132,7 @@ WikiCards/
 ## 🚀 Installation & Démarrage
 
 ### Prérequis
-- [Node.js](https://nodejs.org/) (version 18 ou supérieure recommandée)
+- [Node.js](https://nodejs.org/) (version 18 ou supérieure)
 - Un gestionnaire de paquets (`npm`, `pnpm` ou `yarn`)
 
 ### 1. Installation des dépendances
@@ -132,23 +140,38 @@ WikiCards/
 npm install
 ```
 
-### 2. Lancer le serveur de développement
+### 2. Lancer en mode développement (Vite)
 ```bash
 npm run dev
 ```
 Par défaut, l'application est accessible sur : **[http://localhost:5173](http://localhost:5173)**.
 
-### 3. Autres scripts disponibles
+### 3. Lancer en production (Serveur complet Frontend + API Multijoueur)
 ```bash
-# Vérifier le code avec Oxlint
-npm run lint
-
-# Compiler pour la production
+# 1. Compiler le bundle de production
 npm run build
 
-# Prévisualiser la version de production localement
-npm run preview
+# 2. Démarrer le serveur Node de production
+npm start
 ```
+L'application démarre sur **[http://localhost:3000](http://localhost:3000)** (ou sur le port spécifié par la variable d'environnement `PORT`).
+
+---
+
+## 🌐 Déploiement & Hébergement
+
+### Option A : Hébergement avec serveur (Render, Railway, VPS, Raspberry Pi)
+Permet de profiter de toutes les fonctionnalités, y compris le **multijoueur** (marché d'enchères et échanges de cartes entre joueurs différents) :
+- **Render (Gratuit)** : Créez un nouveau *Web Service*, connectez votre dépôt GitHub.
+  - *Build Command* : `npm run build`
+  - *Start Command* : `npm start`
+- **Railway / Fly.io / VPS / Raspberry Pi** : Cloner le dépôt et exécuter `npm install && npm run build && npm start`.
+
+### Option B : Hébergement statique (GitHub Pages, Vercel, Netlify)
+Permet d'héberger le frontend gratuitement :
+- *Build Command* : `npm run build`
+- *Output Directory* : `dist`
+- Les fonctionnalités solo (boosters, classeur, WikiSino, bourse quotidienne) fonctionnent directement avec l'API publique de Wikipédia et le stockage local de votre navigateur.
 
 ---
 

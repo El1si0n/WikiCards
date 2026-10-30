@@ -1,19 +1,43 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
     --wiki-bg: #ffffff;
     --wiki-bg-subtle: #f8f9fa;
     --wiki-text: #202122;
+    --wiki-text-emphasized: #101418;
     --wiki-text-muted: #54595d;
     --wiki-link: #3366cc;
-    --wiki-link-hover: #447ff5;
+    --wiki-link-hover: #3056a9;
     --wiki-border: #a2a9b1;
+    --wiki-border-subtle: #c8ccd1;
     --wiki-border-light: #eaecf0;
-    --wiki-border-card: #c8ccd1;
-    --wiki-accent-line: #a7d7f9;
-    --font-wiki-serif: 'Linux Libertine', 'Georgia', 'Times New Roman', Times, serif;
-    --font-wiki-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Helvetica, Arial, sans-serif;
+    --wiki-accent-line: #bdd8fb;
+    --wiki-gauge-track: #eef1f6;
+    --wiki-gauge-won-bg: #dff2eb;
+    --wiki-gauge-lost-bg: #ffe9e5;
+    --font-wiki-serif: 'Linux Libertine', 'Georgia', 'Times', 'Source Serif 4', serif;
+    --font-wiki-sans: sans-serif;
+    --font-wiki-banner: 'Open Sans', sans-serif;
+  }
+
+  html.dark {
+    --wiki-bg: #101418;
+    --wiki-bg-subtle: #1c222b;
+    --wiki-text: #eaecf0;
+    --wiki-text-emphasized: #f8f9fa;
+    --wiki-text-muted: #a2a9b1;
+    --wiki-link: #6b9eff;
+    --wiki-link-hover: #8cb4ff;
+    --wiki-border: #54595d;
+    --wiki-border-subtle: #3a424d;
+    --wiki-border-light: #272d36;
+    --wiki-accent-line: #2a4b8d;
+    --wiki-gauge-track: #232a34;
+    --wiki-gauge-won-bg: #0f382c;
+    --wiki-gauge-lost-bg: #451a16;
+    color-scheme: dark;
   }
 
   body {
@@ -23,24 +47,137 @@
     font-size: 14px;
     line-height: 1.6;
     margin: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 }
 
-/* Typographie des titres principaux et encadrés façon Wikipédia Accueil */
+/* Typographie officielle des titres principaux (Vector 2022) */
 .wiki-serif {
   font-family: var(--font-wiki-serif);
+}
+
+/* Barre de titre H1 et barre d'onglets Vector 2022 (issues de load.php) */
+.vector-page-titlebar {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px var(--wiki-border, #a2a9b1);
+}
+
+.vector-page-toolbar-container {
+  display: flex;
+  flex-flow: row;
+  justify-content: space-between;
+  font-size: 0.875rem; /* 14px */
+  box-shadow: 0 1px var(--wiki-border-subtle, #c8ccd1);
+  margin-bottom: 1px;
+}
+
+/* Onglets de navigation Vector 2022 (.vector-menu-tabs) */
+.vector-tab-link {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 6px 0;
+  color: #3366cc;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  font-size: 0.875rem;
+}
+
+.vector-tab-link::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: transparent;
+  content: '';
+}
+
+.vector-tab-link:hover {
+  color: #3056a9;
+  text-decoration: none;
+}
+
+.vector-tab-link:hover::after {
+  background-color: #3056a9;
+}
+
+.vector-tab-link.selected {
+  color: #202122 !important;
+}
+
+.vector-tab-link.selected::after {
+  background-color: #202122;
+}
+
+/* Bandeau d'accueil officiel de fr.wikipedia.org (#accueil_2017_en-tete & #accueil_2017_bandeau dans load(2).php) */
+#accueil_2017_en-tete {
+  background: linear-gradient(to bottom, #ffffff, #e8f2f8);
+  border-bottom: solid 1px #a8d7fc;
+}
+
+#accueil_2017_bandeau {
+  background-image: url("https://upload.wikimedia.org/wikipedia/commons/a/aa/Wikipedia-logo-v2-o50.svg");
+  background-size: 300px 300px;
+  background-position: -110px -15px;
+  background-repeat: no-repeat;
+  padding: 1.5rem 1rem 1rem;
+  font-family: var(--font-wiki-banner);
+}
+
+#accueil_2017_bloc-titre {
+  color: #445577;
+  line-height: 1.6;
+}
+
+#accueil_2017_bloc-titre h2 {
+  font-size: 180%;
+  font-weight: bold;
+  font-family: var(--font-wiki-banner);
+  color: #445577;
+  margin: 0;
+  padding: 0;
+  border: none;
+  line-height: 1.35;
+}
+
+#accueil_2017_bloc-titre p {
+  margin: 0;
+  padding: 0;
+  font-size: 95%;
+  color: #445577;
+}
+
+/* Cadres officiels de l'Accueil Wikipédia (.accueil_2017_cadre dans load(2).php) */
+.accueil_2017_cadre {
+  background-color: #ffffff;
+  box-shadow: 0 0 0.3rem #999999;
+  border-radius: 0.2rem;
+  padding: 1.2rem;
+  margin-bottom: 1.6rem;
+}
+
+.accueil_2017_cadre .wiki-cadre-header {
+  border-bottom: solid 0.2rem #bdd8fb;
+  margin: -0.4rem 0 0.85rem;
+  padding-bottom: 0.15rem;
 }
 
 .wiki-smallcaps {
   font-family: var(--font-wiki-serif);
   font-variant: small-caps;
-  letter-spacing: 0.03em;
-}
-
-/* Bandeau d'accueil officiel de fr.wikipedia.org */
-.wiki-welcome-banner {
-  background: linear-gradient(90deg, #f8f9fa 0%, #eef5fb 55%, #ddecf9 100%);
-  border-bottom: 1px solid #c8ccd1;
+  letter-spacing: 0.01em;
+  font-size: 1.5em; /* 21px */
+  font-weight: normal;
+  line-height: 1.375;
+  color: #101418;
 }
 
 /* Liens style Wikipédia */
@@ -51,5 +188,399 @@
 }
 
 .wiki-link:hover {
+  color: #3056a9;
   text-decoration: underline;
 }
+
+/* Effet Carte Bancaire Métal Brossé (Titane / Platine) pour les cartes GIF (.gif) */
+@keyframes shinyBorderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.wiki-shiny-frame {
+  background: linear-gradient(
+    130deg,
+    #4b5563 0%,
+    #f3f4f6 20%,
+    #6b7280 40%,
+    #ffffff 50%,
+    #4b5563 65%,
+    #d1d5db 85%,
+    #374151 100%
+  );
+  background-size: 260% 260%;
+  animation: shinyBorderFlow 6s ease infinite;
+}
+
+.wiki-metal-surface {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 1px,
+      rgba(15, 23, 42, 0.045) 1px,
+      rgba(15, 23, 42, 0.045) 2px
+    ),
+    linear-gradient(
+      135deg,
+      #b8c1ce 0%,
+      #eef2f6 18%,
+      #9aa5b5 36%,
+      #e2e7ef 50%,
+      #8592a4 68%,
+      #d6dde7 85%,
+      #9aa5b5 100%
+    );
+}
+
+.wiki-shiny-badge {
+  background: linear-gradient(135deg, #1e293b 0%, #475569 48%, #0f172a 100%);
+  color: #f8fafc;
+}
+
+/* Curseur de jauge propre style Wikipédia Vector 2022 (sans contour noir natif au clic) */
+.wiki-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  border: 1px solid #c8ccd1;
+  outline: none;
+}
+
+.wiki-range-slider:focus {
+  outline: none;
+  border-color: #3366cc;
+}
+
+.wiki-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3366cc;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.wiki-range-slider::-webkit-slider-thumb:hover {
+  background: #2a4b8d;
+  transform: scale(1.08);
+}
+
+.wiki-range-slider:disabled::-webkit-slider-thumb {
+  background: #a2a9b1;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.wiki-range-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3366cc;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+/* Boutons officiels style Wikimedia Codex / Casino */
+.wiki-casino-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 2px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  transition-property: background-color, color, border-color, box-shadow;
+  transition-duration: 0.1s;
+  gap: 6px;
+}
+
+.wiki-casino-btn:disabled {
+  background-color: #eaecf0 !important;
+  color: #a2a9b1 !important;
+  border-color: #c8ccd1 !important;
+  cursor: not-allowed;
+}
+
+/* Style 1 : Bouton progressif subtil Codex (--background-color-progressive-subtle: #e8eeff, --color-progressive: #36c) */
+.wiki-casino-btn--subtle {
+  background-color: #e8eeff;
+  color: #3366cc;
+  border-color: #3366cc;
+}
+
+.wiki-casino-btn--subtle:hover:not(:disabled) {
+  background-color: #d9e2ff;
+  color: #3056a9;
+  border-color: #3056a9;
+}
+
+.wiki-casino-btn--subtle:active:not(:disabled) {
+  background-color: #b6d4fb;
+  color: #233566;
+  border-color: #233566;
+}
+
+/* Style 2 : Bouton primaire plein (#36c) */
+.wiki-casino-btn--primary {
+  background-color: #3366cc;
+  color: #ffffff;
+  border-color: #3366cc;
+}
+
+.wiki-casino-btn--primary:hover:not(:disabled) {
+  background-color: #3056a9;
+  border-color: #3056a9;
+}
+
+.wiki-casino-btn--primary:active:not(:disabled) {
+  background-color: #233566;
+  border-color: #233566;
+}
+
+/* Variante Succès / Encaisser (--background-color-success-subtle: #dff2eb, --color-success: #177860, --border-color-success: #099979) */
+.wiki-casino-btn--success {
+  background-color: #dff2eb;
+  color: #177860;
+  border-color: #099979;
+}
+
+.wiki-casino-btn--success:hover:not(:disabled) {
+  background-color: #c9eadf;
+  color: #125e4b;
+  border-color: #077d63;
+}
+
+.wiki-casino-btn--success:active:not(:disabled) {
+  background-color: #b2e0d1;
+}
+
+/* Variante Neutre / Secondaire (--background-color-interactive-subtle: #f8f9fa, --border-color-base: #a2a9b1) */
+.wiki-casino-btn--neutral {
+  background-color: #f8f9fa;
+  color: #202122;
+  border-color: #a2a9b1;
+}
+
+.wiki-casino-btn--neutral:hover:not(:disabled) {
+  background-color: #eaecf0;
+  border-color: #72777d;
+}
+
+.wiki-casino-btn--neutral:active:not(:disabled) {
+  background-color: #dadde3;
+  border-color: #202122;
+}
+
+/* =====================================================================
+   MODE SOMBRE OFFICIEL WIKIPÉDIA VECTOR 2022 (html.dark)
+   ===================================================================== */
+html.dark input:not(.wiki-card-item *),
+html.dark select:not(.wiki-card-item *),
+html.dark textarea:not(.wiki-card-item *) {
+  color: #eaecf0;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #72777d;
+}
+
+html.dark .vector-header-container {
+  background-color: #101418 !important;
+  border-bottom: 1px solid #272d36;
+}
+
+html.dark .mw-logo-wordmark,
+html.dark .mw-logo-tagline {
+  filter: invert(1) brightness(1.15);
+}
+
+html.dark .vector-tab-link {
+  color: #6b9eff;
+}
+
+html.dark .vector-tab-link:hover {
+  color: #8cb4ff;
+}
+
+html.dark .vector-tab-link:hover::after {
+  background-color: #8cb4ff;
+}
+
+html.dark .vector-tab-link.selected {
+  color: #f8f9fa !important;
+}
+
+html.dark .vector-tab-link.selected::after {
+  background-color: #f8f9fa;
+}
+
+html.dark #accueil_2017_en-tete {
+  background: linear-gradient(to bottom, #161b22, #1b2838);
+  border-bottom: solid 1px #2a4b8d;
+}
+
+html.dark #accueil_2017_bloc-titre,
+html.dark #accueil_2017_bloc-titre h2,
+html.dark #accueil_2017_bloc-titre p {
+  color: #c8d6eb;
+}
+
+html.dark .accueil_2017_cadre {
+  background-color: #181d24;
+  box-shadow: 0 0 0.35rem rgba(0, 0, 0, 0.65);
+  border: 1px solid #2c3542;
+}
+
+html.dark .accueil_2017_cadre .wiki-cadre-header {
+  border-bottom-color: #2a4b8d;
+}
+
+html.dark .wiki-smallcaps {
+  color: #f8f9fa;
+}
+
+html.dark .wiki-link {
+  color: #6b9eff;
+}
+
+html.dark .wiki-link:hover {
+  color: #8cb4ff;
+}
+
+/* Adaptation des surfaces et textes de l'interface (hors intérieur des cartes) */
+html.dark .bg-white:not(.wiki-card-item *) {
+  background-color: #181d24 !important;
+}
+
+html.dark .bg-\[\#f8f9fa\]:not(.wiki-card-item *) {
+  background-color: #12161c !important;
+}
+
+html.dark .hover\:bg-white:hover:not(.wiki-card-item *) {
+  background-color: #222933 !important;
+}
+
+html.dark .hover\:bg-\[\#eaecf0\]:hover:not(.wiki-card-item *),
+html.dark .hover\:bg-\[\#f8f9fa\]:hover:not(.wiki-card-item *) {
+  background-color: #252c37 !important;
+}
+
+html.dark .bg-\[\#eaf3ff\]:not(.wiki-card-item *) {
+  background-color: #1e2d4a !important;
+}
+
+html.dark .bg-\[\#dff2eb\]:not(.wiki-card-item *) {
+  background-color: #113328 !important;
+}
+
+html.dark .bg-\[\#ffe9e5\]:not(.wiki-card-item *),
+html.dark .bg-\[\#fee7e6\]:not(.wiki-card-item *) {
+  background-color: #3b1815 !important;
+}
+
+html.dark .text-\[\#202122\]:not(.wiki-card-item *),
+html.dark .text-\[\#101418\]:not(.wiki-card-item *) {
+  color: #eaecf0 !important;
+}
+
+html.dark .text-\[\#54595d\]:not(.wiki-card-item *),
+html.dark .text-\[\#72777d\]:not(.wiki-card-item *) {
+  color: #a2a9b1 !important;
+}
+
+html.dark .text-\[\#3366cc\]:not(.wiki-card-item *) {
+  color: #6b9eff !important;
+}
+
+html.dark .text-\[\#177860\]:not(.wiki-card-item *) {
+  color: #34d399 !important;
+}
+
+html.dark .text-\[\#bf3c2c\]:not(.wiki-card-item *),
+html.dark .text-\[\#b32424\]:not(.wiki-card-item *) {
+  color: #f87171 !important;
+}
+
+html.dark .border-\[\#a2a9b1\]:not(.wiki-card-item *) {
+  border-color: #4a5360 !important;
+}
+
+html.dark .border-\[\#c8ccd1\]:not(.wiki-card-item *) {
+  border-color: #363e4a !important;
+}
+
+html.dark .border-\[\#eaecf0\]:not(.wiki-card-item *) {
+  border-color: #272d36 !important;
+}
+
+/* Boutons Codex en Mode Sombre */
+html.dark .wiki-casino-btn:disabled {
+  background-color: #222831 !important;
+  color: #54595d !important;
+  border-color: #323944 !important;
+}
+
+html.dark .wiki-casino-btn--neutral {
+  background-color: #202630;
+  color: #eaecf0;
+  border-color: #4a5360;
+}
+
+html.dark .wiki-casino-btn--neutral:hover:not(:disabled) {
+  background-color: #2b3340;
+  border-color: #6c7787;
+}
+
+html.dark .wiki-casino-btn--subtle {
+  background-color: #1c2b47;
+  color: #8cb4ff;
+  border-color: #3b66b8;
+}
+
+html.dark .wiki-casino-btn--subtle:hover:not(:disabled) {
+  background-color: #243759;
+  color: #a8c7ff;
+  border-color: #5282de;
+}
+
+html.dark .wiki-casino-btn--success {
+  background-color: #113328;
+  color: #34d399;
+  border-color: #099979;
+}
+
+html.dark .wiki-casino-btn--success:hover:not(:disabled) {
+  background-color: #164234;
+  color: #6ee7b7;
+}
+
+html.dark .wiki-range-slider {
+  border-color: #3a424d;
+}
+

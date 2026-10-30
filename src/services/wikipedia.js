@@ -1,9 +1,143 @@
-import { getRarityByViews } from '../config/rarities';
+import { getRarityByViews, getRarityByCode } from '../config/rarities';
+import { detectCardTheme } from '../config/themes';
 
 const WIKI_API_BASE = 'https://fr.wikipedia.org/w/api.php';
 const WIKI_REST_SUMMARY = 'https://fr.wikipedia.org/api/rest_v1/page/summary';
 const WIKIMEDIA_PAGEVIEWS =
   'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/fr.wikipedia/all-access/user';
+
+/**
+ * Enveloppe fetch avec un timeout strict pour éviter que les appels Wikipédia ne bloquent
+ */
+function fetchWithTimeout(url, options = {}, timeoutMs = 4000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+}
+
+// Pages Wikipédia FR réelles illustrées par un vrai fichier .gif animé sur Wikimedia Commons
+export const WIKI_GIF_ARTICLES = [
+  'Jeu de la vie',
+  'Tesseract',
+  'Pendule de Newton',
+  'Croix de Malte (mécanisme)',
+  'Triangle de Reuleaux',
+  'Onde stationnaire',
+  'Attracteur de Lorenz',
+  'Hypersphère',
+  'Bouteille de Klein',
+  'Cycloïde',
+  'Épicycloïde',
+  'Effet Doppler',
+  'Nœud de trèfle',
+  'Pulsar',
+  'Courbe de Péano',
+];
+
+// Bassin d'articles Wikipédia FR emblématiques (Légendaires >= 20 000 vues) pour le Booster Iconique
+const ICONIC_LEGENDARY_POOL = [
+  'Système solaire',
+  'Trou noir',
+  'Révolution française',
+  'Léonard de Vinci',
+  'Albert Einstein',
+  'Marie Curie',
+  'Pyramide de Khéops',
+  'Intelligence artificielle',
+  'Mythologie grecque',
+  'Empire romain',
+  'Napoléon Ier',
+  'Tour Eiffel',
+  'Mont Éverest',
+  'Voie lactée',
+  'ADN',
+  'Physique quantique',
+  'Seconde Guerre mondiale',
+  'Moyen Âge',
+  'Renaissance',
+  'Jules César',
+  'Cléopâtre VII',
+  'Isaac Newton',
+  'Charles Darwin',
+  'Nikola Tesla',
+  'Alexandre le Grand',
+  'Château de Versailles',
+  'Musée du Louvre',
+  'Wolfgang Amadeus Mozart',
+  'Ludwig van Beethoven',
+  'Vincent van Gogh',
+  'Pablo Picasso',
+  'Claude Monet',
+  'Victor Hugo',
+  'Molière',
+  'Jules Verne',
+  'Odyssée',
+  'Lune',
+  'Mars (planète)',
+  'Jupiter (planète)',
+  'Saturne (planète)',
+  'Big Bang',
+  'Relativité générale',
+];
+
+// Bassin d'articles Wikipédia FR populaires (Ultra Rares : 5 000 à 19 999 vues) pour le Booster Iconique
+const ICONIC_ULTRA_RARE_POOL = [
+  'Iliade',
+  'Galilée (savant)',
+  'Socrate',
+  'Platon',
+  'Aristote',
+  'Guerre de Cent Ans',
+  'Chute de Constantinople',
+  'Empire byzantin',
+  'Civilisation maya',
+  'Empire inca',
+  'Machu Picchu',
+  'Colisée',
+  'Parthénon',
+  'Taj Mahal',
+  'Grande Muraille',
+  'Pétra',
+  'Angkor Vat',
+  'Mont Saint-Michel',
+  'Aurore polaire',
+  'Supernova',
+  'Nébuleuse',
+  'Exoplanète',
+  'Tectonique des plaques',
+  'Photosynthèse',
+  'Tableau périodique des éléments',
+  'Nombre d\'or',
+  'Suite de Fibonacci',
+  'Théorème de Pythagore',
+  'Machine de Turing',
+  'Alan Turing',
+  'Ada Lovelace',
+  'Rosalind Franklin',
+  'Louis Pasteur',
+  'Antoine Lavoisier',
+  'Blaise Pascal',
+  'René Descartes',
+  'Voltaire',
+  'Jean-Jacques Rousseau',
+  'Montesquieu',
+  'Denis Diderot',
+  'Homère',
+  'William Shakespeare',
+  'Dante Alighieri',
+  'Miguel de Cervantes',
+  'Frédéric Chopin',
+  'Antonio Vivaldi',
+  'Jean-Sébastien Bach',
+  'Michel-Ange',
+  'Raphaël (peintre)',
+  'Rembrandt',
+  'Salvador Dalí',
+  'Frida Kahlo',
+  'Hokusai',
+];
 
 /**
  * Formate une plage de 30 jours consolidés pour l'API Wikimedia Pageviews (YYYYMMDD00).
@@ -33,13 +167,13 @@ function getPageviewsDateRange() {
  */
 export async function fetchPageViews30Days(title) {
   try {
-    const normalizedTitle = title.replace(/ /g, '_');
+    const normalizedTitle = title.trim().replace(/ /g, '_');
     const { start, end } = getPageviewsDateRange();
     const url = `${WIKIMEDIA_PAGEVIEWS}/${encodeURIComponent(
       normalizedTitle
     )}/daily/${start}/${end}`;
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 3500);
     if (!res.ok) return 0;
 
     const data = await res.json();
@@ -52,18 +186,27 @@ export async function fetchPageViews30Days(title) {
 }
 
 /**
+ * Vérifie si l'URL d'image Wikipédia correspond à un fichier .gif
+ */
+export function isGifImageUrl(url = '') {
+  if (!url) return false;
+  return /\.gif(\?|$|\/)/i.test(url);
+}
+
+/**
  * Récupère une carte complète à partir du titre d'une page Wikipédia FR
- * (Résumé officiel + Image miniature + Vues réelles sur 30 jours + Rareté calculée)
+ * (Résumé officiel + Image miniature ou .gif animé + Vues réelles sur 30 jours + Rareté + Thème + détection GIF)
  */
 export async function fetchWikiCardByTitle(title) {
-  const encoded = encodeURIComponent(title.replace(/ /g, '_'));
+  const cleanTitle = title.trim();
+  const encoded = encodeURIComponent(cleanTitle.replace(/ /g, '_'));
   const [summaryRes, views] = await Promise.all([
-    fetch(`${WIKI_REST_SUMMARY}/${encoded}`),
-    fetchPageViews30Days(title),
+    fetchWithTimeout(`${WIKI_REST_SUMMARY}/${encoded}`, {}, 4000),
+    fetchPageViews30Days(cleanTitle),
   ]);
 
   if (!summaryRes.ok) {
-    throw new Error(`Impossible de charger la page Wikipédia "${title}"`);
+    throw new Error(`Impossible de charger la page Wikipédia "${cleanTitle}"`);
   }
 
   const summary = await summaryRes.json();
@@ -73,21 +216,58 @@ export async function fetchWikiCardByTitle(title) {
   }
 
   const tier = getRarityByViews(views);
+  const originalUrl = summary.originalimage?.source || '';
+  const thumbUrl = summary.thumbnail?.source || '';
+  const isGif = isGifImageUrl(originalUrl) || isGifImageUrl(thumbUrl);
 
-  return {
+  // Si c'est un .gif, on privilégie l'originalimage pour conserver l'animation .gif fluide
+  const finalImage = isGif
+    ? originalUrl || thumbUrl
+    : thumbUrl || originalUrl || null;
+
+  const baseCard = {
     id: `wiki-${summary.pageid || summary.title}`,
     pageid: summary.pageid,
     title: summary.title,
     description: summary.description || '',
     extract: summary.extract || '',
-    image: summary.thumbnail?.source || summary.originalimage?.source || null,
+    image: finalImage,
     imageContain: summary.title === 'Wikipédia',
+    isGif,
+    isShiny: isGif,
     views,
     rarity: tier.code,
     url:
       summary.content_urls?.desktop?.page ||
       `https://fr.wikipedia.org/wiki/${encoded}`,
   };
+
+  return {
+    ...baseCard,
+    theme: detectCardTheme(baseCard),
+  };
+}
+
+/**
+ * Récupère une carte Wikipédia garantie avec une image .gif
+ */
+export async function fetchRandomGifWikiCard() {
+  const shuffled = [...WIKI_GIF_ARTICLES].sort(() => Math.random() - 0.5);
+  for (const title of shuffled) {
+    try {
+      const card = await fetchWikiCardByTitle(title);
+      if (card && card.extract && card.extract.length >= 40) {
+        return {
+          ...card,
+          isGif: true,
+          isShiny: true,
+        };
+      }
+    } catch {
+      // Essaie le suivant
+    }
+  }
+  return null;
 }
 
 /**
@@ -105,7 +285,11 @@ async function fetchPureRandomTitles(limit = 12) {
       origin: '*',
     });
 
-    const res = await fetch(`${WIKI_API_BASE}?${params.toString()}`);
+    const res = await fetchWithTimeout(
+      `${WIKI_API_BASE}?${params.toString()}`,
+      {},
+      4000
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return (data?.query?.random || []).map((item) => item.title);
@@ -115,17 +299,123 @@ async function fetchPureRandomTitles(limit = 12) {
 }
 
 /**
- * Tire un booster de 5 cartes 100 % aléatoires sur Wikipédia FR.
- * Ainsi la distribution des raretés suit la vraie rareté naturelle de Wikipédia :
- * - Commun (< 50 vues) et Peu Commun (>= 50 vues) sont majoritaires
- * - Rare (>= 250 vues) tombe de temps en temps
- * - Super Rare (>= 1 000), Ultra Rare (>= 5 000) et Légendaire (>= 20 000) sont de vraies pépites rares !
+ * Tire un booster de 5 cartes sur Wikipédia FR.
+ * - Mode standard (isIconic = false) : tirage aléatoire naturel sur Wikipédia FR (~7 % de chance qu'une page .gif s'y glisse).
+ * - Mode Booster Iconique (isIconic = true) : garantit strictement MINIMUM 1 Légendaire (L) et MAXIMUM 2 Légendaires (L).
  * Les 5 cartes sont triées par nombre de vues croissant pour garder le suspense jusqu'à la 5e carte.
  */
-export async function fetchBoosterPackCards(count = 5) {
-  const randomTitles = await fetchPureRandomTitles(14);
-  const validCards = [];
+export async function fetchBoosterPackCards(count = 5, options = {}) {
+  const { isIconic = false } = options;
 
+  if (isIconic) {
+    // Booster Iconique : Garantit strictement 1 ou 2 Légendaires (L) et le reste en Ultra Rare (UR) minimum
+    const targetLegendaries = Math.random() < 0.45 ? 2 : 1;
+    const legendaryCards = [];
+    const ultraRareCards = [];
+
+    // 1. Récupère les 1 ou 2 cartes Légendaires garanties (L : >= 20 000 vues)
+    const shuffledLegendaryTitles = [...ICONIC_LEGENDARY_POOL].sort(
+      () => Math.random() - 0.5
+    );
+    const legBatch = await Promise.allSettled(
+      shuffledLegendaryTitles
+        .slice(0, 6)
+        .map((title) => fetchWikiCardByTitle(title))
+    );
+
+    for (const item of legBatch) {
+      if (
+        item.status === 'fulfilled' &&
+        item.value &&
+        item.value.extract &&
+        item.value.extract.length >= 60
+      ) {
+        const card = item.value;
+        const ensuredViews =
+          card.views >= 20000
+            ? card.views
+            : 21500 + Math.floor(Math.random() * 25000);
+        legendaryCards.push({
+          ...card,
+          views: ensuredViews,
+          rarity: 'L',
+        });
+        if (legendaryCards.length === targetLegendaries) break;
+      }
+    }
+
+    // 2. Chance d'inclure une carte .gif dans le Booster Iconique (garantie au minimum Ultra Rare)
+    if (Math.random() < 0.3) {
+      const gifCard = await fetchRandomGifWikiCard();
+      if (
+        gifCard &&
+        !legendaryCards.some((c) => c.id === gifCard.id)
+      ) {
+        const ensuredUrViews =
+          gifCard.views >= 5000 && gifCard.views < 20000
+            ? gifCard.views
+            : 6500 + Math.floor(Math.random() * 11000);
+        ultraRareCards.push({
+          ...gifCard,
+          views: ensuredUrViews,
+          rarity: 'UR',
+        });
+      }
+    }
+
+    // 3. Complète le reste du paquet exclusivement avec des cartes Ultra Rares (UR : 5 000 à 19 999 vues)
+    const shuffledUrTitles = [...ICONIC_ULTRA_RARE_POOL].sort(
+      () => Math.random() - 0.5
+    );
+    for (
+      let i = 0;
+      i < shuffledUrTitles.length &&
+      legendaryCards.length + ultraRareCards.length < count;
+      i += 5
+    ) {
+      const batch = shuffledUrTitles.slice(i, i + 5);
+      const settled = await Promise.allSettled(
+        batch.map((title) => fetchWikiCardByTitle(title))
+      );
+
+      for (const item of settled) {
+        if (
+          item.status === 'fulfilled' &&
+          item.value &&
+          item.value.extract &&
+          item.value.extract.length >= 60 &&
+          !legendaryCards.some((c) => c.id === item.value.id) &&
+          !ultraRareCards.some((c) => c.id === item.value.id)
+        ) {
+          const card = item.value;
+          const ensuredUrViews =
+            card.views >= 5000 && card.views < 20000
+              ? card.views
+              : 6200 + Math.floor(Math.random() * 12500);
+          ultraRareCards.push({
+            ...card,
+            views: ensuredUrViews,
+            rarity: 'UR',
+          });
+          if (legendaryCards.length + ultraRareCards.length >= count) break;
+        }
+      }
+    }
+
+    const finalPack = [...ultraRareCards, ...legendaryCards].slice(0, count);
+    return finalPack.sort((a, b) => (a.views || 0) - (b.views || 0));
+  }
+
+  // Mode Booster Standard
+  const validCards = [];
+  if (Math.random() < 0.07) {
+    const gifCard = await fetchRandomGifWikiCard();
+    if (gifCard) {
+      validCards.push(gifCard);
+    }
+  }
+
+  const randomTitles = await fetchPureRandomTitles(14);
   for (
     let i = 0;
     i < randomTitles.length && validCards.length < count;
@@ -141,7 +431,8 @@ export async function fetchBoosterPackCards(count = 5) {
         item.status === 'fulfilled' &&
         item.value &&
         item.value.extract &&
-        item.value.extract.length >= 60
+        item.value.extract.length >= 60 &&
+        !validCards.some((c) => c.id === item.value.id)
       ) {
         validCards.push(item.value);
         if (validCards.length === count) break;
@@ -149,6 +440,228 @@ export async function fetchBoosterPackCards(count = 5) {
     }
   }
 
-  // Tri du moins vu au plus vu pour révéler la meilleure carte en dernier (5/5)
-  return validCards.sort((a, b) => (a.views || 0) - (b.views || 0));
+  // Filet de sécurité anti-lenteur : complète avec le bassin Wikipédia vérifié si besoin
+  if (validCards.length < count) {
+    const fallbackList = [
+      ...(RARITY_FALLBACK_POOLS.SR || []),
+      ...(RARITY_FALLBACK_POOLS.R || []),
+      ...(RARITY_FALLBACK_POOLS.PC || []),
+    ].sort(() => Math.random() - 0.5);
+
+    for (const title of fallbackList) {
+      if (validCards.length >= count) break;
+      try {
+        const card = await fetchWikiCardByTitle(title);
+        if (card && !validCards.some((c) => c.id === card.id)) {
+          validCards.push(card);
+        }
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  return validCards.slice(0, count).sort((a, b) => (a.views || 0) - (b.views || 0));
 }
+
+// Bassin d'articles Wikipédia FR pour garantir un tirage rapide par palier de rareté dans le WikiSino
+const RARITY_FALLBACK_POOLS = {
+  L: ICONIC_LEGENDARY_POOL,
+  UR: ICONIC_ULTRA_RARE_POOL,
+  SR: [
+    'Astéroïde',
+    'Éclipse solaire',
+    'Volcan',
+    'Tsunami',
+    'uroboros',
+    'Mythologie nordique',
+    'Chevaliers de la Table ronde',
+    ' Guerre de Troie',
+    'Pharaon',
+    'Hiéroglyphe égyptien',
+    'Samouraï',
+    'Viking',
+    'Alchimie',
+    'Boussole',
+    'Imprimerie',
+    'Machine à vapeur',
+    'Télégraphe',
+    ' Cinématographe',
+    'Antibiotique',
+    'ADN polymérase',
+    'Neurone',
+    'Système immunitaire',
+    'Effet de serre',
+    'Récif corallien',
+    'Forêt amazonienne',
+    'Antarctique',
+    'Fosse des Mariannes',
+    'Aurore boréale',
+  ],
+  R: [
+    'Astrolabe',
+    'Cadran solaire',
+    'Sextant',
+    'Horloge astronomique',
+    'Enluminure',
+    'Parchemin',
+    'Papyrus',
+    'Pierre de Rosette',
+    'Bibliothèque d\'Alexandrie',
+    'Phare d\'Alexandrie',
+    'Jardins suspendus de Babylone',
+    'Colosse de Rhodes',
+    'Temple d\'Artémis à Éphèse',
+    'Mausolée d\'Halicarnasse',
+    'Statue chryséléphantine de Zeus à Olympie',
+    'Route de la soie',
+    'Caravelle (navire)',
+    'Galion',
+    'Dirigeable',
+    'Montgolfière',
+    'Locomotive à vapeur',
+    'Phonographe',
+    'Daguerréotype',
+    'Lanterne magique',
+  ],
+  PC: [
+    'Clepsydre',
+    'Sablier',
+    'Abaque (calcul)',
+    'Boulier',
+    'Règle à calcul',
+    'Pascaline',
+    'Sphère armillaire',
+    'Planétaire',
+    'Nocturlabe',
+    'Bâton de Jacob',
+    'Gnomon',
+    'Méridienne',
+    'Anémomètre',
+    'Baromètre',
+    'Hygromètre',
+    'Sismographe',
+    'Galvanomètre',
+    'Électroscope',
+    'Bouteille de Leyde',
+    'Pile de Volta',
+  ],
+};
+
+/**
+ * Génère un nombre de vues réaliste compris dans la fourchette officielle d'une rareté donnée
+ */
+function getSimulatedViewsForTier(rarityCode, actualViews = 0) {
+  const tier = getRarityByCode(rarityCode);
+  const maxFinite = Number.isFinite(tier.maxViews) ? tier.maxViews : 85000;
+  if (actualViews >= tier.minViews && actualViews <= maxFinite) {
+    return actualViews;
+  }
+  const span = Math.max(20, maxFinite - tier.minViews);
+  return tier.minViews + Math.floor(Math.random() * span);
+}
+
+/**
+ * Tire une carte Wikipédia FR réelle correspondant exactement à la rareté cible (PC, R, SR, UR, L)
+ * Utilisé notamment par l'Upgrader de Cartes du WikiSino.
+ */
+export async function fetchWikiCardByRarity(targetRarityCode = 'PC') {
+  const pool = RARITY_FALLBACK_POOLS[targetRarityCode] || [];
+
+  // 1. Pour UR et L (ou 50 % du temps sur SR/R/PC), pioche dans le bassin thématique dédié ou aléatoire
+  if (targetRarityCode === 'L' || targetRarityCode === 'UR' || Math.random() < 0.55) {
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    for (const rawTitle of shuffled.slice(0, 6)) {
+      try {
+        const card = await fetchWikiCardByTitle(rawTitle.trim());
+        if (card && card.extract && card.extract.length >= 50) {
+          return {
+            ...card,
+            rarity: targetRarityCode,
+            views: getSimulatedViewsForTier(targetRarityCode, card.views),
+          };
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  // 2. Sinon (ou en secours), tire un article encyclopédique aléatoire sur Wikipédia FR et l'ajuste au palier gagné
+  const randomTitles = await fetchPureRandomTitles(8);
+  for (const title of randomTitles) {
+    try {
+      const card = await fetchWikiCardByTitle(title);
+      if (card && card.extract && card.extract.length >= 50) {
+        return {
+          ...card,
+          rarity: targetRarityCode,
+          views: getSimulatedViewsForTier(targetRarityCode, card.views),
+        };
+      }
+    } catch {
+      // Continue
+    }
+  }
+
+  // 3. Dernier recours garanti depuis le pool
+  for (const rawTitle of pool) {
+    try {
+      const card = await fetchWikiCardByTitle(rawTitle.trim());
+      if (card) {
+        return {
+          ...card,
+          rarity: targetRarityCode,
+          views: getSimulatedViewsForTier(targetRarityCode, card.views),
+        };
+      }
+    } catch {
+      // Continue
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Tire une carte Wikipédia FR variée pour le jeu "Plus ou Moins" (Étape 9.2)
+ * Mélange tous les paliers de popularité (de Commun à Légendaire) pour des duels intéressants,
+ * et garantit un nombre de vues strictement différent de la carte de référence.
+ */
+export async function fetchRandomDuelCard(excludeTitle = '', referenceViews = null) {
+  const tiers = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
+  const pickedTier = tiers[Math.floor(Math.random() * tiers.length)];
+
+  let card = null;
+  if (pickedTier === 'C') {
+    const randomTitles = await fetchPureRandomTitles(6);
+    for (const title of randomTitles) {
+      if (title === excludeTitle) continue;
+      try {
+        const fetched = await fetchWikiCardByTitle(title);
+        if (fetched && fetched.extract && fetched.extract.length >= 45) {
+          card = fetched;
+          break;
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  if (!card) {
+    const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
+    card = await fetchWikiCardByRarity(fallbackTier);
+  }
+
+  if (card && referenceViews !== null && card.views === referenceViews) {
+    card = {
+      ...card,
+      views: card.views + (Math.random() < 0.5 ? 15 : -12),
+    };
+  }
+
+  return card;
+}
+
+

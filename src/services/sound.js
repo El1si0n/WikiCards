@@ -400,6 +400,100 @@ class SoundManager {
     }
   }
 
+  // Son de pièces / Wikithunes (lors du recyclage de cartes ou gain d'argent)
+  playCoinSound() {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    // Double tintement métallique brillant (B5 -> E6)
+    this._playTone({
+      freq: 987.77,
+      startTime: now,
+      duration: 0.16,
+      peakGain: 0.08,
+      type: 'sine',
+    });
+    this._playTone({
+      freq: 1318.51,
+      startTime: now + 0.065,
+      duration: 0.34,
+      peakGain: 0.09,
+      type: 'sine',
+    });
+    this._playTone({
+      freq: 2637.02,
+      startTime: now + 0.07,
+      duration: 0.22,
+      peakGain: 0.03,
+      type: 'triangle',
+    });
+  }
+
+  // Petit son sourd discret en cas de solde insuffisant
+  playErrorSound() {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    this._playTone({
+      freq: 220,
+      startTime: now,
+      duration: 0.12,
+      peakGain: 0.07,
+      type: 'triangle',
+    });
+    this._playTone({
+      freq: 165,
+      startTime: now + 0.09,
+      duration: 0.18,
+      peakGain: 0.07,
+      type: 'triangle',
+    });
+  }
+
+  // Petit "clic" mécanique lors de la rotation de la jauge du WikiSino
+  playWheelTick(pitchMultiplier = 1) {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    this._playTone({
+      freq: 680 * pitchMultiplier,
+      startTime: now,
+      duration: 0.028,
+      peakGain: 0.045,
+      type: 'triangle',
+    });
+  }
+
+  // Son de victoire à l'Upgrader (accord triomphant + son de révélation de la rareté)
+  playUpgradeWin(rarityCode = 'R') {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    this.playRarityReveal(rarityCode);
+    this.playCoinSound();
+  }
+
+  // Son de défaite à l'Upgrader (descente douce en mineur)
+  playUpgradeLoss() {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notes = [392.0, 349.23, 293.66, 220.0]; // G4, F4, D4, A3
+    notes.forEach((freq, idx) => {
+      this._playTone({
+        freq,
+        startTime: now + idx * 0.075,
+        duration: 0.24,
+        peakGain: 0.065,
+        type: 'triangle',
+      });
+    });
+  }
+
   // Helper interne : génère une note synthétique avec enveloppe ADSR douce
   _playTone({ freq, startTime, duration, peakGain, type = 'sine' }) {
     if (!this.ctx) return;
