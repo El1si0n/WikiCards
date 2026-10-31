@@ -78,6 +78,7 @@ export default function AuthGateway({ onLoginSuccess }) {
     try {
       const freshCode = generateUniqueUserCode();
       const defaultProf = getDefaultProfile(freshCode);
+      const now = Date.now();
       const newAccount = {
         code: freshCode,
         profile: defaultProf,
@@ -85,12 +86,14 @@ export default function AuthGateway({ onLoginSuccess }) {
         favorites: [],
         wikithunes: INITIAL_WIKITHUNES,
         stats: { boostersOpened: 0, totalCardsDrawn: 0 },
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
 
       // Sauvegarde serveur et locale
-      await syncUserAccountToServer(freshCode, newAccount);
-      setStoredUserCode(freshCode);
+      await syncUserAccountToServer(freshCode, newAccount, {
+        forceOverwrite: true,
+      });
       setNewlyCreatedAccount(newAccount);
     } catch (err) {
       setErrorMessage(

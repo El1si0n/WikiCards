@@ -44,6 +44,10 @@ import {
   getDefaultProfile,
   loadLocalProfile,
   saveLocalProfile,
+  getStoredUpdatedAt,
+  setStoredUpdatedAt,
+  isAccountStateNewer,
+  fetchServerUserAccount,
   syncUserAccountToServer,
   fetchUserTrades,
   fetchMarketListings,
@@ -216,7 +220,20 @@ export default function App() {
     } catch {
       // ignore
     }
-    setWikithunes((prev) => prev + DAILY_REWARD_AMOUNT);
+    const now = bumpLocalUpdatedAt();
+    const nextWikithunes = wikithunes + DAILY_REWARD_AMOUNT;
+    setWikithunes(nextWikithunes);
+    if (userCode) {
+      syncUserAccountToServer(userCode, {
+        profile: userProfile,
+        collection,
+        favorites,
+        wikithunes: nextWikithunes,
+        stats,
+        lastDailyClaimDate: nowKey,
+        clientUpdatedAt: now,
+      });
+    }
     soundManager.play('rare');
     try {
       confetti({
@@ -278,6 +295,19 @@ export default function App() {
     return [];
   });
 
+  // Horodatage de la dernière modification locale du joueur (pour la synchro multi-appareils PC <-> Téléphone)
+  const [localUpdatedAt, setLocalUpdatedAt] = useState(() =>
+    getStoredUpdatedAt(getStoredUserCode(), collection)
+  );
+  const isServerHydratedRef = useRef(false);
+  const skipNextPushRef = useRef(false);
+
+  const bumpLocalUpdatedAt = () => {
+    const now = setStoredUpdatedAt(Date.now());
+    setLocalUpdatedAt(now);
+    return now;
+  };
+
   // Sauvegarde automatique dans localStorage à chaque changement
   useEffect(() => {
     try {
@@ -312,47 +342,241 @@ export default function App() {
   }, [stats]);
 
   useEffect(() => {
-    saveLocalProfile(userProfile);
-  }, [userProfile]);
+    if (userCode) {
+      saveLocalProfile(userProfile, userCode);
+    }
+  }, [userProfile, userCode]);
 
-  // Synchronisation automatique du compte vers data/users/<CODE>.json (façon OpenGym)
+  // Applique un état reçu depuis le serveur sans déclencher de renvoi inutile
+  const applyServerAccountState = (serverAccount) => {
+    if (!serverAccount) return;
+    skipNextPushRef.current = true;
+    if (serverAccount.profile) {
+      setUserProfile({
+        ...getDefaultProfile(serverAccount.code || userCode),
+        ...serverAccount.profile,
+      });
+    }
+    if (Array.isArray(serverAccount.collection)) {
+      setCollection(
+        serverAccount.collection.filter(
+          (c) => !String(c?.id).startsWith('demo-')
+        )
+      );
+    }
+    if (Array.isArray(serverAccount.favorites)) {
+      setFavorites(
+        serverAccount.favorites.filter((id) => !String(id).startsWith('demo-'))
+      );
+    }
+    if (typeof serverAccount.wikithunes === 'number') {
+      setWikithunes(serverAccount.wikithunes);
+    }
+    if (serverAccount.stats && typeof serverAccount.stats === 'object') {
+      setStats({
+        boostersOpened: Number(serverAccount.stats.boostersOpened || 0),
+        totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || 0),
+      });
+    }
+    if (serverAccount.lastDailyClaimDate) {
+      setLastDailyClaimDate(serverAccount.lastDailyClaimDate);
+      try {
+        localStorage.setItem(
+          STORAGE_KEYS.DAILY_REWARD,
+          serverAccount.lastDailyClaimDate
+        );
+      } catch {
+        // ignore
+      }
+    }
+    if (serverAccount.updatedAt) {
+      const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
+      setLocalUpdatedAt(syncedTs);
+    }
+  };
+
+  // Référence toujours à jour pour la réconciliation périodique et au retour sur l'onglet
+  const latestAccountRef = useRef({
+    userCode,
+    userProfile,
+    collection,
+    favorites,
+    wikithunes,
+    stats,
+    lastDailyClaimDate,
+    localUpdatedAt,
+  });
   useEffect(() => {
-    if (!userCode) return;
-    const timer = setTimeout(() => {
-      syncUserAccountToServer(userCode, {
+    latestAccountRef.current = {
+      userCode,
+      userProfile,
+      collection,
+      favorites,
+      wikithunes,
+      stats,
+      lastDailyClaimDate,
+      localUpdatedAt,
+    };
+  }, [
+    userCode,
+    userProfile,
+    collection,
+    favorites,
+    wikithunes,
+    stats,
+    lastDailyClaimDate,
+    localUpdatedAt,
+  ]);
+
+  // Réconciliation bidirectionnelle avec le serveur (au chargement, au focus PC/Mobile, et toutes les 6s)
+  useEffect(() => {
+    if (!userCode) {
+      isServerHydratedRef.current = false;
+      return;
+    }
+
+    let isCancelled = false;
+
+    const reconcileWithServer = async () => {
+      const current = latestAccountRef.current;
+      if (!current.userCode) return;
+
+      const localSnapshot = {
+        code: current.userCode,
+        profile: current.userProfile,
+        collection: current.collection,
+        favorites: current.favorites,
+        wikithunes: current.wikithunes,
+        stats: current.stats,
+        lastDailyClaimDate: current.lastDailyClaimDate || '',
+        updatedAt: current.localUpdatedAt,
+        clientUpdatedAt: current.localUpdatedAt,
+      };
+
+      const res = await fetchServerUserAccount(current.userCode);
+      if (isCancelled) return;
+
+      if (res.status === 'not_found') {
+        // Le serveur a redémarré ou redéployé : on restaure immédiatement le compte local sur le serveur
+        const pushed = await syncUserAccountToServer(
+          current.userCode,
+          localSnapshot,
+          { forceOverwrite: true }
+        );
+        if (!isCancelled && pushed?.user?.updatedAt) {
+          setLocalUpdatedAt(setStoredUpdatedAt(pushed.user.updatedAt));
+        }
+      } else if (res.status === 'ok' && res.user) {
+        if (isAccountStateNewer(res.user, localSnapshot)) {
+          // Le serveur possède une version plus récente (ex: partie jouée sur téléphone ou vente marché)
+          applyServerAccountState(res.user);
+        } else if (isAccountStateNewer(localSnapshot, res.user)) {
+          // L'appareil local possède une version plus avancée que le serveur : on la pousse
+          const pushed = await syncUserAccountToServer(
+            current.userCode,
+            localSnapshot
+          );
+          if (!isCancelled && pushed?.serverIsNewer && pushed?.user) {
+            applyServerAccountState(pushed.user);
+          } else if (!isCancelled && pushed?.user?.updatedAt) {
+            setLocalUpdatedAt(setStoredUpdatedAt(pushed.user.updatedAt));
+          }
+        }
+      }
+
+      if (!isCancelled) {
+        isServerHydratedRef.current = true;
+      }
+    };
+
+    reconcileWithServer();
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        reconcileWithServer();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    const interval = setInterval(reconcileWithServer, 6000);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      clearInterval(interval);
+    };
+  }, [userCode]);
+
+  // Synchronisation automatique vers data/users/<CODE>.json lors d'une modification locale
+  useEffect(() => {
+    if (!userCode || !isServerHydratedRef.current) return;
+    if (skipNextPushRef.current) {
+      skipNextPushRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const result = await syncUserAccountToServer(userCode, {
         profile: userProfile,
         collection,
         favorites,
         wikithunes,
         stats,
+        lastDailyClaimDate,
+        clientUpdatedAt: localUpdatedAt,
       });
-    }, 350);
+      if (result?.serverIsNewer && result?.user) {
+        applyServerAccountState(result.user);
+      }
+    }, 250);
     return () => clearTimeout(timer);
-  }, [userCode, userProfile, collection, favorites, wikithunes, stats]);
+  }, [
+    userCode,
+    userProfile,
+    collection,
+    favorites,
+    wikithunes,
+    stats,
+    lastDailyClaimDate,
+    localUpdatedAt,
+  ]);
 
   const handleUpdateUserProfile = (nextProfile) => {
+    const now = bumpLocalUpdatedAt();
     setUserProfile(nextProfile);
+    if (userCode) {
+      saveLocalProfile(nextProfile, userCode);
+      syncUserAccountToServer(userCode, {
+        profile: nextProfile,
+        collection,
+        favorites,
+        wikithunes,
+        stats,
+        lastDailyClaimDate,
+        clientUpdatedAt: now,
+      });
+    }
   };
 
   // Met à jour l'état local après une transaction serveur (échange accepté ou achat/vente sur le marché)
   const handleSyncAccountState = (updatedAccount) => {
     if (!updatedAccount) return;
-    if (Array.isArray(updatedAccount.collection)) {
-      setCollection(updatedAccount.collection);
-    }
-    if (typeof updatedAccount.wikithunes === 'number') {
-      setWikithunes(updatedAccount.wikithunes);
-    }
-    if (updatedAccount.profile) {
-      setUserProfile(updatedAccount.profile);
-    }
+    applyServerAccountState(updatedAccount);
   };
 
   const handleLoginSuccess = (account) => {
     if (!account || !account.code) return;
     const cleanCode = setStoredUserCode(account.code);
+    const syncedTs = setStoredUpdatedAt(account.updatedAt || Date.now());
+    skipNextPushRef.current = true;
+    isServerHydratedRef.current = true;
+    setLocalUpdatedAt(syncedTs);
     setUserCode(cleanCode);
-    setUserProfile(account.profile || getDefaultProfile(cleanCode));
+    const nextProf = account.profile || getDefaultProfile(cleanCode);
+    setUserProfile(nextProf);
+    saveLocalProfile(nextProf, cleanCode);
     setCollection(Array.isArray(account.collection) ? account.collection : []);
     setFavorites(Array.isArray(account.favorites) ? account.favorites : []);
     setWikithunes(
@@ -361,6 +585,17 @@ export default function App() {
         : INITIAL_WIKITHUNES
     );
     setStats(account.stats || { boostersOpened: 0, totalCardsDrawn: 0 });
+    if (account.lastDailyClaimDate) {
+      setLastDailyClaimDate(account.lastDailyClaimDate);
+      try {
+        localStorage.setItem(
+          STORAGE_KEYS.DAILY_REWARD,
+          account.lastDailyClaimDate
+        );
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -555,22 +790,25 @@ export default function App() {
   const toggleFavorite = (cardId) => {
     const isAdding = !favorites.includes(cardId);
     soundManager.playFavoriteToggle(isAdding);
+    bumpLocalUpdatedAt();
     setFavorites((prev) =>
       isAdding ? [...prev, cardId] : prev.filter((id) => id !== cardId)
     );
   };
 
   const spendWikithunes = (amount) => {
+    bumpLocalUpdatedAt();
     setWikithunes((prev) => Math.max(0, prev - amount));
   };
 
   const addWikithunes = (amount) => {
+    bumpLocalUpdatedAt();
     setWikithunes((prev) => Math.max(0, prev + amount));
   };
 
   // Ajoute les cartes d'un booster ouvert (ou d'un gain WikiSino) au classeur
   const addCardsToCollection = (newCards, fromBooster = true) => {
-    const now = Date.now();
+    const now = bumpLocalUpdatedAt();
     setCollection((prev) => {
       const map = new Map(prev.map((item) => [item.id, { ...item }]));
       newCards.forEach((card, idx) => {
@@ -605,6 +843,7 @@ export default function App() {
   // Consomme un dictionnaire { [cardId]: quantity } d'exemplaires dans le classeur (pour l'Upgrader du WikiSino)
   const consumeCardsFromCollection = (quantitiesMap) => {
     if (!quantitiesMap) return;
+    bumpLocalUpdatedAt();
     setCollection((prev) =>
       prev
         .map((item) => {

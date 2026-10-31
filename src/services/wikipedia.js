@@ -344,26 +344,7 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
       }
     }
 
-    // 2. Chance d'inclure une carte .gif dans le Booster Iconique (garantie au minimum Ultra Rare)
-    if (Math.random() < 0.3) {
-      const gifCard = await fetchRandomGifWikiCard();
-      if (
-        gifCard &&
-        !legendaryCards.some((c) => c.id === gifCard.id)
-      ) {
-        const ensuredUrViews =
-          gifCard.views >= 5000 && gifCard.views < 20000
-            ? gifCard.views
-            : 6500 + Math.floor(Math.random() * 11000);
-        ultraRareCards.push({
-          ...gifCard,
-          views: ensuredUrViews,
-          rarity: 'UR',
-        });
-      }
-    }
-
-    // 3. Complète le reste du paquet exclusivement avec des cartes Ultra Rares (UR : 5 000 à 19 999 vues)
+    // 2. Complète le reste du paquet exclusivement avec des cartes Ultra Rares (UR : 5 000 à 19 999 vues)
     const shuffledUrTitles = [...ICONIC_ULTRA_RARE_POOL].sort(
       () => Math.random() - 0.5
     );
@@ -406,15 +387,9 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
     return finalPack.sort((a, b) => (a.views || 0) - (b.views || 0));
   }
 
-  // Mode Booster Standard
+  // Mode Booster Standard : tirage 100 % naturel sur Wikipédia FR.
+  // Une carte devient "GIF Métal" uniquement si son illustration Wikipédia s'avère naturellement être un .gif animé.
   const validCards = [];
-  if (Math.random() < 0.07) {
-    const gifCard = await fetchRandomGifWikiCard();
-    if (gifCard) {
-      validCards.push(gifCard);
-    }
-  }
-
   const randomTitles = await fetchPureRandomTitles(14);
   for (
     let i = 0;
@@ -565,16 +540,28 @@ function getSimulatedViewsForTier(rarityCode, actualViews = 0) {
  * Tire une carte Wikipédia FR réelle correspondant exactement à la rareté cible (PC, R, SR, UR, L)
  * Utilisé notamment par l'Upgrader de Cartes du WikiSino.
  */
-export async function fetchWikiCardByRarity(targetRarityCode = 'PC') {
+export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitles = []) {
   const pool = RARITY_FALLBACK_POOLS[targetRarityCode] || [];
+  const excludeSet = new Set(
+    (Array.isArray(excludeTitles) ? excludeTitles : [excludeTitles])
+      .map((t) => String(t || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
 
   // 1. Pour UR et L (ou 50 % du temps sur SR/R/PC), pioche dans le bassin thématique dédié ou aléatoire
   if (targetRarityCode === 'L' || targetRarityCode === 'UR' || Math.random() < 0.55) {
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    for (const rawTitle of shuffled.slice(0, 6)) {
+    for (const rawTitle of shuffled.slice(0, 8)) {
+      if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
       try {
         const card = await fetchWikiCardByTitle(rawTitle.trim());
-        if (card && card.extract && card.extract.length >= 50) {
+        if (
+          card &&
+          card.extract &&
+          card.extract.length >= 50 &&
+          !excludeSet.has(card.title.trim().toLowerCase()) &&
+          !excludeSet.has(String(card.id))
+        ) {
           return {
             ...card,
             rarity: targetRarityCode,
@@ -588,11 +575,18 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC') {
   }
 
   // 2. Sinon (ou en secours), tire un article encyclopédique aléatoire sur Wikipédia FR et l'ajuste au palier gagné
-  const randomTitles = await fetchPureRandomTitles(8);
+  const randomTitles = await fetchPureRandomTitles(10);
   for (const title of randomTitles) {
+    if (excludeSet.has(title.trim().toLowerCase())) continue;
     try {
       const card = await fetchWikiCardByTitle(title);
-      if (card && card.extract && card.extract.length >= 50) {
+      if (
+        card &&
+        card.extract &&
+        card.extract.length >= 50 &&
+        !excludeSet.has(card.title.trim().toLowerCase()) &&
+        !excludeSet.has(String(card.id))
+      ) {
         return {
           ...card,
           rarity: targetRarityCode,
@@ -606,9 +600,10 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC') {
 
   // 3. Dernier recours garanti depuis le pool
   for (const rawTitle of pool) {
+    if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
     try {
       const card = await fetchWikiCardByTitle(rawTitle.trim());
-      if (card) {
+      if (card && !excludeSet.has(card.title.trim().toLowerCase())) {
         return {
           ...card,
           rarity: targetRarityCode,
@@ -625,21 +620,55 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC') {
 
 /**
  * Tire une carte Wikipédia FR variée pour le jeu "Plus ou Moins" (Étape 9.2)
- * Mélange tous les paliers de popularité (de Commun à Légendaire) pour des duels intéressants,
- * et garantit un nombre de vues strictement différent de la carte de référence.
+ * - Garantit strictement qu'aucune carte identique à la carte de référence (ou déjà vue) ne peut être tirée.
+ * - Rend le jeu plus subtil et intéressant : 45 % du temps, sélectionne une rareté identique ou voisine
+ *   (+/- 1 palier) pour des duels équilibrés qui demandent une vraie réflexion sur la notoriété respective.
  */
-export async function fetchRandomDuelCard(excludeTitle = '', referenceViews = null) {
-  const tiers = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
-  const pickedTier = tiers[Math.floor(Math.random() * tiers.length)];
+export async function fetchRandomDuelCard(
+  excludeInput = [],
+  referenceViews = null,
+  referenceRarity = null
+) {
+  const excludeList = Array.isArray(excludeInput)
+    ? excludeInput
+    : [excludeInput].filter(Boolean);
+  const excludeSet = new Set(
+    excludeList.map((t) => String(t || '').trim().toLowerCase()).filter(Boolean)
+  );
+
+  const allTiers = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
+  let pickedTier;
+
+  // Ajustement de difficulté (un peu plus dur) :
+  // ~45 % du temps, on choisit la même rareté ou une rareté voisine (+/- 1 palier)
+  // pour que l'écart de vues soit plus serré et stimulant
+  if (referenceRarity && allTiers.includes(referenceRarity) && Math.random() < 0.45) {
+    const refIdx = allTiers.indexOf(referenceRarity);
+    const adjacentIndices = [refIdx];
+    if (refIdx > 0) adjacentIndices.push(refIdx - 1);
+    if (refIdx < allTiers.length - 1) adjacentIndices.push(refIdx + 1);
+    const pickedIdx =
+      adjacentIndices[Math.floor(Math.random() * adjacentIndices.length)];
+    pickedTier = allTiers[pickedIdx];
+  } else {
+    // 55 % du temps, tirage varié parmi tous les paliers
+    pickedTier = allTiers[Math.floor(Math.random() * allTiers.length)];
+  }
 
   let card = null;
   if (pickedTier === 'C') {
-    const randomTitles = await fetchPureRandomTitles(6);
+    const randomTitles = await fetchPureRandomTitles(10);
     for (const title of randomTitles) {
-      if (title === excludeTitle) continue;
+      if (excludeSet.has(title.trim().toLowerCase())) continue;
       try {
         const fetched = await fetchWikiCardByTitle(title);
-        if (fetched && fetched.extract && fetched.extract.length >= 45) {
+        if (
+          fetched &&
+          fetched.extract &&
+          fetched.extract.length >= 45 &&
+          !excludeSet.has(fetched.title.trim().toLowerCase()) &&
+          !excludeSet.has(String(fetched.id))
+        ) {
           card = fetched;
           break;
         }
@@ -651,13 +680,34 @@ export async function fetchRandomDuelCard(excludeTitle = '', referenceViews = nu
 
   if (!card) {
     const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
-    card = await fetchWikiCardByRarity(fallbackTier);
+    card = await fetchWikiCardByRarity(fallbackTier, excludeList);
   }
 
+  // Double vérification anti-doublon absolue : si la carte correspond à une carte exclue, réessaye
+  if (
+    card &&
+    (excludeSet.has(card.title.trim().toLowerCase()) ||
+      excludeSet.has(String(card.id)))
+  ) {
+    const alternateTiers = allTiers.filter((t) => t !== pickedTier);
+    for (const altTier of alternateTiers.sort(() => Math.random() - 0.5)) {
+      const altCard = await fetchWikiCardByRarity(altTier, excludeList);
+      if (
+        altCard &&
+        !excludeSet.has(altCard.title.trim().toLowerCase()) &&
+        !excludeSet.has(String(altCard.id))
+      ) {
+        card = altCard;
+        break;
+      }
+    }
+  }
+
+  // Garantit un nombre de vues distinct de la référence
   if (card && referenceViews !== null && card.views === referenceViews) {
     card = {
       ...card,
-      views: card.views + (Math.random() < 0.5 ? 15 : -12),
+      views: card.views + (Math.random() < 0.5 ? 24 : -18),
     };
   }
 

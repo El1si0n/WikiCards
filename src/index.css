@@ -132,6 +132,12 @@
   background-color: #202122;
 }
 
+@media (max-width: 767px) {
+  #right-navigation .vector-tab-link {
+    display: none !important;
+  }
+}
+
 /* Bandeau d'accueil officiel de fr.wikipedia.org (#accueil_2017_en-tete & #accueil_2017_bandeau dans load(2).php) */
 #accueil_2017_en-tete {
   background: linear-gradient(to bottom, #ffffff, #e8f2f8);

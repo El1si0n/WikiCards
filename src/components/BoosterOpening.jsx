@@ -17,6 +17,7 @@ import {
   ArrowRight,
   BookOpen,
   Loader2,
+  RotateCw,
 } from 'lucide-react';
 
 const STORAGE_KEY_NEXT_BOOSTER_ICONIC = 'wikicards_next_booster_is_iconic_v1';
@@ -135,20 +136,25 @@ export default function BoosterOpening({
     }
   };
 
-  const handleOpenPack = async () => {
-    if (stage !== 'pack' || isFetching) return;
+  const handleOpenPack = async (overrideIsIconic = null) => {
+    if (isFetching) return;
     setErrorMsg(null);
 
-    if (wikithunes < activePrice) {
+    const isPackIconic =
+      overrideIsIconic !== null ? overrideIsIconic : isIconicPack;
+    const priceToPay = isPackIconic ? iconicBoosterPrice : boosterPrice;
+
+    if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
+      setStage('pack');
       setErrorMsg(
-        `Solde insuffisant (${wikithunes} / ${activePrice} ₩). Recyclez des cartes dans votre classeur pour obtenir des Wikithunes.`
+        `Solde insuffisant (${wikithunes} / ${priceToPay} ₩). Recyclez des cartes dans votre classeur pour obtenir des Wikithunes.`
       );
       return;
     }
 
     let cards = null;
-    if (!isIconicPack && preloadedPackRef.current) {
+    if (!isPackIconic && preloadedPackRef.current) {
       cards = preloadedPackRef.current;
       preloadedPackRef.current = null;
     }
@@ -157,10 +163,11 @@ export default function BoosterOpening({
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
-        cards = await fetchBoosterPackCards(5, { isIconic: isIconicPack });
+        cards = await fetchBoosterPackCards(5, { isIconic: isPackIconic });
       } catch {
         setErrorMsg('Impossible de joindre Wikipédia. Veuillez réessayer.');
         setIsFetching(false);
+        setStage('pack');
         return;
       }
       setIsFetching(false);
@@ -168,12 +175,13 @@ export default function BoosterOpening({
 
     if (!cards || cards.length === 0) {
       setErrorMsg('Aucun article récupéré. Veuillez réessayer.');
+      setStage('pack');
       return;
     }
 
-    // Débite le prix du booster (100 ₩ standard ou 500 ₩ iconique)
+    // Débite le prix du booster (300 ₩ standard ou 1500 ₩ iconique)
     if (onSpendWikithunes) {
-      onSpendWikithunes(activePrice);
+      onSpendWikithunes(priceToPay);
     }
 
     // Le booster actuel étant consommé, on pré-tire et persiste immédiatement le statut du prochain booster.
@@ -206,6 +214,12 @@ export default function BoosterOpening({
       soundManager.playRarityReveal(annotatedCards[0]?.rarity);
       triggerCardConfettiIfRare(annotatedCards[0]);
     }, 850);
+  };
+
+  const handleReopenBooster = () => {
+    const nextIsIconic = getOrRollNextBoosterIsIconic();
+    setIsIconicRoll(nextIsIconic);
+    handleOpenPack(nextIsIconic);
   };
 
   const handleNextCard = () => {
@@ -261,7 +275,7 @@ export default function BoosterOpening({
       <AnimatePresence mode="wait">
         {/* =====================================================================
             ÉTAPE A & B : LE BOOSTER VU DE FACE DANS LA DA WIKIPÉDIA
-            (Standard 100 ₩ OU Booster Iconique 500 ₩ 100 % doré)
+            (Standard 300 ₩ OU Booster Iconique 1500 ₩ 100 % doré)
         ===================================================================== */}
         {(stage === 'pack' || stage === 'tearing') && (
           <motion.div
@@ -757,18 +771,36 @@ export default function BoosterOpening({
             </div>
 
             {/* Bouton pour passer à la carte suivante ou au résumé final */}
-            <div className="relative z-10 mt-6 flex items-center gap-4">
+            <div className="relative z-10 mt-6 flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleNextCard}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#3366cc] hover:bg-[#447ff5] active:bg-[#2a4b8d] text-white font-bold text-[14px] rounded-[2px] cursor-pointer transition-colors shadow-xs"
+                className={`inline-flex items-center justify-center bg-[#3366cc] hover:bg-[#447ff5] active:bg-[#2a4b8d] text-white font-bold rounded-[2px] cursor-pointer transition-colors shadow-xs ${
+                  currentCardIdx < packCards.length - 1
+                    ? 'w-[42px] h-[42px]'
+                    : 'gap-2 px-5 py-2.5 text-[14px]'
+                }`}
+                title={
+                  currentCardIdx < packCards.length - 1
+                    ? 'Carte suivante'
+                    : 'Voir le résumé'
+                }
+                aria-label={
+                  currentCardIdx < packCards.length - 1
+                    ? 'Carte suivante'
+                    : 'Voir le résumé'
+                }
               >
-                <span>
-                  {currentCardIdx < packCards.length - 1
-                    ? `Carte suivante (${currentCardIdx + 2}/${packCards.length})`
-                    : 'Voir le résumé des 5 cartes'}
-                </span>
-                <ArrowRight className="w-4 h-4" />
+                {currentCardIdx >= packCards.length - 1 && (
+                  <span>Voir le résumé</span>
+                )}
+                <ArrowRight
+                  className={
+                    currentCardIdx < packCards.length - 1
+                      ? 'w-5 h-5'
+                      : 'w-4 h-4'
+                  }
+                />
               </button>
 
               {currentCardIdx < packCards.length - 1 && (
@@ -820,19 +852,31 @@ export default function BoosterOpening({
                 Ces 5 cartes ont été ajoutées à votre classeur.
               </span>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                 <button
                   type="button"
                   onClick={onGoToClasseur}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
                 >
                   <BookOpen className="w-4 h-4 text-[#3366cc]" />
                   <span>Voir mon classeur</span>
                 </button>
                 <button
                   type="button"
+                  onClick={handleReopenBooster}
+                  disabled={isFetching}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs"
+                  title="Ouvrir immédiatement un nouveau booster"
+                >
+                  <RotateCw
+                    className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
+                  />
+                  <span>Réouvrir un booster</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleResetToNewPack}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
                 >
                   <span>Terminer</span>
                 </button>

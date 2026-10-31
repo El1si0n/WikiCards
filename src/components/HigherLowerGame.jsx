@@ -50,6 +50,7 @@ export default function HigherLowerGame({
 
   const [leftCard, setLeftCard] = useState(null);
   const [rightCard, setRightCard] = useState(null);
+  const [seenCards, setSeenCards] = useState([]);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
 
   const currentPot =
@@ -68,17 +69,20 @@ export default function HigherLowerGame({
     onSpendWikithunes(validBet);
     setActiveBet(validBet);
     setStreak(0);
+    setSeenCards([]);
     setGameState('loading');
 
     const firstCard = await fetchRandomDuelCard();
     const secondCard = await fetchRandomDuelCard(
-      firstCard?.title || '',
-      firstCard?.views ?? null
+      [firstCard?.title, firstCard?.id].filter(Boolean),
+      firstCard?.views ?? null,
+      firstCard?.rarity ?? null
     );
 
     if (firstCard && secondCard) {
       setLeftCard(firstCard);
       setRightCard(secondCard);
+      setSeenCards([firstCard, secondCard]);
       setGameState('playing');
       soundManager.playCardSlide();
     } else {
@@ -114,15 +118,24 @@ export default function HigherLowerGame({
 
     setIsLoadingNext(true);
     const newRefCard = rightCard;
-    const newRightCard = await fetchRandomDuelCard(
+    const allExcluded = [
+      ...seenCards.map((c) => c?.title),
+      ...seenCards.map((c) => c?.id),
       newRefCard.title,
-      newRefCard.views
+      newRefCard.id,
+    ].filter(Boolean);
+
+    const newRightCard = await fetchRandomDuelCard(
+      allExcluded,
+      newRefCard.views,
+      newRefCard.rarity
     );
 
     setIsLoadingNext(false);
     if (newRightCard) {
       setLeftCard(newRefCard);
       setRightCard(newRightCard);
+      setSeenCards((prev) => [...prev, newRightCard]);
       setGameState('playing');
       soundManager.playCardSlide();
     }
@@ -137,6 +150,7 @@ export default function HigherLowerGame({
     setGameState('idle');
     setLeftCard(null);
     setRightCard(null);
+    setSeenCards([]);
     setStreak(0);
     setActiveBet(0);
   };
@@ -146,6 +160,7 @@ export default function HigherLowerGame({
     setGameState('idle');
     setLeftCard(null);
     setRightCard(null);
+    setSeenCards([]);
     setStreak(0);
     setActiveBet(0);
   };

@@ -1,5 +1,6 @@
 const USER_CODE_STORAGE_KEY = 'wikicards_user_code_v1';
 const USER_PROFILE_STORAGE_KEY = 'wikicards_user_profile_v1';
+const USER_UPDATED_AT_STORAGE_KEY = 'wikicards_updated_at_v1';
 const LOCAL_USERS_DIRECTORY_KEY = 'wikicards_local_users_dir_v1';
 
 // Génère un code unique au format WIKI-XXXX (4 caractères non ambigus, ex : WIKI-4GU5)
@@ -96,16 +97,23 @@ export function getDefaultProfile(code) {
 }
 
 export function loadLocalProfile(code) {
+  const cleanCode = normalizeUserCode(code);
   try {
     const saved = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === 'object') {
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        (!parsed._code || normalizeUserCode(parsed._code) === cleanCode) &&
+        !String(parsed.username || '').endsWith('-0000')
+      ) {
+        const { _code, ...rest } = parsed;
         return {
-          ...getDefaultProfile(code),
-          ...parsed,
-          showcaseIds: Array.isArray(parsed.showcaseIds)
-            ? parsed.showcaseIds.slice(0, 4)
+          ...getDefaultProfile(cleanCode),
+          ...rest,
+          showcaseIds: Array.isArray(rest.showcaseIds)
+            ? rest.showcaseIds.slice(0, 4)
             : [],
         };
       }
@@ -113,26 +121,91 @@ export function loadLocalProfile(code) {
   } catch {
     // ignore
   }
-  return getDefaultProfile(code);
+  const fallback = loadFromLocalDirectoryFallback(cleanCode);
+  if (fallback?.profile) {
+    return {
+      ...getDefaultProfile(cleanCode),
+      ...fallback.profile,
+    };
+  }
+  return getDefaultProfile(cleanCode);
 }
 
-export function saveLocalProfile(profile) {
+export function saveLocalProfile(profile, code) {
+  if (!profile) return;
+  const cleanCode = code ? normalizeUserCode(code) : getStoredUserCode();
+  if (!cleanCode || cleanCode === 'WIKI-0000') return;
   try {
-    localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    localStorage.setItem(
+      USER_PROFILE_STORAGE_KEY,
+      JSON.stringify({ ...profile, _code: cleanCode })
+    );
   } catch {
     // ignore
   }
 }
 
+export function getStoredUpdatedAt(code, collection = []) {
+  try {
+    const saved = Number(localStorage.getItem(USER_UPDATED_AT_STORAGE_KEY) || 0);
+    if (saved > 0) return saved;
+  } catch {
+    // ignore
+  }
+  // Fallback : date d'obtention de la dernière carte tirée dans le classeur
+  if (Array.isArray(collection) && collection.length > 0) {
+    const maxCardTs = collection.reduce(
+      (max, c) => Math.max(max, Number(c?.obtainedAt || 0)),
+      0
+    );
+    if (maxCardTs > 0) return maxCardTs;
+  }
+  const cleanCode = normalizeUserCode(code);
+  const fallback = loadFromLocalDirectoryFallback(cleanCode);
+  return Number(fallback?.updatedAt || 0);
+}
+
+export function setStoredUpdatedAt(ts) {
+  const validTs = Number(ts) || Date.now();
+  try {
+    localStorage.setItem(USER_UPDATED_AT_STORAGE_KEY, String(validTs));
+  } catch {
+    // ignore
+  }
+  return validTs;
+}
+
+// Compare deux états d'un même compte et détermine si `candidate` est plus récent / plus avancé que `baseline`
+export function isAccountStateNewer(candidate, baseline) {
+  if (!candidate) return false;
+  if (!baseline) return true;
+
+  const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);
+  const baseDraws = Number(baseline.stats?.totalCardsDrawn || 0);
+  const candBoosters = Number(candidate.stats?.boostersOpened || 0);
+  const baseBoosters = Number(baseline.stats?.boostersOpened || 0);
+
+  if (candDraws !== baseDraws) {
+    return candDraws > baseDraws;
+  }
+  if (candBoosters !== baseBoosters) {
+    return candBoosters > baseBoosters;
+  }
+
+  const candTs = Number(candidate.updatedAt || candidate.clientUpdatedAt || 0);
+  const baseTs = Number(baseline.updatedAt || baseline.clientUpdatedAt || 0);
+  return candTs > baseTs;
+}
+
 // Sauvegarde de secours dans localStorage au cas où l'utilisateur ouvre le build statique sans serveur
-function saveToLocalDirectoryFallback(code, payload) {
+function saveToLocalDirectoryFallback(code, payload, timestamp) {
   try {
     const raw = localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY);
     const dir = raw ? JSON.parse(raw) : {};
     dir[code] = {
       ...payload,
       code,
-      updatedAt: Date.now(),
+      updatedAt: timestamp || payload?.clientUpdatedAt || payload?.updatedAt || Date.now(),
     };
     localStorage.setItem(LOCAL_USERS_DIRECTORY_KEY, JSON.stringify(dir));
   } catch {
@@ -151,25 +224,64 @@ function loadFromLocalDirectoryFallback(code) {
   }
 }
 
+// Interroge l'état du compte directement sur le serveur (sans cache)
+export async function fetchServerUserAccount(code) {
+  const cleanCode = normalizeUserCode(code);
+  if (!isValidUserCode(cleanCode)) {
+    return { status: 'invalid', user: null };
+  }
+  try {
+    const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
+      cache: 'no-store',
+    });
+    if (res.status === 404) {
+      return { status: 'not_found', user: null };
+    }
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok && json.user) {
+        return { status: 'ok', user: json.user };
+      }
+    }
+    return { status: 'error', user: null };
+  } catch {
+    return { status: 'offline', user: null };
+  }
+}
+
 // Synchronise les données complètes de l'utilisateur vers data/users/<CODE>.json
-export async function syncUserAccountToServer(code, data) {
+export async function syncUserAccountToServer(code, data, options = {}) {
   const cleanCode = normalizeUserCode(code);
   if (!isValidUserCode(cleanCode)) return null;
 
-  saveToLocalDirectoryFallback(cleanCode, data);
+  const clientUpdatedAt =
+    Number(data?.clientUpdatedAt || data?.updatedAt) ||
+    getStoredUpdatedAt(cleanCode, data?.collection) ||
+    Date.now();
+
+  saveToLocalDirectoryFallback(cleanCode, data, clientUpdatedAt);
 
   try {
     const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
       body: JSON.stringify({
         code: cleanCode,
         ...data,
+        clientUpdatedAt,
+        forceOverwrite: Boolean(options.forceOverwrite),
       }),
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json.user || null;
+    if (json.user) {
+      saveToLocalDirectoryFallback(cleanCode, json.user, json.user.updatedAt);
+    }
+    return {
+      user: json.user || null,
+      serverIsNewer: Boolean(json.serverIsNewer),
+    };
   } catch {
     return null;
   }
@@ -185,7 +297,9 @@ export async function fetchUserAccountByCode(code) {
   }
 
   try {
-    const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`);
+    const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
+      cache: 'no-store',
+    });
     if (res.ok) {
       const json = await res.json();
       if (json.ok && json.user) {
@@ -207,7 +321,7 @@ export async function fetchUserAccountByCode(code) {
 // =====================================================================
 export async function fetchAllUsersDirectory() {
   try {
-    const res = await fetch('/api/users');
+    const res = await fetch('/api/users', { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.users)) {
@@ -223,7 +337,8 @@ export async function fetchAllUsersDirectory() {
 export async function fetchUserTrades(userCode) {
   try {
     const res = await fetch(
-      `/api/trades?code=${encodeURIComponent(normalizeUserCode(userCode))}`
+      `/api/trades?code=${encodeURIComponent(normalizeUserCode(userCode))}`,
+      { cache: 'no-store' }
     );
     if (res.ok) {
       const json = await res.json();
@@ -281,7 +396,7 @@ export async function respondToTradeOffer(tradeId, action) {
 // =====================================================================
 export async function fetchMarketListings() {
   try {
-    const res = await fetch('/api/market');
+    const res = await fetch('/api/market', { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.listings)) {

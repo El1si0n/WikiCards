@@ -295,26 +295,28 @@ export default function UserProfile({
               ) : (
                 <form
                   onSubmit={handleSaveIdentity}
-                  className="space-y-2 bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-2.5 max-w-[500px]"
+                  className="flex flex-col sm:flex-row sm:items-center gap-2.5 bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-2.5 max-w-[620px]"
                 >
-                  <input
-                    type="text"
-                    value={draftUsername}
-                    onChange={(e) => setDraftUsername(e.target.value)}
-                    maxLength={36}
-                    placeholder="Nom d'utilisateur"
-                    autoFocus
-                    className="w-full h-[30px] px-2 text-[13.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={draftBio}
-                    onChange={(e) => setDraftBio(e.target.value)}
-                    maxLength={160}
-                    placeholder="Présentation courte..."
-                    className="w-full h-[30px] px-2 text-[12.5px] bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
-                  />
-                  <div className="flex items-center justify-end gap-1.5">
+                  <div className="flex-1 space-y-2 min-w-0 w-full">
+                    <input
+                      type="text"
+                      value={draftUsername}
+                      onChange={(e) => setDraftUsername(e.target.value)}
+                      maxLength={36}
+                      placeholder="Nom d'utilisateur"
+                      autoFocus
+                      className="w-full h-[30px] px-2 text-[13.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={draftBio}
+                      onChange={(e) => setDraftBio(e.target.value)}
+                      maxLength={160}
+                      placeholder="Présentation courte..."
+                      className="w-full h-[30px] px-2 text-[12.5px] bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsEditingIdentity(false)}

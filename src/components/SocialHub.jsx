@@ -66,9 +66,11 @@ export default function SocialHub({
   const [isLoadingTrades, setIsLoadingTrades] = useState(false);
   const [tradeActionError, setTradeActionError] = useState(null);
 
-  const loadDirectoryAndTrades = async () => {
-    setIsLoadingUsers(true);
-    setIsLoadingTrades(true);
+  const loadDirectoryAndTrades = async (silent = false) => {
+    if (!silent) {
+      setIsLoadingUsers(true);
+      setIsLoadingTrades(true);
+    }
     try {
       const [allUsers, myTrades] = await Promise.all([
         fetchAllUsersDirectory(),
@@ -77,13 +79,30 @@ export default function SocialHub({
       setUsersList(allUsers);
       setTrades(myTrades);
     } finally {
-      setIsLoadingUsers(false);
-      setIsLoadingTrades(false);
+      if (!silent) {
+        setIsLoadingUsers(false);
+        setIsLoadingTrades(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadDirectoryAndTrades();
+    loadDirectoryAndTrades(false);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadDirectoryAndTrades(true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    const interval = setInterval(() => loadDirectoryAndTrades(true), 8000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      clearInterval(interval);
+    };
   }, [userCode]);
 
   const handleInspectPeer = async (targetCode) => {

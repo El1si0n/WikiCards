@@ -145,6 +145,9 @@ export async function handleApiRequest(req, res) {
   }
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
         try {
           const urlObj = new URL(req.url, 'http://localhost')
@@ -233,8 +236,9 @@ export async function handleApiRequest(req, res) {
             if (req.method === 'POST' || req.method === 'PUT') {
               const body = await readJsonBody(req)
               const cleanCode = sanitizeCode(code)
+              const fileExists = fs.existsSync(filePath)
               let existing = {}
-              if (fs.existsSync(filePath)) {
+              if (fileExists) {
                 try {
                   existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
                 } catch {
@@ -242,13 +246,64 @@ export async function handleApiRequest(req, res) {
                 }
               }
 
+              // Protection anti-écrasement : si un appareil obsolète (ex: PC resté ouvert)
+              // tente d'envoyer une sauvegarde moins avancée que celle déjà sur le serveur (ex: jouée sur téléphone)
+              if (fileExists && existing.code && !body.forceOverwrite) {
+                const existingDraws = Number(existing.stats?.totalCardsDrawn || 0)
+                const existingBoosters = Number(existing.stats?.boostersOpened || 0)
+                const incomingDraws = Number(body.stats?.totalCardsDrawn || 0)
+                const incomingBoosters = Number(body.stats?.boostersOpened || 0)
+                const existingUpdatedAt = Number(existing.updatedAt || 0)
+                const incomingUpdatedAt = Number(
+                  body.clientUpdatedAt || body.updatedAt || 0
+                )
+
+                const isIncomingBehindInProgress =
+                  incomingDraws < existingDraws ||
+                  incomingBoosters < existingBoosters
+
+                const isIncomingEqualProgressButOlderTimestamp =
+                  incomingDraws === existingDraws &&
+                  incomingBoosters === existingBoosters &&
+                  incomingUpdatedAt > 0 &&
+                  existingUpdatedAt > incomingUpdatedAt
+
+                if (
+                  isIncomingBehindInProgress ||
+                  isIncomingEqualProgressButOlderTimestamp
+                ) {
+                  res.statusCode = 200
+                  res.end(
+                    JSON.stringify({
+                      ok: true,
+                      user: existing,
+                      serverIsNewer: true,
+                    })
+                  )
+                  return
+                }
+              }
+
               const now = Date.now()
+              const clientTimestamp = Number(
+                body.clientUpdatedAt || body.updatedAt || 0
+              )
+              const { clientUpdatedAt: _omitClientTs, forceOverwrite: _omitForce, ...cleanBody } = body
+
+              const existingClaimDate = String(existing.lastDailyClaimDate || '')
+              const incomingClaimDate = String(cleanBody.lastDailyClaimDate || '')
+              const resolvedClaimDate =
+                incomingClaimDate > existingClaimDate
+                  ? incomingClaimDate
+                  : existingClaimDate
+
               const merged = {
                 ...existing,
-                ...body,
+                ...cleanBody,
                 code: cleanCode,
-                createdAt: existing.createdAt || body.createdAt || now,
-                updatedAt: existing.updatedAt || now,
+                lastDailyClaimDate: resolvedClaimDate,
+                createdAt: existing.createdAt || cleanBody.createdAt || now,
+                updatedAt: existing.updatedAt || clientTimestamp || now,
               }
 
               const prevComparable = JSON.stringify({
@@ -260,11 +315,10 @@ export async function handleApiRequest(req, res) {
                 updatedAt: 0,
               })
 
-              if (
-                prevComparable !== nextComparable ||
-                !fs.existsSync(filePath)
-              ) {
-                merged.updatedAt = now
+              if (prevComparable !== nextComparable || !fileExists) {
+                merged.updatedAt = fileExists
+                  ? Math.max(now, clientTimestamp)
+                  : clientTimestamp || now
                 fs.writeFileSync(
                   filePath,
                   JSON.stringify(merged, null, 2),
@@ -272,7 +326,13 @@ export async function handleApiRequest(req, res) {
                 )
               }
               res.statusCode = 200
-              res.end(JSON.stringify({ ok: true, user: merged }))
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  user: merged,
+                  serverIsNewer: false,
+                })
+              )
               return
             }
           }
