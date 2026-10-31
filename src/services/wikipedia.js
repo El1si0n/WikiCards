@@ -621,13 +621,17 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitl
 /**
  * Tire une carte Wikipédia FR variée pour le jeu "Plus ou Moins" (Étape 9.2)
  * - Garantit strictement qu'aucune carte identique à la carte de référence (ou déjà vue) ne peut être tirée.
- * - Rend le jeu plus subtil et intéressant : 45 % du temps, sélectionne une rareté identique ou voisine
- *   (+/- 1 palier) pour des duels équilibrés qui demandent une vraie réflexion sur la notoriété respective.
+ * - Difficulté indexée sur la mise de base :
+ *   • 50 ₩ : très accessible (écart prononcé de raretés pour deviner aisément)
+ *   • 100 ₩ : modéré (plus accessible que le standard)
+ *   • 250 ₩ : standard (45 % de duels serrés sur même rareté ou palier voisin +/- 1)
+ *   • 500 ₩+ : corsé / défi (65 % de duels très serrés à notoriété proche)
  */
 export async function fetchRandomDuelCard(
   excludeInput = [],
   referenceViews = null,
-  referenceRarity = null
+  referenceRarity = null,
+  betAmount = 250
 ) {
   const excludeList = Array.isArray(excludeInput)
     ? excludeInput
@@ -639,19 +643,44 @@ export async function fetchRandomDuelCard(
   const allTiers = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
   let pickedTier;
 
-  // Ajustement de difficulté (un peu plus dur) :
-  // ~45 % du temps, on choisit la même rareté ou une rareté voisine (+/- 1 palier)
-  // pour que l'écart de vues soit plus serré et stimulant
-  if (referenceRarity && allTiers.includes(referenceRarity) && Math.random() < 0.45) {
-    const refIdx = allTiers.indexOf(referenceRarity);
-    const adjacentIndices = [refIdx];
-    if (refIdx > 0) adjacentIndices.push(refIdx - 1);
-    if (refIdx < allTiers.length - 1) adjacentIndices.push(refIdx + 1);
-    const pickedIdx =
-      adjacentIndices[Math.floor(Math.random() * adjacentIndices.length)];
-    pickedTier = allTiers[pickedIdx];
+  // Détermination de la difficulté selon la mise :
+  let closeDuelChance = 0.45;
+  if (betAmount <= 50) {
+    closeDuelChance = 0.12; // Très peu de duels serrés
+  } else if (betAmount <= 100) {
+    closeDuelChance = 0.28; // Plus facile que 250 ₩
+  } else if (betAmount <= 250) {
+    closeDuelChance = 0.45; // Difficulté standard actuelle
   } else {
-    // 55 % du temps, tirage varié parmi tous les paliers
+    closeDuelChance = 0.65; // Défi corsé à 500 ₩+
+  }
+
+  if (referenceRarity && allTiers.includes(referenceRarity) && Math.random() < closeDuelChance) {
+    const refIdx = allTiers.indexOf(referenceRarity);
+    let candidateIndices;
+
+    if (betAmount >= 500 && Math.random() < 0.5) {
+      // À 500 ₩, 50 % des duels serrés imposent la même rareté exacte
+      candidateIndices = [refIdx];
+    } else {
+      candidateIndices = [refIdx];
+      if (refIdx > 0) candidateIndices.push(refIdx - 1);
+      if (refIdx < allTiers.length - 1) candidateIndices.push(refIdx + 1);
+    }
+
+    const pickedIdx =
+      candidateIndices[Math.floor(Math.random() * candidateIndices.length)];
+    pickedTier = allTiers[pickedIdx];
+  } else if (referenceRarity && allTiers.includes(referenceRarity) && betAmount <= 50) {
+    // Pour une mise de 50 ₩, on favorise un écart d'au moins 2 paliers pour rendre l'issue évidente
+    const refIdx = allTiers.indexOf(referenceRarity);
+    const distantTiers = allTiers.filter((_, idx) => Math.abs(idx - refIdx) >= 2);
+    pickedTier =
+      distantTiers.length > 0
+        ? distantTiers[Math.floor(Math.random() * distantTiers.length)]
+        : allTiers[Math.floor(Math.random() * allTiers.length)];
+  } else {
+    // Tirage varié standard parmi tous les paliers
     pickedTier = allTiers[Math.floor(Math.random() * allTiers.length)];
   }
 

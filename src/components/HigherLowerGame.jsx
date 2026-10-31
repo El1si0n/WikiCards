@@ -12,16 +12,17 @@ import {
 } from 'lucide-react';
 
 // Multiplicateurs progressifs selon la longueur de la série gagnante
+// Réévalués à la hausse pour récompenser les séries avec la difficulté accrue
 const STREAK_MULTIPLIERS = [
   1.0, // 0
-  1.35, // 1 bonne réponse
-  1.8, // 2 bonnes réponses
-  2.4, // 3 bonnes réponses
-  3.2, // 4 bonnes réponses
-  4.3, // 5 bonnes réponses
-  5.8, // 6 bonnes réponses
-  7.8, // 7 bonnes réponses
-  10.5, // 8+ bonnes réponses
+  1.5, // 1 bonne réponse (+50% de gain net)
+  2.1, // 2 bonnes réponses (mise plus que doublée)
+  2.9, // 3 bonnes réponses (~triplée)
+  4.0, // 4 bonnes réponses (x4.0)
+  5.5, // 5 bonnes réponses (x5.5)
+  7.5, // 6 bonnes réponses (x7.5)
+  10.2, // 7 bonnes réponses (x10.2)
+  14.0, // 8+ bonnes réponses (x14.0)
 ];
 
 function getMultiplierForStreak(streak) {
@@ -32,7 +33,7 @@ function getMultiplierForStreak(streak) {
   const extra = streak - (STREAK_MULTIPLIERS.length - 1);
   return Number(
     (
-      STREAK_MULTIPLIERS[STREAK_MULTIPLIERS.length - 1] * Math.pow(1.32, extra)
+      STREAK_MULTIPLIERS[STREAK_MULTIPLIERS.length - 1] * Math.pow(1.36, extra)
     ).toFixed(2)
   );
 }
@@ -72,11 +73,12 @@ export default function HigherLowerGame({
     setSeenCards([]);
     setGameState('loading');
 
-    const firstCard = await fetchRandomDuelCard();
+    const firstCard = await fetchRandomDuelCard([], null, null, validBet);
     const secondCard = await fetchRandomDuelCard(
       [firstCard?.title, firstCard?.id].filter(Boolean),
       firstCard?.views ?? null,
-      firstCard?.rarity ?? null
+      firstCard?.rarity ?? null,
+      validBet
     );
 
     if (firstCard && secondCard) {
@@ -128,7 +130,8 @@ export default function HigherLowerGame({
     const newRightCard = await fetchRandomDuelCard(
       allExcluded,
       newRefCard.views,
-      newRefCard.rarity
+      newRefCard.rarity,
+      activeBet
     );
 
     setIsLoadingNext(false);
@@ -271,19 +274,26 @@ export default function HigherLowerGame({
                 </div>
 
                 <div className="grid grid-cols-4 gap-1.5">
-                  {[50, 100, 250, 500].map((preset) => (
+                  {[
+                    { amount: 50, label: 'Facile' },
+                    { amount: 100, label: 'Modéré' },
+                    { amount: 250, label: 'Standard' },
+                    { amount: 500, label: 'Défi' },
+                  ].map(({ amount, label }) => (
                     <button
-                      key={preset}
+                      key={amount}
                       type="button"
-                      disabled={gameState === 'loading' || wikithunes < preset}
-                      onClick={() => setBetAmount(preset)}
-                      className={`wiki-casino-btn !min-h-[34px] !py-1 !px-2 !text-[13px] ${
-                        betAmount === preset
+                      disabled={gameState === 'loading' || wikithunes < amount}
+                      onClick={() => setBetAmount(amount)}
+                      className={`wiki-casino-btn flex-col !h-auto !py-1.5 !px-1 text-center ${
+                        betAmount === amount
                           ? 'wiki-casino-btn--subtle'
                           : 'wiki-casino-btn--neutral'
                       }`}
+                      title={`Mise de ${amount} ₩ • Difficulté : ${label}`}
                     >
-                      {preset} ₩
+                      <span className="font-bold text-[12.5px] leading-tight">{amount} ₩</span>
+                      <span className="text-[10px] text-[#54595d] font-normal leading-tight">{label}</span>
                     </button>
                   ))}
                 </div>

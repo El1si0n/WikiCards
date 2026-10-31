@@ -1,7 +1,7 @@
-export const BOOSTER_PRICE = 300; // Multiplié par 3 (anciennement 100 ₩)
-export const ICONIC_BOOSTER_PRICE = 1500; // Multiplié par 3 (anciennement 500 ₩)
+export const BOOSTER_PRICE = 200; // Ajusté à 200 ₩ (au lieu de 300 ₩)
+export const ICONIC_BOOSTER_PRICE = 1000; // Ajusté à 1 000 ₩ (5x le booster standard)
 export const INITIAL_WIKITHUNES = 3000;
-export const DAILY_REWARD_AMOUNT = 250;
+export const DAILY_REWARD_AMOUNT = 550; // Bourse journalière augmentée à 550 ₩ (au lieu de 250 ₩)
 export const SHINY_RECYCLE_MULTIPLIER = 3;
 export const ICONIC_PACK_CHANCE = 0.005; // 0,5 % de chance (1 sur 200 boosters) que le prochain booster soit un Booster Iconique
 

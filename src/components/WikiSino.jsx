@@ -15,41 +15,41 @@ import {
 } from 'lucide-react';
 
 // Configuration des paliers d'Upgrade (N -> N+1)
-// Plus la rareté au-dessus est rare, moins c'est facile à upgrade.
+// Probabilités et coûts rééquilibrés pour rendre l'Upgrade nettement plus rentable
 export const UPGRADE_RULES = {
   C: {
     sourceCode: 'C',
     targetCode: 'PC',
-    chancePerCard: 22,
-    costPerPercent: 5,
+    chancePerCard: 25,
+    costPerPercent: 3,
   },
   PC: {
     sourceCode: 'PC',
     targetCode: 'R',
-    chancePerCard: 16,
-    costPerPercent: 12,
+    chancePerCard: 20,
+    costPerPercent: 8,
   },
   R: {
     sourceCode: 'R',
     targetCode: 'SR',
-    chancePerCard: 12,
-    costPerPercent: 25,
+    chancePerCard: 15,
+    costPerPercent: 16,
   },
   SR: {
     sourceCode: 'SR',
     targetCode: 'UR',
-    chancePerCard: 8,
-    costPerPercent: 55,
+    chancePerCard: 11,
+    costPerPercent: 35,
   },
   UR: {
     sourceCode: 'UR',
     targetCode: 'L',
-    chancePerCard: 5,
-    costPerPercent: 120,
+    chancePerCard: 7,
+    costPerPercent: 75,
   },
 };
 
-export const MAX_UPGRADE_CHANCE = 85; // Plafond strict à 85 %
+export const MAX_UPGRADE_CHANCE = 90; // Plafond strict à 90 % (au lieu de 85 %)
 export const MAX_SELECTED_CARDS = 8; // Limite stricte de 8 cartes sélectionnées maximum
 
 const RARITY_ORDER = {
