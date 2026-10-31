@@ -140,8 +140,10 @@ export default function BoosterOpening({
     if (isFetching) return;
     setErrorMsg(null);
 
+    // Strict vérification : overrideIsIconic ne doit être pris en compte que s'il s'agit d'un vrai booléen
+    // (évite que le MouseEvent du clic React ne soit interprété comme truthy)
     const isPackIconic =
-      overrideIsIconic !== null ? overrideIsIconic : isIconicPack;
+      typeof overrideIsIconic === 'boolean' ? overrideIsIconic : isIconicPack;
     const priceToPay = isPackIconic ? iconicBoosterPrice : boosterPrice;
 
     if (wikithunes < priceToPay) {
@@ -186,7 +188,8 @@ export default function BoosterOpening({
 
     // Le booster actuel étant consommé, on pré-tire et persiste immédiatement le statut du prochain booster.
     // Ainsi, recharger la page (F5) ne permettra jamais de réinitialiser ou de forcer un booster iconique.
-    rollAndSaveNextBoosterIsIconic();
+    const nextRolled = rollAndSaveNextBoosterIsIconic();
+    setIsIconicRoll(nextRolled);
 
     const ownedSet = new Set(existingCardIds);
     const seenInPack = new Set();
@@ -302,7 +305,7 @@ export default function BoosterOpening({
               ref={packRef}
               onMouseMove={handlePackMouseMove}
               onMouseLeave={handlePackMouseLeave}
-              onClick={handleOpenPack}
+              onClick={() => handleOpenPack()}
               className="relative cursor-pointer select-none z-10 flex flex-col items-center"
             >
               {/* Conteneur animé du sachet complet */}
