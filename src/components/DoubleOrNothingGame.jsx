@@ -19,6 +19,16 @@ const RARITY_ORDER = {
   C: 1,
 };
 
+// Configuration des probabilités de réussite au Quitte ou Double selon la rareté :
+// 55% pour C; 52% pour PC; 49% pour Rare; 46% pour SR et 43% pour UR
+export const DOUBLE_CHANCE_BY_RARITY = {
+  C: 55,
+  PC: 52,
+  R: 49,
+  SR: 46,
+  UR: 43,
+};
+
 export default function DoubleOrNothingGame({
   collection,
   favorites,
@@ -66,11 +76,25 @@ export default function DoubleOrNothingGame({
   );
 
   const displayedCard = spinSnapshot ? spinSnapshot.card : liveSelectedCard;
-  const activeTier = displayedCard
-    ? getRarityByCode(displayedCard.rarity)
-    : getRarityByCode('PC');
 
-  const displayChance = displayedCard ? 50 : 0;
+  // Rareté active de la cible (dérivée de la carte sélectionnée ou du filtre actif)
+  const activeRarityCode = useMemo(() => {
+    if (spinSnapshot?.card?.rarity) return spinSnapshot.card.rarity;
+    if (liveSelectedCard?.rarity) return liveSelectedCard.rarity;
+    if (selectedRarityFilter && selectedRarityFilter !== 'ALL') {
+      return selectedRarityFilter;
+    }
+    return 'C';
+  }, [spinSnapshot, liveSelectedCard, selectedRarityFilter]);
+
+  const activeTier = useMemo(
+    () => getRarityByCode(activeRarityCode),
+    [activeRarityCode]
+  );
+
+  const displayChance = displayedCard
+    ? DOUBLE_CHANCE_BY_RARITY[displayedCard.rarity] || 50
+    : DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
 
   // Une carte est sélectionnable si elle n'est pas Légendaire et n'est pas son dernier exemplaire protégé en favori
   const isCardSelectable = (card) => {
@@ -116,16 +140,21 @@ export default function DoubleOrNothingGame({
     setSpinState('spinning');
 
     // On retire l'exemplaire mis en jeu au départ :
-    // - Si gagné (50 %), on rendra 2 exemplaires (l'original + le double) !
-    // - Si perdu (50 %), l'exemplaire misé est définitivement perdu.
+    // - Si gagné, on rendra 2 exemplaires (l'original + le double) !
+    // - Si perdu, l'exemplaire misé est définitivement perdu.
     onConsumeCards({ [lockedCard.id]: 1 });
 
-    const isWin = Math.random() < 0.5;
+    const winPercent = DOUBLE_CHANCE_BY_RARITY[lockedCard.rarity] || 50;
+    const isWin = Math.random() < winPercent / 100;
+    const winArc = (winPercent / 100) * 360;
+
     let landingAngle;
     if (isWin) {
-      landingAngle = 6 + Math.random() * 168; // Dans [0°, 180°]
+      // Atterrissage net dans la zone gagnante [0°, winArc]
+      landingAngle = 5 + Math.random() * Math.max(10, winArc - 10);
     } else {
-      landingAngle = 186 + Math.random() * 168; // Dans [180°, 360°]
+      // Atterrissage net dans la zone perdante [winArc, 360°]
+      landingAngle = (winArc + 5) + Math.random() * Math.max(10, 360 - winArc - 10);
     }
 
     const currentBaseTurns =
@@ -276,7 +305,7 @@ export default function DoubleOrNothingGame({
               <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
                 <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
                   Cliquez sur une carte dans le classeur ci-dessous pour tenter
-                  de la dupliquer à 50&nbsp;%.
+                  de la dupliquer.
                 </p>
               </div>
             )}
@@ -618,7 +647,7 @@ export default function DoubleOrNothingGame({
                         ? 'Révélation en cours...'
                         : displayedCard
                         ? `${displayedCard.title} (×2)`
-                        : 'Double exemplaire'}
+                        : `Double exemplaire (${activeTier.name})`}
                     </span>
                   </div>
                 </div>
@@ -736,11 +765,12 @@ export default function DoubleOrNothingGame({
               const isFavProtected =
                 favorites.includes(card.id) && (card.count || 1) <= 1;
 
+              const cardChance = DOUBLE_CHANCE_BY_RARITY[card.rarity] || 50;
               const badgeText = isFavProtected
                 ? '★ Protégée'
                 : isSelected
-                ? 'Sélectionnée (50 %)'
-                : '50 %';
+                ? `Sélectionnée (${cardChance} %)`
+                : `${cardChance} %`;
 
               return (
                 <WikiCard

@@ -543,12 +543,12 @@ export default function App() {
     localUpdatedAt,
   ]);
 
-  const handleUpdateUserProfile = (nextProfile) => {
+  const handleUpdateUserProfile = async (nextProfile) => {
     const now = bumpLocalUpdatedAt();
     setUserProfile(nextProfile);
     if (userCode) {
       saveLocalProfile(nextProfile, userCode);
-      syncUserAccountToServer(userCode, {
+      const res = await syncUserAccountToServer(userCode, {
         profile: nextProfile,
         collection,
         favorites,
@@ -557,6 +557,9 @@ export default function App() {
         lastDailyClaimDate,
         clientUpdatedAt: now,
       });
+      if (res?.serverIsNewer && res?.user) {
+        applyServerAccountState(res.user);
+      }
     }
   };
 
@@ -1061,10 +1064,10 @@ export default function App() {
             </header>
 
             {/* vector-page-toolbar : Onglets 14px + Ombre inférieure #c8ccd1 (exactement comme load.php) */}
-            <div className="vector-page-toolbar mb-[16px]">
-              <div className="vector-page-toolbar-container flex items-center justify-between min-h-[35px] overflow-hidden">
+            <div className="vector-page-toolbar mb-[16px] relative z-20">
+              <div className="vector-page-toolbar-container flex items-center justify-between min-h-[35px] relative">
                 {/* left-navigation : Onglets défilables horizontalement sur mobile */}
-                <div id="left-navigation" className="flex items-center gap-[10px] sm:gap-[16px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 max-w-full">
+                <div id="left-navigation" className="flex items-center gap-[10px] sm:gap-[16px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 max-w-full min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveTab('booster')}
@@ -1153,7 +1156,7 @@ export default function App() {
                     </button>
 
                     {isToolsMenuOpen && (
-                      <div className="vector-dropdown-content absolute right-0 top-full mt-1 w-[240px] bg-white border border-[#a2a9b1] rounded-[2px] shadow-[0_2px_6px_-1px_rgba(0,0,0,0.2)] py-[14px] px-[16px] z-50 text-[14px] leading-[1.4]">
+                      <div className="vector-dropdown-content absolute right-0 top-full mt-1 w-[240px] bg-white dark:bg-[#1f2328] border border-[#a2a9b1] dark:border-[#444c56] rounded-[2px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] py-[14px] px-[16px] z-50 text-[14px] leading-[1.4]">
                         <div
                           id="vector-page-tools-unpinned-container"
                           className="vector-unpinned-container"
@@ -1163,8 +1166,8 @@ export default function App() {
                             className="vector-page-tools vector-pinnable-element"
                           >
                             {/* En-tête du menu Outils */}
-                            <div className="vector-pinnable-header flex items-center justify-between border-b border-[#eaecf0] pb-[6px] mb-[6px]">
-                              <div className="vector-pinnable-header-label font-bold text-[#202122] text-[14px]">
+                            <div className="vector-pinnable-header flex items-center justify-between border-b border-[#eaecf0] dark:border-[#373e47] pb-[6px] mb-[6px]">
+                              <div className="vector-pinnable-header-label font-bold text-[#202122] dark:text-[#f0f6fc] text-[14px]">
                                 Outils
                               </div>
                             </div>
@@ -1174,7 +1177,7 @@ export default function App() {
                               id="p-tb"
                               className="vector-menu mw-portlet mw-portlet-tb"
                             >
-                              <div className="vector-menu-heading text-[14px] text-[#54595d] border-b border-[#eaecf0] py-[6px] mb-[6px]">
+                              <div className="vector-menu-heading text-[14px] text-[#54595d] dark:text-[#8b949e] border-b border-[#eaecf0] dark:border-[#373e47] py-[6px] mb-[6px]">
                                 Général
                               </div>
                               <div className="vector-menu-content">
@@ -1703,29 +1706,27 @@ export default function App() {
                             : 'Aucune carte ne correspond à votre filtre actuel.'}
                         </p>
                         <div className="flex items-center justify-center gap-3 text-[13px]">
-                          {collection.length > 0 && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRarityFilter('ALL');
-                                  setSelectedThemeFilter('ALL');
-                                  setSearchQuery('');
-                                }}
-                                className="wiki-link font-semibold"
-                              >
-                                Réinitialiser les filtres
-                              </button>
-                              <span className="text-[#a2a9b1]">•</span>
-                            </>
+                          {collection.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedRarityFilter('ALL');
+                                setSelectedThemeFilter('ALL');
+                                setSearchQuery('');
+                              }}
+                              className="wiki-link font-semibold"
+                            >
+                              Réinitialiser les filtres
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab('booster')}
+                              className="wiki-link font-semibold"
+                            >
+                              Ouvrir un booster →
+                            </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('booster')}
-                            className="wiki-link font-semibold"
-                          >
-                            Ouvrir un booster →
-                          </button>
                         </div>
                       </div>
                     )}

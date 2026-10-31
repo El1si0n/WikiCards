@@ -15,41 +15,47 @@ import {
 } from 'lucide-react';
 
 // Configuration des paliers d'Upgrade (N -> N+1)
-// Probabilités et coûts rééquilibrés pour rendre l'Upgrade nettement plus rentable
+// Limite maximale de succès indexée sur la rareté source :
+// 95% pour C; 90% pour PC; 85% pour Rare; 80% pour SR; 75% pour UR
 export const UPGRADE_RULES = {
   C: {
     sourceCode: 'C',
     targetCode: 'PC',
     chancePerCard: 25,
     costPerPercent: 3,
+    maxChance: 95,
   },
   PC: {
     sourceCode: 'PC',
     targetCode: 'R',
     chancePerCard: 20,
     costPerPercent: 8,
+    maxChance: 90,
   },
   R: {
     sourceCode: 'R',
     targetCode: 'SR',
     chancePerCard: 15,
     costPerPercent: 16,
+    maxChance: 85,
   },
   SR: {
     sourceCode: 'SR',
     targetCode: 'UR',
     chancePerCard: 11,
     costPerPercent: 35,
+    maxChance: 80,
   },
   UR: {
     sourceCode: 'UR',
     targetCode: 'L',
     chancePerCard: 7,
     costPerPercent: 75,
+    maxChance: 75,
   },
 };
 
-export const MAX_UPGRADE_CHANCE = 90; // Plafond strict à 90 % (au lieu de 85 %)
+export const MAX_UPGRADE_CHANCE = 95; // Valeur plafond max (accessible sur les Communes)
 export const MAX_SELECTED_CARDS = 8; // Limite stricte de 8 cartes sélectionnées maximum
 
 const RARITY_ORDER = {
@@ -157,19 +163,24 @@ export default function WikiSino({
     return getRarityByCode('PC');
   }, [spinSnapshot, currentRule]);
 
-  // Chance de base apportée par les cartes sélectionnées (plafonnée à 85 %)
+  // Plafond de chance maximal propre au palier d'amélioration actuel
+  const currentMaxChance = currentRule?.maxChance || 90;
+
+  // Chance de base apportée par les cartes sélectionnées (plafonnée selon la rareté)
   const liveBaseCardChance = useMemo(() => {
     if (!currentRule || liveSelectedCards.length === 0) return 0;
+    const tierMax = currentRule.maxChance || 90;
     return Math.min(
-      MAX_UPGRADE_CHANCE,
+      tierMax,
       liveSelectedCards.length * currentRule.chancePerCard
     );
   }, [currentRule, liveSelectedCards.length]);
 
-  // % maximum que l'on peut ajouter avec les Wikithunes (plafond 85 % et limité par le solde)
+  // % maximum que l'on peut ajouter avec les Wikithunes (plafond propre à la rareté et limité par le solde)
   const maxPossibleBonusPercent = useMemo(() => {
     if (!currentRule || liveSelectedCards.length === 0) return 0;
-    const roomToCap = Math.max(0, MAX_UPGRADE_CHANCE - liveBaseCardChance);
+    const tierMax = currentRule.maxChance || 90;
+    const roomToCap = Math.max(0, tierMax - liveBaseCardChance);
     const affordablePercent = Math.floor(
       wikithunes / currentRule.costPerPercent
     );
@@ -190,12 +201,12 @@ export default function WikiSino({
 
   const displayChance = spinSnapshot
     ? spinSnapshot.totalChance
-    : Math.min(MAX_UPGRADE_CHANCE, liveBaseCardChance + effectiveBonusPercent);
+    : Math.min(currentMaxChance, liveBaseCardChance + effectiveBonusPercent);
 
-  // Valeur continue (0 à 85) pour que l'arc de la jauge glisse à 60fps sans saccade
+  // Valeur continue pour que l'arc de la jauge glisse à 60fps sans saccade
   const smoothChance = spinSnapshot
     ? spinSnapshot.totalChance
-    : Math.min(MAX_UPGRADE_CHANCE, liveBaseCardChance + rawBonusPercent);
+    : Math.min(currentMaxChance, liveBaseCardChance + rawBonusPercent);
 
   const displayedSelectedCards = spinSnapshot
     ? spinSnapshot.cards
@@ -249,11 +260,13 @@ export default function WikiSino({
 
     const currentSelectedQty = selectedCountsMap[card.id] || 0;
 
-    // Si on peut encore ajouter un exemplaire de cette carte (ex: 1/2 -> 2/2) sans dépasser 8 cartes ni 85 %
+    const cardTierMax = UPGRADE_RULES[card.rarity]?.maxChance || 90;
+
+    // Si on peut encore ajouter un exemplaire de cette carte sans dépasser 8 cartes ni la limite de la rareté
     if (
       currentSelectedQty < maxCopies &&
       liveSelectedCards.length < MAX_SELECTED_CARDS &&
-      liveBaseCardChance < MAX_UPGRADE_CHANCE
+      liveBaseCardChance < cardTierMax
     ) {
       setSelectedCardIds((prev) => [...prev, card.id]);
       soundManager.playCardSlide();

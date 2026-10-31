@@ -15,7 +15,30 @@ import {
   RefreshCw,
   Check,
   X,
+  Clock,
 } from 'lucide-react';
+
+function sanitizeNumberInput(val) {
+  let clean = String(val ?? '').replace(/[^0-9]/g, '');
+  if (clean.length > 1 && clean.startsWith('0')) {
+    clean = clean.replace(/^0+/, '');
+  }
+  return clean;
+}
+
+function formatRemainingTime(bidExpiresAt, highestBidderCode, now) {
+  if (!highestBidderCode || !bidExpiresAt) {
+    return '24h après 1ère offre';
+  }
+  const diff = Number(bidExpiresAt) - now;
+  if (diff <= 0) {
+    return 'Délai écoulé';
+  }
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const secs = Math.floor((diff % (1000 * 60)) / 1000);
+  return `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+}
 
 export default function AuctionMarket({
   userCode,
@@ -32,14 +55,21 @@ export default function AuctionMarket({
   const [rarityFilter, setRarityFilter] = useState('ALL');
   const [feedback, setFeedback] = useState(null);
 
-  // État pour enchérir sur une annonce : { [listingId]: amount }
+  // Horloge en direct pour rafraîchir les comptes à rebours de 24h
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // État pour enchérir sur une annonce : { [listingId]: string }
   const [bidInputs, setBidInputs] = useState({});
 
-  // État pour mettre une carte en vente
+  // État pour mettre une carte en vente (chaînes pour une saisie fluide sans 0 parasite)
   const [sellRarityFilter, setSellRarityFilter] = useState('C');
   const [selectedSellCardId, setSelectedSellCardId] = useState(null);
-  const [startingBidInput, setStartingBidInput] = useState(50);
-  const [buyoutPriceInput, setBuyoutPriceInput] = useState(150);
+  const [startingBidInput, setStartingBidInput] = useState('50');
+  const [buyoutPriceInput, setBuyoutPriceInput] = useState('150');
   const [isCreatingListing, setIsCreatingListing] = useState(false);
 
   const loadListings = async () => {
@@ -89,8 +119,8 @@ export default function AuctionMarket({
 
     setSelectedSellCardId(card.id);
     const baseVal = getCardRecycleValue(card);
-    setStartingBidInput(Math.max(15, Math.round(baseVal * 1.2)));
-    setBuyoutPriceInput(Math.max(30, Math.round(baseVal * 2.5)));
+    setStartingBidInput(String(Math.max(15, Math.round(baseVal * 1.2))));
+    setBuyoutPriceInput(String(Math.max(30, Math.round(baseVal * 2.5))));
     soundManager.playCardSlide();
   };
 
@@ -98,17 +128,17 @@ export default function AuctionMarket({
     e.preventDefault();
     if (!selectedSellCard || isCreatingListing) return;
 
+    const startVal = Math.max(5, Number(startingBidInput) || 5);
+    const buyoutVal = Math.max(startVal, Number(buyoutPriceInput) || startVal);
+
     setIsCreatingListing(true);
     setFeedback(null);
     try {
       const res = await createMarketListing({
         sellerCode: userCode,
         cardId: selectedSellCard.id,
-        startingBid: Number(startingBidInput),
-        buyoutPrice: Math.max(
-          Number(startingBidInput),
-          Number(buyoutPriceInput)
-        ),
+        startingBid: startVal,
+        buyoutPrice: buyoutVal,
       });
 
       if (res.updatedUser) {
@@ -277,9 +307,10 @@ export default function AuctionMarket({
                   const minNextBid = listing.highestBidderCode
                     ? listing.currentBid + 10
                     : listing.startingBid;
+                  const currentBidInputStr = bidInputs[listing.id];
                   const bidVal =
-                    bidInputs[listing.id] !== undefined
-                      ? bidInputs[listing.id]
+                    currentBidInputStr !== undefined && currentBidInputStr !== ''
+                      ? Number(currentBidInputStr)
                       : minNextBid;
 
                   return (
@@ -335,23 +366,61 @@ export default function AuctionMarket({
                             <WikithuneIcon className="w-3.5 h-3.5 text-[#177860]" />
                           </span>
                         </div>
+
+                        {/* Compte à rebours de 24h lancé dès la 1ère enchère */}
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-[#eaecf0]">
+                          <span className="text-[#54595d] inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-[#3366cc]" />
+                            <span>Fin d'enchère :</span>
+                          </span>
+                          <span
+                            className={`font-mono font-bold ${
+                              listing.highestBidderCode
+                                ? 'text-[#3366cc]'
+                                : 'text-[#72777d]'
+                            }`}
+                          >
+                            {formatRemainingTime(
+                              listing.bidExpiresAt,
+                              listing.highestBidderCode,
+                              now
+                            )}
+                          </span>
+                        </div>
                       </div>
 
                       {!isMine ? (
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-1.5">
                             <input
-                              type="number"
-                              min={minNextBid}
-                              max={listing.buyoutPrice}
-                              step={10}
-                              value={bidVal}
-                              onChange={(e) =>
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder={String(minNextBid)}
+                              value={
+                                currentBidInputStr !== undefined
+                                  ? currentBidInputStr
+                                  : minNextBid
+                              }
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const clean = sanitizeNumberInput(e.target.value);
                                 setBidInputs((prev) => ({
                                   ...prev,
-                                  [listing.id]: Number(e.target.value),
-                                }))
-                              }
+                                  [listing.id]: clean,
+                                }));
+                              }}
+                              onBlur={() => {
+                                if (
+                                  !currentBidInputStr ||
+                                  Number(currentBidInputStr) < minNextBid
+                                ) {
+                                  setBidInputs((prev) => ({
+                                    ...prev,
+                                    [listing.id]: String(minNextBid),
+                                  }));
+                                }
+                              }}
                               className="w-full h-[32px] px-2 text-[12.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                             />
                             <button
@@ -452,13 +521,20 @@ export default function AuctionMarket({
                           Prix de départ (enchère minimale en ₩)
                         </label>
                         <input
-                          type="number"
-                          min={5}
-                          max={999999}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="Ex : 50"
                           value={startingBidInput}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
-                            setStartingBidInput(Number(e.target.value))
+                            setStartingBidInput(sanitizeNumberInput(e.target.value))
                           }
+                          onBlur={() => {
+                            if (!startingBidInput || Number(startingBidInput) < 5) {
+                              setStartingBidInput('5');
+                            }
+                          }}
                           className="w-full h-[34px] px-2.5 text-[13.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                         />
                       </div>
@@ -468,13 +544,21 @@ export default function AuctionMarket({
                           Prix d'achat immédiat (₩)
                         </label>
                         <input
-                          type="number"
-                          min={Math.max(10, startingBidInput)}
-                          max={999999}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="Ex : 150"
                           value={buyoutPriceInput}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) =>
-                            setBuyoutPriceInput(Number(e.target.value))
+                            setBuyoutPriceInput(sanitizeNumberInput(e.target.value))
                           }
+                          onBlur={() => {
+                            const minBuyout = Math.max(10, Number(startingBidInput) || 5);
+                            if (!buyoutPriceInput || Number(buyoutPriceInput) < minBuyout) {
+                              setBuyoutPriceInput(String(minBuyout));
+                            }
+                          }}
                           className="w-full h-[34px] px-2.5 text-[13.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                         />
                       </div>
@@ -595,7 +679,9 @@ export default function AuctionMarket({
                         ? `Vendue (${listing.finalPrice} ₩ à ${listing.buyerUsername})`
                         : listing.status === 'cancelled'
                         ? 'Retirée'
-                        : `En cours (Offre : ${listing.currentBid} ₩ / Achat : ${listing.buyoutPrice} ₩)`}
+                        : listing.highestBidderCode
+                        ? `Enchère de 24h en cours (${listing.currentBid} ₩ par ${listing.highestBidderUsername} • Fin dans ${formatRemainingTime(listing.bidExpiresAt, listing.highestBidderCode, now)})`
+                        : `En attente de 1ère offre (Mise à prix : ${listing.startingBid} ₩ / Achat : ${listing.buyoutPrice} ₩)`}
                     </span>
                   </div>
 

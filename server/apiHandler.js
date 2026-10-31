@@ -253,16 +253,28 @@ export async function handleApiRequest(req, res) {
                 const existingBoosters = Number(existing.stats?.boostersOpened || 0)
                 const incomingDraws = Number(body.stats?.totalCardsDrawn || 0)
                 const incomingBoosters = Number(body.stats?.boostersOpened || 0)
+                const existingColLen = Array.isArray(existing.collection) ? existing.collection.length : 0
+                const incomingColLen = Array.isArray(body.collection) ? body.collection.length : 0
+                const existingTotalCopies = Array.isArray(existing.collection)
+                  ? existing.collection.reduce((s, c) => s + (c.count || 1), 0)
+                  : 0
+                const incomingTotalCopies = Array.isArray(body.collection)
+                  ? body.collection.reduce((s, c) => s + (c.count || 1), 0)
+                  : 0
                 const existingUpdatedAt = Number(existing.updatedAt || 0)
                 const incomingUpdatedAt = Number(
                   body.clientUpdatedAt || body.updatedAt || 0
                 )
 
                 const isIncomingBehindInProgress =
+                  incomingColLen < existingColLen ||
+                  incomingTotalCopies < existingTotalCopies ||
                   incomingDraws < existingDraws ||
                   incomingBoosters < existingBoosters
 
                 const isIncomingEqualProgressButOlderTimestamp =
+                  incomingColLen === existingColLen &&
+                  incomingTotalCopies === existingTotalCopies &&
                   incomingDraws === existingDraws &&
                   incomingBoosters === existingBoosters &&
                   incomingUpdatedAt > 0 &&
@@ -546,8 +558,55 @@ export async function handleApiRequest(req, res) {
           // ===================================================================
           // 3. MARCHÉ AUX ENCHÈRES & VENTES DIRECTES (/api/market)
           // ===================================================================
+          // Clôture automatiquement les enchères dont le délai de 24h est écoulé
+          const resolveExpiredMarketAuctions = (listings) => {
+            const now = Date.now()
+            let changed = false
+            for (const listing of listings) {
+              if (
+                listing.status === 'active' &&
+                listing.highestBidderCode &&
+                listing.bidExpiresAt &&
+                now >= listing.bidExpiresAt
+              ) {
+                const seller = loadUserFile(listing.sellerCode)
+                const winner = loadUserFile(listing.highestBidderCode)
+
+                if (seller) {
+                  saveUserFile(listing.sellerCode, {
+                    ...seller,
+                    wikithunes: (seller.wikithunes || 0) + listing.currentBid,
+                  })
+                }
+
+                if (winner) {
+                  const nextCol = addCardsToUserCollection(
+                    winner.collection || [],
+                    [{ card: listing.card, qty: 1 }]
+                  )
+                  saveUserFile(listing.highestBidderCode, {
+                    ...winner,
+                    collection: nextCol,
+                  })
+                }
+
+                listing.status = 'sold'
+                listing.buyerCode = listing.highestBidderCode
+                listing.buyerUsername = listing.highestBidderUsername
+                listing.finalPrice = listing.currentBid
+                listing.resolvedAt = listing.bidExpiresAt
+                changed = true
+              }
+            }
+            if (changed) {
+              saveJsonArrayFile(marketFile, listings)
+            }
+            return listings
+          }
+
           if (req.method === 'GET' && pathname === '/api/market') {
-            const listings = loadJsonArrayFile(marketFile)
+            let listings = loadJsonArrayFile(marketFile)
+            listings = resolveExpiredMarketAuctions(listings)
             listings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
             res.statusCode = 200
             res.end(JSON.stringify({ ok: true, listings }))
@@ -624,6 +683,7 @@ export async function handleApiRequest(req, res) {
               currentBid: startingBid,
               highestBidderCode: null,
               highestBidderUsername: null,
+              bidExpiresAt: null, // Compte à rebours de 24h qui démarre dès la 1ère enchère
               buyoutPrice,
               status: 'active', // 'active' | 'sold' | 'cancelled'
               createdAt: Date.now(),
@@ -653,7 +713,8 @@ export async function handleApiRequest(req, res) {
             const body = await readJsonBody(req)
             const actorCode = sanitizeCode(body.userCode)
 
-            const listings = loadJsonArrayFile(marketFile)
+            let listings = loadJsonArrayFile(marketFile)
+            listings = resolveExpiredMarketAuctions(listings)
             const idx = listings.findIndex((l) => l.id === listingId)
             if (idx === -1) {
               res.statusCode = 404
@@ -864,6 +925,9 @@ export async function handleApiRequest(req, res) {
               listing.highestBidderCode = actorCode
               listing.highestBidderUsername =
                 bidder.profile?.username || actorCode
+              // Lance le compte à rebours de 24h dès qu'une enchère est posée
+              listing.bidExpiresAt = Date.now() + 24 * 60 * 60 * 1000
+              listing.lastBidAt = Date.now()
 
               // Si l'enchère atteint ou dépasse le prix d'achat immédiat, la vente est conclue !
               if (bidAmount >= listing.buyoutPrice) {

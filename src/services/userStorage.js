@@ -180,18 +180,59 @@ export function isAccountStateNewer(candidate, baseline) {
   if (!candidate) return false;
   if (!baseline) return true;
 
-  const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);
-  const baseDraws = Number(baseline.stats?.totalCardsDrawn || 0);
+  // 1. Comparaison du nombre de cartes uniques
+  const candColLen = Array.isArray(candidate.collection)
+    ? candidate.collection.length
+    : 0;
+  const baseColLen = Array.isArray(baseline.collection)
+    ? baseline.collection.length
+    : 0;
+  if (candColLen !== baseColLen) {
+    return candColLen > baseColLen;
+  }
+
+  // 2. Comparaison du nombre total d'exemplaires dans le classeur
+  const candTotalCopies = Array.isArray(candidate.collection)
+    ? candidate.collection.reduce((s, c) => s + (c.count || 1), 0)
+    : 0;
+  const baseTotalCopies = Array.isArray(baseline.collection)
+    ? baseline.collection.reduce((s, c) => s + (c.count || 1), 0)
+    : 0;
+  if (candTotalCopies !== baseTotalCopies) {
+    return candTotalCopies > baseTotalCopies;
+  }
+
+  // 3. Comparaison de l'activité des boosters
   const candBoosters = Number(candidate.stats?.boostersOpened || 0);
   const baseBoosters = Number(baseline.stats?.boostersOpened || 0);
-
-  if (candDraws !== baseDraws) {
-    return candDraws > baseDraws;
-  }
   if (candBoosters !== baseBoosters) {
     return candBoosters > baseBoosters;
   }
 
+  const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);
+  const baseDraws = Number(baseline.stats?.totalCardsDrawn || 0);
+  if (candDraws !== baseDraws) {
+    return candDraws > baseDraws;
+  }
+
+  // 4. Date d'obtention de la carte la plus récente
+  const candMaxCardTs = Array.isArray(candidate.collection)
+    ? candidate.collection.reduce(
+        (max, c) => Math.max(max, Number(c?.obtainedAt || 0)),
+        0
+      )
+    : 0;
+  const baseMaxCardTs = Array.isArray(baseline.collection)
+    ? baseline.collection.reduce(
+        (max, c) => Math.max(max, Number(c?.obtainedAt || 0)),
+        0
+      )
+    : 0;
+  if (candMaxCardTs > 0 && baseMaxCardTs > 0 && candMaxCardTs !== baseMaxCardTs) {
+    return candMaxCardTs > baseMaxCardTs;
+  }
+
+  // 5. Horodatage de synchronisation
   const candTs = Number(candidate.updatedAt || candidate.clientUpdatedAt || 0);
   const baseTs = Number(baseline.updatedAt || baseline.clientUpdatedAt || 0);
   return candTs > baseTs;
