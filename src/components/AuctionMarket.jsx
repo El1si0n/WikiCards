@@ -12,7 +12,6 @@ import {
   Gavel,
   ShoppingBag,
   Tag,
-  RefreshCw,
   Check,
   X,
   Clock,
@@ -72,19 +71,35 @@ export default function AuctionMarket({
   const [buyoutPriceInput, setBuyoutPriceInput] = useState('150');
   const [isCreatingListing, setIsCreatingListing] = useState(false);
 
-  const loadListings = async () => {
-    setIsLoading(true);
+  const loadListings = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await fetchMarketListings();
       setListings(data);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
+  // Synchronisation automatique en arrière-plan : au montage, au changement d'onglet, au focus et toutes les 8s
   useEffect(() => {
-    loadListings();
-  }, [userCode]);
+    loadListings(false);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadListings(true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    const interval = setInterval(() => loadListings(true), 8000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      clearInterval(interval);
+    };
+  }, [userCode, activeSubTab]);
 
   const activeListings = useMemo(
     () => listings.filter((l) => l.status === 'active'),
@@ -286,18 +301,6 @@ export default function AuctionMarket({
                   );
                 })}
               </div>
-
-              <button
-                type="button"
-                onClick={loadListings}
-                disabled={isLoading}
-                className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[32px] !py-1 !px-3 !text-[12.5px]"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}
-                />
-                <span>Actualiser</span>
-              </button>
             </div>
 
             {filteredBrowseListings.length > 0 ? (

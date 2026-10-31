@@ -17,7 +17,6 @@ import {
   Check,
   X,
   Search,
-  RefreshCw,
   BookOpen,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
@@ -762,20 +761,6 @@ export default function SocialHub({
                   className="w-full h-[34px] pl-9 pr-3 text-[13px] bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                 />
               </div>
-
-              <button
-                type="button"
-                onClick={loadDirectoryAndTrades}
-                disabled={isLoadingUsers}
-                className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[34px] !py-1 !px-3 !text-[12.5px]"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 ${
-                    isLoadingUsers ? 'animate-spin' : ''
-                  }`}
-                />
-                <span>Actualiser</span>
-              </button>
             </div>
 
             {filteredUsers.length > 0 ? (
