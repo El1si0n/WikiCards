@@ -499,47 +499,24 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
     return finalPack.sort((a, b) => (a.views || 0) - (b.views || 0));
   }
 
-  // Mode Booster Standard : tirage 100 % naturel sur Wikipédia FR.
+  // Mode Booster Standard : tirage 100 % naturel et aléatoire sur Wikipédia FR (2,6 millions d'articles).
   // Une carte devient "GIF Métal" uniquement si son illustration Wikipédia s'avère naturellement être un .gif animé.
   const validCards = [];
-  const randomTitles = await fetchPureRandomTitles(14);
-  for (
-    let i = 0;
-    i < randomTitles.length && validCards.length < count;
-    i += 4
-  ) {
-    const batch = randomTitles.slice(i, i + 4);
-    const settled = await Promise.allSettled(
-      batch.map((title) => fetchWikiCardByTitle(title))
-    );
-
-    for (const item of settled) {
-      if (
-        item.status === 'fulfilled' &&
-        item.value &&
-        item.value.extract &&
-        item.value.extract.length >= 60 &&
-        !validCards.some((c) => c.id === item.value.id)
-      ) {
-        validCards.push(item.value);
-        if (validCards.length === count) break;
-      }
-    }
-  }
-
-  // Filet de sécurité anti-lenteur : complète avec le bassin Wikipédia vérifié si besoin
-  if (validCards.length < count) {
-    const fallbackList = [
-      ...(RARITY_FALLBACK_POOLS.SR || []),
-      ...(RARITY_FALLBACK_POOLS.R || []),
-      ...(RARITY_FALLBACK_POOLS.PC || []),
-    ].sort(() => Math.random() - 0.5);
-
-    for (const title of fallbackList) {
+  let boosterAttempts = 0;
+  while (validCards.length < count && boosterAttempts < 6) {
+    boosterAttempts++;
+    const randomTitles = await fetchPureRandomTitles(14);
+    for (const title of randomTitles) {
       if (validCards.length >= count) break;
+      if (validCards.some((c) => c.title.toLowerCase() === title.toLowerCase())) continue;
       try {
         const card = await fetchWikiCardByTitle(title);
-        if (card && !validCards.some((c) => c.id === card.id)) {
+        if (
+          card &&
+          card.extract &&
+          card.extract.length >= 50 &&
+          !validCards.some((c) => c.id === card.id)
+        ) {
           validCards.push(card);
         }
       } catch {
@@ -550,196 +527,6 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
 
   return validCards.slice(0, count).sort((a, b) => (a.views || 0) - (b.views || 0));
 }
-
-// Bassin d'articles Wikipédia FR pour garantir un tirage rapide par palier de rareté dans le WikiSino
-const RARITY_FALLBACK_POOLS = {
-  L: ICONIC_LEGENDARY_POOL,
-  UR: ICONIC_ULTRA_RARE_POOL,
-  SR: [
-    'Astéroïde',
-    'Éclipse solaire',
-    'Volcan',
-    'Tsunami',
-    'Ouroboros',
-    'Mythologie nordique',
-    'Chevaliers de la Table ronde',
-    'Guerre de Troie',
-    'Pharaon',
-    'Hiéroglyphe égyptien',
-    'Samouraï',
-    'Viking',
-    'Alchimie',
-    'Boussole',
-    'Imprimerie',
-    'Machine à vapeur',
-    'Télégraphe',
-    'Cinématographe',
-    'Antibiotique',
-    'ADN polymérase',
-    'Neurone',
-    'Système immunitaire',
-    'Effet de serre',
-    'Récif corallien',
-    'Forêt amazonienne',
-    'Antarctique',
-    'Fosse des Mariannes',
-    'Aurore boréale',
-    'Avion',
-    'Automobile',
-    'Hélicoptère',
-    'Sous-marin',
-    'Télévision',
-    'Radio (technologie)',
-    'Microscope',
-    'Télescope',
-    'Peste noire',
-    'Bataille de Waterloo',
-    'Bataille de Marignan',
-    'Prise de la Bastille',
-    'Guerre de Sécession',
-    'Cordillère des Andes',
-    'Sahara',
-    'Grand Canyon',
-    'Chutes du Niagara',
-    'Mont Blanc',
-    'Kilimandjaro',
-    'Caméléon',
-    'Ornithorynque',
-    'Pieuvre',
-    'Manchot empereur',
-    'Dragon de Komodo',
-    'Piranha',
-    'Centaure',
-    'Minotaure',
-    'Pégase',
-    'Phénix (oiseau)',
-    'Licorne',
-    'Cerbère (mythologie)',
-    'Griffon (mythologie)',
-    'Fibre optique',
-    'Laser',
-    'Semi-conducteur',
-    'Génétique',
-    'Chlorophylle',
-    'Baleine à bosse',
-    'Gorille',
-    'Ours polaire',
-  ],
-  R: [
-    'Astrolabe',
-    'Cadran solaire',
-    'Sextant',
-    'Horloge astronomique',
-    'Enluminure',
-    'Parchemin',
-    'Papyrus',
-    'Pierre de Rosette',
-    'Bibliothèque d\'Alexandrie',
-    'Phare d\'Alexandrie',
-    'Jardins suspendus de Babylone',
-    'Colosse de Rhodes',
-    'Temple d\'Artémis à Éphèse',
-    'Mausolée d\'Halicarnasse',
-    'Statue chryséléphantine de Zeus à Olympie',
-    'Route de la soie',
-    'Caravelle (navire)',
-    'Galion',
-    'Dirigeable',
-    'Montgolfière',
-    'Locomotive à vapeur',
-    'Phonographe',
-    'Daguerréotype',
-    'Lanterne magique',
-    'Théâtre d\'Épidaure',
-    'Circus Maximus',
-    'Pont du Gard',
-    'Arènes de Nîmes',
-    'Château de Neuschwanstein',
-    'Expédition Magellan',
-    'Route de l\'ambre',
-    'Ligue hanséatique',
-    'Ordre du Temple',
-    'Croisade',
-    'Alhazen',
-    'Ératosthène',
-    'Archimède',
-    'Euclide',
-    'Hypatie',
-    'Avicenne',
-    'Averroès',
-    'Kalevala',
-    'Chanson de Roland',
-    'Beowulf',
-    'Épopée de Gilgamesh',
-    'Thermomètre de Galilée',
-    'Orgue de Barbarie',
-    'Clavecin',
-    'Luth',
-    'Théorbe',
-    'Viole de gambe',
-    'Nautile (mollusque)',
-    'Cœlacanthe',
-    'Axolotl',
-    'Pangolin',
-    'Kiwi (oiseau)',
-    'Pétroglyphe',
-    'Menhir',
-    'Dolmen',
-    'Cairn',
-  ],
-  PC: [
-    'Clepsydre',
-    'Sablier',
-    'Abaque (calcul)',
-    'Boulier',
-    'Règle à calcul',
-    'Pascaline',
-    'Sphère armillaire',
-    'Planétaire',
-    'Nocturlabe',
-    'Bâton de Jacob',
-    'Gnomon',
-    'Méridienne',
-    'Anémomètre',
-    'Baromètre',
-    'Hygromètre',
-    'Sismographe',
-    'Galvanomètre',
-    'Électroscope',
-    'Bouteille de Leyde',
-    'Pile de Volta',
-    'Éolipyle',
-    'Vis d\'Archimède',
-    'Rouet (outil)',
-    'Métier Jacquard',
-    'Moulin à vent',
-    'Bélier hydraulique',
-    'Héliographe',
-    'Théodolite',
-    'Octant (instrument)',
-    'Arbalestrille',
-    'Graphomètre',
-    'Alidade (navigation)',
-    'Torpille de Whitehead',
-    'Pile de Bagdad',
-    'Machine d\'Anticythère',
-    'Moteur Stirling',
-    'Tube de Crookes',
-    'Pendule de Foucault',
-    'Roue de Barlow',
-    'Disque de Faraday',
-    'Cohéreur',
-    'Radiomètre de Crookes',
-    'Chrysalide',
-    'Trilobite',
-    'Ammonite (mollusque)',
-    'Fossile vivant',
-    'Dodo (oiseau)',
-    'Tarière (outil)',
-    'Trébuchet (artillerie)',
-    'Baliste (arme)',
-  ],
-};
 
 /**
  * Génère un nombre de vues réaliste compris dans la fourchette officielle d'une rareté donnée
@@ -755,24 +542,24 @@ function getSimulatedViewsForTier(rarityCode, actualViews = 0) {
 }
 
 /**
- * Tire une carte Wikipédia FR réelle correspondant exactement à la rareté cible (PC, R, SR, UR, L)
+ * Tire une carte Wikipédia FR 100 % aléatoire correspondant exactement à la rareté cible (PC, R, SR, UR, L)
  * Utilisé notamment par l'Upgrader de Cartes du WikiSino.
  */
 export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitles = []) {
-  const pool = RARITY_FALLBACK_POOLS[targetRarityCode] || [];
   const excludeSet = new Set(
     (Array.isArray(excludeTitles) ? excludeTitles : [excludeTitles])
       .map((t) => String(t || '').trim().toLowerCase())
       .filter(Boolean)
   );
 
-  // 1. Pour UR et L (ou 50 % du temps sur SR/R/PC), pioche dans le bassin thématique dédié ou aléatoire
-  if (targetRarityCode === 'L' || targetRarityCode === 'UR' || Math.random() < 0.55) {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    for (const rawTitle of shuffled.slice(0, 8)) {
-      if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
+  let attempts = 0;
+  while (attempts < 6) {
+    attempts++;
+    const randomTitles = await fetchPureRandomTitles(14);
+    for (const title of randomTitles) {
+      if (excludeSet.has(title.trim().toLowerCase())) continue;
       try {
-        const card = await fetchWikiCardByTitle(rawTitle.trim());
+        const card = await fetchWikiCardByTitle(title);
         if (
           card &&
           card.extract &&
@@ -789,47 +576,6 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitl
       } catch {
         // Continue
       }
-    }
-  }
-
-  // 2. Sinon (ou en secours), tire un article encyclopédique aléatoire sur Wikipédia FR et l'ajuste au palier gagné
-  const randomTitles = await fetchPureRandomTitles(10);
-  for (const title of randomTitles) {
-    if (excludeSet.has(title.trim().toLowerCase())) continue;
-    try {
-      const card = await fetchWikiCardByTitle(title);
-      if (
-        card &&
-        card.extract &&
-        card.extract.length >= 50 &&
-        !excludeSet.has(card.title.trim().toLowerCase()) &&
-        !excludeSet.has(String(card.id))
-      ) {
-        return {
-          ...card,
-          rarity: targetRarityCode,
-          views: getSimulatedViewsForTier(targetRarityCode, card.views),
-        };
-      }
-    } catch {
-      // Continue
-    }
-  }
-
-  // 3. Dernier recours garanti depuis le pool
-  for (const rawTitle of pool) {
-    if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
-    try {
-      const card = await fetchWikiCardByTitle(rawTitle.trim());
-      if (card && !excludeSet.has(card.title.trim().toLowerCase())) {
-        return {
-          ...card,
-          rarity: targetRarityCode,
-          views: getSimulatedViewsForTier(targetRarityCode, card.views),
-        };
-      }
-    } catch {
-      // Continue
     }
   }
 
@@ -904,68 +650,44 @@ export async function fetchRandomDuelCard(
 
   let card = null;
 
-  // 1. Pour la rareté C (ou 30 % du temps pour n'importe quel palier aléatoire), pioche des articles aléatoires réels sur Wikipédia FR
-  if (pickedTier === 'C' || Math.random() < 0.3) {
-    const randomTitles = await fetchPureRandomTitles(12);
-    for (const title of randomTitles) {
-      if (excludeSet.has(title.trim().toLowerCase())) continue;
-      try {
-        const fetched = await fetchWikiCardByTitle(title);
-        if (
-          fetched &&
-          fetched.extract &&
-          fetched.extract.length >= 45 &&
-          !excludeSet.has(fetched.title.trim().toLowerCase()) &&
-          !excludeSet.has(String(fetched.id))
-        ) {
-          if (pickedTier && pickedTier !== 'C') {
-            card = {
-              ...fetched,
-              rarity: pickedTier,
-              views: getSimulatedViewsForTier(pickedTier, fetched.views),
-            };
-          } else {
-            card = fetched;
+  // Tirage 100 % en direct sur Wikipédia FR (2,6 millions d'articles)
+  let duelAttempts = 0;
+  while (!card && duelAttempts < 6) {
+    duelAttempts++;
+    try {
+      const randomTitles = await fetchPureRandomTitles(14);
+      for (const title of randomTitles) {
+        if (excludeSet.has(title.trim().toLowerCase())) continue;
+        try {
+          const fetched = await fetchWikiCardByTitle(title);
+          if (
+            fetched &&
+            fetched.extract &&
+            fetched.extract.length >= 45 &&
+            !excludeSet.has(fetched.title.trim().toLowerCase()) &&
+            !excludeSet.has(String(fetched.id))
+          ) {
+            if (pickedTier && pickedTier !== 'C') {
+              card = {
+                ...fetched,
+                rarity: pickedTier,
+                views: getSimulatedViewsForTier(pickedTier, fetched.views),
+              };
+            } else {
+              card = fetched;
+            }
+            break;
           }
-          break;
+        } catch {
+          // Continue
         }
-      } catch {
-        // Continue
       }
+    } catch {
+      // Continue
     }
   }
 
-  // 2. Si pas encore de carte, pioche parmi le vaste bassin enrichi de la rareté sélectionnée
-  if (!card) {
-    const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
-    const pool = RARITY_FALLBACK_POOLS[fallbackTier] || [];
-    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
-
-    for (const rawTitle of shuffledPool) {
-      if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
-      try {
-        const fetched = await fetchWikiCardByTitle(rawTitle.trim());
-        if (
-          fetched &&
-          fetched.extract &&
-          fetched.extract.length >= 45 &&
-          !excludeSet.has(fetched.title.trim().toLowerCase()) &&
-          !excludeSet.has(String(fetched.id))
-        ) {
-          card = {
-            ...fetched,
-            rarity: fallbackTier,
-            views: getSimulatedViewsForTier(fallbackTier, fetched.views),
-          };
-          break;
-        }
-      } catch {
-        // Continue
-      }
-    }
-  }
-
-  // 3. Filet de secours garanti
+  // Filet de secours pur aléatoire si besoin
   if (!card) {
     const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
     card = await fetchWikiCardByRarity(fallbackTier, excludeList);

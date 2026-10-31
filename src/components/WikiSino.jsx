@@ -301,7 +301,8 @@ export default function WikiSino({
       spinState === 'spinning' ||
       liveSelectedCards.length === 0 ||
       !currentRule ||
-      displayChance <= 0
+      displayChance <= 0 ||
+      (moneyCost > 0 && wikithunes < moneyCost)
     ) {
       return;
     }
@@ -931,14 +932,17 @@ export default function WikiSino({
                     disabled={
                       spinState === 'spinning' ||
                       liveSelectedCards.length === 0 ||
-                      displayChance <= 0
+                      displayChance <= 0 ||
+                      (moneyCost > 0 && wikithunes < moneyCost)
                     }
                     onClick={handleLaunchUpgrade}
-                    className="wiki-casino-btn wiki-casino-btn--primary w-full"
+                    className="wiki-casino-btn wiki-casino-btn--primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>
                       {spinState === 'spinning'
                         ? 'Tirage en cours...'
+                        : moneyCost > 0 && wikithunes < moneyCost
+                        ? `Solde insuffisant (${new Intl.NumberFormat('fr-FR').format(wikithunes)} / ${new Intl.NumberFormat('fr-FR').format(moneyCost)} ₩)`
                         : "Lancer l'Upgrade"}
                     </span>
                   </button>

@@ -248,42 +248,31 @@ export async function handleApiRequest(req, res) {
 
               // Protection anti-écrasement : si un appareil obsolète (ex: PC resté ouvert)
               // tente d'envoyer une sauvegarde moins avancée que celle déjà sur le serveur (ex: jouée sur téléphone)
+              // Protection anti-écrasement : si un appareil obsolète (ex: PC resté ouvert sans activité)
+              // tente d'envoyer une sauvegarde ancienne alors que le serveur a une version plus récente
               if (fileExists && existing.code && !body.forceOverwrite) {
                 const existingDraws = Number(existing.stats?.totalCardsDrawn || 0)
                 const existingBoosters = Number(existing.stats?.boostersOpened || 0)
                 const incomingDraws = Number(body.stats?.totalCardsDrawn || 0)
                 const incomingBoosters = Number(body.stats?.boostersOpened || 0)
-                const existingColLen = Array.isArray(existing.collection) ? existing.collection.length : 0
-                const incomingColLen = Array.isArray(body.collection) ? body.collection.length : 0
-                const existingTotalCopies = Array.isArray(existing.collection)
-                  ? existing.collection.reduce((s, c) => s + (c.count || 1), 0)
-                  : 0
-                const incomingTotalCopies = Array.isArray(body.collection)
-                  ? body.collection.reduce((s, c) => s + (c.count || 1), 0)
-                  : 0
                 const existingUpdatedAt = Number(existing.updatedAt || 0)
                 const incomingUpdatedAt = Number(
                   body.clientUpdatedAt || body.updatedAt || 0
                 )
 
-                const isIncomingBehindInProgress =
-                  incomingColLen < existingColLen ||
-                  incomingTotalCopies < existingTotalCopies ||
-                  incomingDraws < existingDraws ||
-                  incomingBoosters < existingBoosters
-
-                const isIncomingEqualProgressButOlderTimestamp =
-                  incomingColLen === existingColLen &&
-                  incomingTotalCopies === existingTotalCopies &&
-                  incomingDraws === existingDraws &&
-                  incomingBoosters === existingBoosters &&
+                // Un appareil est considéré comme obsolète / en retard UNIQUEMENT si :
+                // 1. Son horodatage est plus ancien ET qu'il a moins de tirages / boosters que le serveur.
+                // Note : le nombre de cartes ou le solde peuvent légitimement baisser (Upgrader, Quitte ou Double, recyclage, achats marché)
+                const isIncomingStrictlyOlder =
                   incomingUpdatedAt > 0 &&
-                  existingUpdatedAt > incomingUpdatedAt
+                  existingUpdatedAt > 0 &&
+                  incomingUpdatedAt < existingUpdatedAt
 
-                if (
-                  isIncomingBehindInProgress ||
-                  isIncomingEqualProgressButOlderTimestamp
-                ) {
+                const isIncomingBehindInProgress =
+                  (incomingDraws < existingDraws || incomingBoosters < existingBoosters) &&
+                  incomingUpdatedAt <= existingUpdatedAt
+
+                if (isIncomingStrictlyOlder && isIncomingBehindInProgress) {
                   res.statusCode = 200
                   res.end(
                     JSON.stringify({

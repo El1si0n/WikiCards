@@ -843,14 +843,19 @@ export default function App() {
     }));
   };
 
-  // Consomme un dictionnaire { [cardId]: quantity } d'exemplaires dans le classeur (pour l'Upgrader du WikiSino)
+  // Consomme un dictionnaire { [cardId]: quantity } d'exemplaires dans le classeur (pour l'Upgrader du WikiSino et le Quitte ou Double)
   const consumeCardsFromCollection = (quantitiesMap) => {
     if (!quantitiesMap) return;
     bumpLocalUpdatedAt();
     setCollection((prev) =>
       prev
         .map((item) => {
-          const toRemove = Number(quantitiesMap[item.id] || 0);
+          const idKey = String(item.id);
+          const toRemove = Number(
+            quantitiesMap[item.id] !== undefined
+              ? quantitiesMap[item.id]
+              : quantitiesMap[idKey] || 0
+          );
           if (toRemove <= 0) return item;
           return {
             ...item,
@@ -863,13 +868,14 @@ export default function App() {
 
   // Sélection / Désélection d'une carte en mode recyclage
   const handleToggleSelectForRecycle = (card) => {
-    const isFav = favorites.includes(card.id);
+    const cardIdStr = String(card.id);
+    const isFav = favorites.some((id) => String(id) === cardIdStr);
     const currentCount = card.count || 1;
     if (isFav && currentCount <= 1) return;
 
     setSelectedRecycleIds((prev) =>
-      prev.includes(card.id)
-        ? prev.filter((id) => id !== card.id)
+      prev.some((id) => String(id) === cardIdStr)
+        ? prev.filter((id) => String(id) !== cardIdStr)
         : [...prev, card.id]
     );
   };
@@ -877,9 +883,9 @@ export default function App() {
   // Calcul du gain total des cartes sélectionnées pour le recyclage
   const selectedRecycleGain = useMemo(() => {
     if (selectedRecycleIds.length === 0) return 0;
-    const selectedSet = new Set(selectedRecycleIds);
+    const selectedSet = new Set(selectedRecycleIds.map(String));
     return collection.reduce((sum, card) => {
-      if (!selectedSet.has(card.id)) return sum;
+      if (!selectedSet.has(String(card.id))) return sum;
       return sum + getCardRecycleValue(card);
     }, 0);
   }, [collection, selectedRecycleIds]);
@@ -887,13 +893,14 @@ export default function App() {
   // Confirme le recyclage des cartes sélectionnées (retire 1 exemplaire de chaque carte sélectionnée)
   const handleConfirmRecycleSelection = () => {
     if (selectedRecycleIds.length === 0) return;
-    const selectedSet = new Set(selectedRecycleIds);
+    const selectedSet = new Set(selectedRecycleIds.map(String));
     const gain = selectedRecycleGain;
+    bumpLocalUpdatedAt();
 
     setCollection((prev) =>
       prev
         .map((item) => {
-          if (!selectedSet.has(item.id)) return item;
+          if (!selectedSet.has(String(item.id))) return item;
           return { ...item, count: (item.count || 1) - 1 };
         })
         .filter((item) => (item.count || 0) > 0)

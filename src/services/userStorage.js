@@ -180,7 +180,37 @@ export function isAccountStateNewer(candidate, baseline) {
   if (!candidate) return false;
   if (!baseline) return true;
 
-  // 1. Comparaison du nombre de cartes uniques
+  const candBoosters = Number(candidate.stats?.boostersOpened || 0);
+  const baseBoosters = Number(baseline.stats?.boostersOpened || 0);
+  const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);
+  const baseDraws = Number(baseline.stats?.totalCardsDrawn || 0);
+
+  const candTs = Number(candidate.updatedAt || candidate.clientUpdatedAt || 0);
+  const baseTs = Number(baseline.updatedAt || baseline.clientUpdatedAt || 0);
+
+  // 1. Si candidate a strictement plus de boosters ouverts ET un horodatage >= au baseline
+  if (candBoosters > baseBoosters && candTs >= baseTs) {
+    return true;
+  }
+  if (baseBoosters > candBoosters && baseTs >= candTs) {
+    return false;
+  }
+
+  // 2. Si candidate a strictement plus de tirages ET un horodatage >= au baseline
+  if (candDraws > baseDraws && candTs >= baseTs) {
+    return true;
+  }
+  if (baseDraws > candDraws && baseTs >= candTs) {
+    return false;
+  }
+
+  // 3. Si l'un des deux a un horodatage strictement plus récent, le plus récent l'emporte
+  // (permet les suppressions et sacrifices légitimes de cartes lors des upgrades, quitte ou double ou recyclage)
+  if (candTs > 0 && baseTs > 0 && candTs !== baseTs) {
+    return candTs > baseTs;
+  }
+
+  // 4. Si les horodatages sont identiques ou nuls, comparer le nombre de cartes ou tirages
   const candColLen = Array.isArray(candidate.collection)
     ? candidate.collection.length
     : 0;
@@ -191,51 +221,7 @@ export function isAccountStateNewer(candidate, baseline) {
     return candColLen > baseColLen;
   }
 
-  // 2. Comparaison du nombre total d'exemplaires dans le classeur
-  const candTotalCopies = Array.isArray(candidate.collection)
-    ? candidate.collection.reduce((s, c) => s + (c.count || 1), 0)
-    : 0;
-  const baseTotalCopies = Array.isArray(baseline.collection)
-    ? baseline.collection.reduce((s, c) => s + (c.count || 1), 0)
-    : 0;
-  if (candTotalCopies !== baseTotalCopies) {
-    return candTotalCopies > baseTotalCopies;
-  }
-
-  // 3. Comparaison de l'activité des boosters
-  const candBoosters = Number(candidate.stats?.boostersOpened || 0);
-  const baseBoosters = Number(baseline.stats?.boostersOpened || 0);
-  if (candBoosters !== baseBoosters) {
-    return candBoosters > baseBoosters;
-  }
-
-  const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);
-  const baseDraws = Number(baseline.stats?.totalCardsDrawn || 0);
-  if (candDraws !== baseDraws) {
-    return candDraws > baseDraws;
-  }
-
-  // 4. Date d'obtention de la carte la plus récente
-  const candMaxCardTs = Array.isArray(candidate.collection)
-    ? candidate.collection.reduce(
-        (max, c) => Math.max(max, Number(c?.obtainedAt || 0)),
-        0
-      )
-    : 0;
-  const baseMaxCardTs = Array.isArray(baseline.collection)
-    ? baseline.collection.reduce(
-        (max, c) => Math.max(max, Number(c?.obtainedAt || 0)),
-        0
-      )
-    : 0;
-  if (candMaxCardTs > 0 && baseMaxCardTs > 0 && candMaxCardTs !== baseMaxCardTs) {
-    return candMaxCardTs > baseMaxCardTs;
-  }
-
-  // 5. Horodatage de synchronisation
-  const candTs = Number(candidate.updatedAt || candidate.clientUpdatedAt || 0);
-  const baseTs = Number(baseline.updatedAt || baseline.clientUpdatedAt || 0);
-  return candTs > baseTs;
+  return candDraws > baseDraws;
 }
 
 // Sauvegarde de secours dans localStorage au cas où l'utilisateur ouvre le build statique sans serveur
