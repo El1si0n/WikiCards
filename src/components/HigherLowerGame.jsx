@@ -53,6 +53,9 @@ export default function HigherLowerGame({
   const [rightCard, setRightCard] = useState(null);
   const [seenCards, setSeenCards] = useState([]);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
+  // Historique glissant des 100 dernières cartes vues dans la session
+  // Empêche les cartes de se répéter entre plusieurs parties successives
+  const [sessionSeenTitles, setSessionSeenTitles] = useState([]);
 
   const currentPot =
     streak > 0
@@ -73,9 +76,14 @@ export default function HigherLowerGame({
     setSeenCards([]);
     setGameState('loading');
 
-    const firstCard = await fetchRandomDuelCard([], null, null, validBet);
+    const firstCard = await fetchRandomDuelCard(sessionSeenTitles, null, null, validBet);
+    const secondExcluded = [
+      ...sessionSeenTitles,
+      firstCard?.title,
+      firstCard?.id,
+    ].filter(Boolean);
     const secondCard = await fetchRandomDuelCard(
-      [firstCard?.title, firstCard?.id].filter(Boolean),
+      secondExcluded,
       firstCard?.views ?? null,
       firstCard?.rarity ?? null,
       validBet
@@ -85,6 +93,16 @@ export default function HigherLowerGame({
       setLeftCard(firstCard);
       setRightCard(secondCard);
       setSeenCards([firstCard, secondCard]);
+      setSessionSeenTitles((prev) => {
+        const next = [
+          ...prev,
+          firstCard.title,
+          firstCard.id,
+          secondCard.title,
+          secondCard.id,
+        ].filter(Boolean);
+        return Array.from(new Set(next)).slice(-100);
+      });
       setGameState('playing');
       soundManager.playCardSlide();
     } else {
@@ -121,6 +139,7 @@ export default function HigherLowerGame({
     setIsLoadingNext(true);
     const newRefCard = rightCard;
     const allExcluded = [
+      ...sessionSeenTitles,
       ...seenCards.map((c) => c?.title),
       ...seenCards.map((c) => c?.id),
       newRefCard.title,
@@ -139,6 +158,10 @@ export default function HigherLowerGame({
       setLeftCard(newRefCard);
       setRightCard(newRightCard);
       setSeenCards((prev) => [...prev, newRightCard]);
+      setSessionSeenTitles((prev) => {
+        const next = [...prev, newRightCard.title, newRightCard.id].filter(Boolean);
+        return Array.from(new Set(next)).slice(-100);
+      });
       setGameState('playing');
       soundManager.playCardSlide();
     }

@@ -36,7 +36,7 @@ export const WIKI_GIF_ARTICLES = [
   'Courbe de Péano',
 ];
 
-// Bassin d'articles Wikipédia FR emblématiques (Légendaires >= 20 000 vues) pour le Booster Iconique
+// Bassin d'articles Wikipédia FR emblématiques (Légendaires >= 20 000 vues) pour le Booster Iconique et le Plus ou Moins
 const ICONIC_LEGENDARY_POOL = [
   'Système solaire',
   'Trou noir',
@@ -80,9 +80,59 @@ const ICONIC_LEGENDARY_POOL = [
   'Saturne (planète)',
   'Big Bang',
   'Relativité générale',
+  'France',
+  'Japon',
+  'Italie',
+  'États-Unis',
+  'Chine',
+  'Brésil',
+  'Égypte',
+  'Royaume-Uni',
+  'Allemagne',
+  'Espagne',
+  'Paris',
+  'Tokyo',
+  'New York',
+  'Rome',
+  'Londres',
+  'Statue de la Liberté',
+  'Pyramides de Gizeh',
+  'Sagrada Família',
+  'Stonehenge',
+  'Acropole d\'Athènes',
+  'Le Seigneur des anneaux',
+  'Harry Potter',
+  'Star Wars',
+  'Titanic (film, 1997)',
+  'Avatar (film, 2009)',
+  'Matrix (film)',
+  'Jurassic Park (film)',
+  'Minecraft',
+  'Pokémon',
+  'Super Mario',
+  'Grand Theft Auto',
+  'The Legend of Zelda',
+  'The Beatles',
+  'Michael Jackson',
+  'Queen (groupe)',
+  'Daft Punk',
+  'Bob Marley',
+  'Pink Floyd',
+  'Première Guerre mondiale',
+  'Chute du mur de Berlin',
+  'Jeanne d\'Arc',
+  'Charles de Gaulle',
+  'Nelson Mandela',
+  'Mahatma Gandhi',
+  'Internet',
+  'Smartphone',
+  'Dinosaure',
+  'Baleine bleue',
+  'Grand requin blanc',
+  'Lion',
 ];
 
-// Bassin d'articles Wikipédia FR populaires (Ultra Rares : 5 000 à 19 999 vues) pour le Booster Iconique
+// Bassin d'articles Wikipédia FR populaires (Ultra Rares : 5 000 à 19 999 vues) pour le Booster Iconique et le Plus ou Moins
 const ICONIC_ULTRA_RARE_POOL = [
   'Iliade',
   'Galilée (savant)',
@@ -137,6 +187,68 @@ const ICONIC_ULTRA_RARE_POOL = [
   'Salvador Dalí',
   'Frida Kahlo',
   'Hokusai',
+  'Canada',
+  'Australie',
+  'Grèce',
+  'Suisse',
+  'Russie',
+  'Mexique',
+  'Inde',
+  'Maroc',
+  'Norvège',
+  'Islande',
+  'Venise',
+  'Berlin',
+  'Madrid',
+  'Amsterdam',
+  'Athènes',
+  'Kyoto',
+  'Barcelone',
+  'Notre-Dame de Paris',
+  'Cathédrale Saint-Basile de Moscou',
+  'Alhambra (Grenade)',
+  'Opéra de Sydney',
+  'Burj Khalifa',
+  'Inception',
+  'Interstellar',
+  'Pulp Fiction',
+  'Forrest Gump',
+  'Le Parrain',
+  'Le Roi lion (film, 1994)',
+  'Gladiator (film, 2000)',
+  'Tetris',
+  'Fortnite',
+  'World of Warcraft',
+  'The Witcher',
+  'Final Fantasy',
+  'Assassin\'s Creed',
+  'Pac-Man',
+  'David Bowie',
+  'Nirvana (groupe)',
+  'Elvis Presley',
+  'ABBA',
+  'AC/DC',
+  'Eminem',
+  'Zinédine Zidane',
+  'Télescope spatial Hubble',
+  'Télescope spatial James-Webb',
+  'Station spatiale internationale',
+  'Apollo 11',
+  'Comète de Halley',
+  'Faucon pèlerin',
+  'Guépard',
+  'Panda géant',
+  'Loup gris',
+  'Orque (cétacé)',
+  'Tyrannosaure',
+  'Mammouth laineux',
+  'Thor (mythologie)',
+  'Odin',
+  'Zeus',
+  'Poséidon',
+  'Anubis',
+  'Sphinx de Gizeh',
+  'Excalibur',
 ];
 
 /**
@@ -448,10 +560,10 @@ const RARITY_FALLBACK_POOLS = {
     'Éclipse solaire',
     'Volcan',
     'Tsunami',
-    'uroboros',
+    'Ouroboros',
     'Mythologie nordique',
     'Chevaliers de la Table ronde',
-    ' Guerre de Troie',
+    'Guerre de Troie',
     'Pharaon',
     'Hiéroglyphe égyptien',
     'Samouraï',
@@ -461,7 +573,7 @@ const RARITY_FALLBACK_POOLS = {
     'Imprimerie',
     'Machine à vapeur',
     'Télégraphe',
-    ' Cinématographe',
+    'Cinématographe',
     'Antibiotique',
     'ADN polymérase',
     'Neurone',
@@ -472,6 +584,46 @@ const RARITY_FALLBACK_POOLS = {
     'Antarctique',
     'Fosse des Mariannes',
     'Aurore boréale',
+    'Avion',
+    'Automobile',
+    'Hélicoptère',
+    'Sous-marin',
+    'Télévision',
+    'Radio (technologie)',
+    'Microscope',
+    'Télescope',
+    'Peste noire',
+    'Bataille de Waterloo',
+    'Bataille de Marignan',
+    'Prise de la Bastille',
+    'Guerre de Sécession',
+    'Cordillère des Andes',
+    'Sahara',
+    'Grand Canyon',
+    'Chutes du Niagara',
+    'Mont Blanc',
+    'Kilimandjaro',
+    'Caméléon',
+    'Ornithorynque',
+    'Pieuvre',
+    'Manchot empereur',
+    'Dragon de Komodo',
+    'Piranha',
+    'Centaure',
+    'Minotaure',
+    'Pégase',
+    'Phénix (oiseau)',
+    'Licorne',
+    'Cerbère (mythologie)',
+    'Griffon (mythologie)',
+    'Fibre optique',
+    'Laser',
+    'Semi-conducteur',
+    'Génétique',
+    'Chlorophylle',
+    'Baleine à bosse',
+    'Gorille',
+    'Ours polaire',
   ],
   R: [
     'Astrolabe',
@@ -498,6 +650,42 @@ const RARITY_FALLBACK_POOLS = {
     'Phonographe',
     'Daguerréotype',
     'Lanterne magique',
+    'Théâtre d\'Épidaure',
+    'Circus Maximus',
+    'Pont du Gard',
+    'Arènes de Nîmes',
+    'Château de Neuschwanstein',
+    'Expédition Magellan',
+    'Route de l\'ambre',
+    'Ligue hanséatique',
+    'Ordre du Temple',
+    'Croisade',
+    'Alhazen',
+    'Ératosthène',
+    'Archimède',
+    'Euclide',
+    'Hypatie',
+    'Avicenne',
+    'Averroès',
+    'Kalevala',
+    'Chanson de Roland',
+    'Beowulf',
+    'Épopée de Gilgamesh',
+    'Thermomètre de Galilée',
+    'Orgue de Barbarie',
+    'Clavecin',
+    'Luth',
+    'Théorbe',
+    'Viole de gambe',
+    'Nautile (mollusque)',
+    'Cœlacanthe',
+    'Axolotl',
+    'Pangolin',
+    'Kiwi (oiseau)',
+    'Pétroglyphe',
+    'Menhir',
+    'Dolmen',
+    'Cairn',
   ],
   PC: [
     'Clepsydre',
@@ -520,6 +708,36 @@ const RARITY_FALLBACK_POOLS = {
     'Électroscope',
     'Bouteille de Leyde',
     'Pile de Volta',
+    'Éolipyle',
+    'Vis d\'Archimède',
+    'Rouet (outil)',
+    'Métier Jacquard',
+    'Moulin à vent',
+    'Bélier hydraulique',
+    'Héliographe',
+    'Théodolite',
+    'Octant (instrument)',
+    'Arbalestrille',
+    'Graphomètre',
+    'Alidade (navigation)',
+    'Torpille de Whitehead',
+    'Pile de Bagdad',
+    'Machine d\'Anticythère',
+    'Moteur Stirling',
+    'Tube de Crookes',
+    'Pendule de Foucault',
+    'Roue de Barlow',
+    'Disque de Faraday',
+    'Cohéreur',
+    'Radiomètre de Crookes',
+    'Chrysalide',
+    'Trilobite',
+    'Ammonite (mollusque)',
+    'Fossile vivant',
+    'Dodo (oiseau)',
+    'Tarière (outil)',
+    'Trébuchet (artillerie)',
+    'Baliste (arme)',
   ],
 };
 
@@ -685,8 +903,10 @@ export async function fetchRandomDuelCard(
   }
 
   let card = null;
-  if (pickedTier === 'C') {
-    const randomTitles = await fetchPureRandomTitles(10);
+
+  // 1. Pour la rareté C (ou 30 % du temps pour n'importe quel palier aléatoire), pioche des articles aléatoires réels sur Wikipédia FR
+  if (pickedTier === 'C' || Math.random() < 0.3) {
+    const randomTitles = await fetchPureRandomTitles(12);
     for (const title of randomTitles) {
       if (excludeSet.has(title.trim().toLowerCase())) continue;
       try {
@@ -698,7 +918,15 @@ export async function fetchRandomDuelCard(
           !excludeSet.has(fetched.title.trim().toLowerCase()) &&
           !excludeSet.has(String(fetched.id))
         ) {
-          card = fetched;
+          if (pickedTier && pickedTier !== 'C') {
+            card = {
+              ...fetched,
+              rarity: pickedTier,
+              views: getSimulatedViewsForTier(pickedTier, fetched.views),
+            };
+          } else {
+            card = fetched;
+          }
           break;
         }
       } catch {
@@ -707,6 +935,37 @@ export async function fetchRandomDuelCard(
     }
   }
 
+  // 2. Si pas encore de carte, pioche parmi le vaste bassin enrichi de la rareté sélectionnée
+  if (!card) {
+    const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
+    const pool = RARITY_FALLBACK_POOLS[fallbackTier] || [];
+    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+
+    for (const rawTitle of shuffledPool) {
+      if (excludeSet.has(rawTitle.trim().toLowerCase())) continue;
+      try {
+        const fetched = await fetchWikiCardByTitle(rawTitle.trim());
+        if (
+          fetched &&
+          fetched.extract &&
+          fetched.extract.length >= 45 &&
+          !excludeSet.has(fetched.title.trim().toLowerCase()) &&
+          !excludeSet.has(String(fetched.id))
+        ) {
+          card = {
+            ...fetched,
+            rarity: fallbackTier,
+            views: getSimulatedViewsForTier(fallbackTier, fetched.views),
+          };
+          break;
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  // 3. Filet de secours garanti
   if (!card) {
     const fallbackTier = pickedTier === 'C' ? 'PC' : pickedTier;
     card = await fetchWikiCardByRarity(fallbackTier, excludeList);
