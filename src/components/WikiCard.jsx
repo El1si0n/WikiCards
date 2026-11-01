@@ -351,7 +351,7 @@ export default function WikiCard({
 
             {selectionBadgeText ? (
               <div
-                className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold transition-colors ${
+                className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs transition-colors ${
                   isSelected
                     ? 'bg-[#3366cc] text-white border border-[#2a4b8d]'
                     : 'bg-black/65 text-white border border-white/40'
@@ -370,16 +370,16 @@ export default function WikiCard({
                 </span>
               ) : (
                 <div
-                  className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold transition-colors ${
+                  className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs transition-colors ${
                     isSelectedForRecycle
-                      ? 'bg-[#177860] text-white border border-[#099979]'
+                      ? 'bg-[#006b24] text-white border border-[#00571d]'
                       : 'bg-black/65 text-white border border-white/40 hover:bg-black/80'
                   }`}
                 >
                   <span
                     className={`w-3.5 h-3.5 rounded-[2px] flex items-center justify-center border ${
                       isSelectedForRecycle
-                        ? 'bg-white text-[#177860] border-white'
+                        ? 'bg-white text-[#006b24] border-white'
                         : 'border-white/70'
                     }`}
                   >
@@ -500,7 +500,7 @@ export default function WikiCard({
                       : compact
                       ? 'min-w-[32px] h-[24px] px-2 text-[12px]'
                       : 'min-w-[36px] h-[27px] px-2.5 text-[13px]'
-                  } rounded-[2px] flex items-center justify-center font-extrabold tracking-wide`}
+                  } rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
                   style={{
                     backgroundColor: tier.badgeBg,
                     color: tier.badgeText,
@@ -518,7 +518,7 @@ export default function WikiCard({
                         : compact
                         ? 'h-[24px] px-2 text-[10.5px]'
                         : 'h-[27px] px-2.5 text-[11.5px]'
-                    } rounded-[2px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase border border-[#cbd5e1]`}
+                    } rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
                     title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
                   >
                     <Sparkles className="w-2.5 h-2.5 shrink-0 text-[#e2e8f0]" />
@@ -666,7 +666,7 @@ export default function WikiCard({
                       : compact
                       ? 'px-2 py-0.5 text-[11px]'
                       : 'px-2.5 py-1 text-[12px]'
-                  } rounded-[2px] font-semibold transition-colors`}
+                  } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
                   style={{
                     backgroundColor: isShiny
                       ? 'rgba(255, 255, 255, 0.68)'

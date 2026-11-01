@@ -579,7 +579,7 @@ export default function BoosterOpening({
                   {/* Pied du sachet : affiche "Booster • 100 ₩" ou "Booster Iconique • 500 ₩" (sans violet) */}
                   <div className="relative z-10 w-full flex flex-col items-center text-center">
                     <div
-                      className={`px-3.5 py-1 rounded-[2px] text-[11.5px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5 ${
+                      className={`px-3.5 py-1 rounded-[3px] text-[11.5px] font-bold tracking-wider uppercase shadow-2xs inline-flex items-center gap-1.5 ${
                         isIconicPack
                           ? 'bg-gradient-to-r from-[#b37e08] via-[#d4a11d] to-[#9a6b05] text-white'
                           : 'bg-[#3366cc] text-white'
@@ -778,10 +778,10 @@ export default function BoosterOpening({
               <button
                 type="button"
                 onClick={handleNextCard}
-                className={`wiki-casino-btn wiki-casino-btn--primary ${
+                className={`inline-flex items-center justify-center bg-[#3366cc] hover:bg-[#447ff5] active:bg-[#2a4b8d] text-white font-bold rounded-[2px] cursor-pointer transition-colors shadow-xs ${
                   currentCardIdx < packCards.length - 1
-                    ? '!w-[42px] !h-[42px] !p-0'
-                    : 'gap-2 !px-5 !py-2 !text-[14px]'
+                    ? 'w-[42px] h-[42px]'
+                    : 'gap-2 px-5 py-2.5 text-[14px]'
                 }`}
                 title={
                   currentCardIdx < packCards.length - 1
@@ -859,7 +859,7 @@ export default function BoosterOpening({
                 <button
                   type="button"
                   onClick={onGoToClasseur}
-                  className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[34px] !h-[34px] !py-0 !px-3.5 !text-[13px]"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
                 >
                   <BookOpen className="w-4 h-4 text-[#3366cc]" />
                   <span>Voir mon classeur</span>
@@ -868,7 +868,7 @@ export default function BoosterOpening({
                   type="button"
                   onClick={handleReopenBooster}
                   disabled={isFetching}
-                  className="wiki-casino-btn wiki-casino-btn--success !min-h-[34px] !h-[34px] !py-0 !px-3.5 !text-[13px]"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs"
                   title="Ouvrir immédiatement un nouveau booster"
                 >
                   <RotateCw
@@ -879,7 +879,7 @@ export default function BoosterOpening({
                 <button
                   type="button"
                   onClick={handleResetToNewPack}
-                  className="wiki-casino-btn wiki-casino-btn--primary !min-h-[34px] !h-[34px] !py-0 !px-4 !text-[13px]"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
                 >
                   <span>Terminer</span>
                 </button>

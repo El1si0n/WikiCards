@@ -182,7 +182,7 @@ export default function WikiHeader({
               >
                 <Bell className="w-[16px] h-[16px] stroke-[1.8]" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 px-1 min-w-[17px] h-[17px] bg-[#bf3c2c] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 px-1 min-w-[17px] h-[17px] bg-[#bf3c2c] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -190,14 +190,14 @@ export default function WikiHeader({
 
               {/* Popover / Panneau de notifications */}
               {isNotifOpen && (
-                <div className="absolute right-0 top-[38px] w-[calc(100vw-24px)] sm:w-[360px] max-w-[360px] bg-white dark:bg-[#181d24] border border-[#a2a9b1] dark:border-[#363e4a] rounded-[2px] shadow-lg z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#f8f9fa] dark:bg-[#151a21] border-b border-[#eaecf0] dark:border-[#272d36]">
+                <div className="absolute right-0 top-[38px] w-[calc(100vw-24px)] sm:w-[360px] max-w-[360px] bg-white border border-[#a2a9b1] rounded-[2px] shadow-lg z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#f8f9fa] border-b border-[#eaecf0]">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-[13px] text-[#202122] dark:text-[#eaecf0]">
+                      <span className="font-bold text-[13px] text-[#202122]">
                         Notifications
                       </span>
                       {unreadCount > 0 && (
-                        <span className="text-[11px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
+                        <span className="text-[11px] font-semibold text-[#54595d]">
                           ({unreadCount} nouvelle{unreadCount > 1 ? 's' : ''})
                         </span>
                       )}
@@ -206,7 +206,7 @@ export default function WikiHeader({
                       <button
                         type="button"
                         onClick={onMarkAllNotifsRead}
-                        className="text-[11.5px] text-[#3366cc] dark:text-[#6699ff] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
+                        className="text-[11.5px] text-[#3366cc] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
                       >
                         <CheckCheck className="w-3.5 h-3.5" />
                         <span>Tout marquer</span>
@@ -214,9 +214,9 @@ export default function WikiHeader({
                     )}
                   </div>
 
-                  <div className="max-h-[360px] overflow-y-auto divide-y divide-[#eaecf0] dark:divide-[#272d36]">
+                  <div className="max-h-[360px] overflow-y-auto divide-y divide-[#eaecf0]">
                     {notifications.length === 0 ? (
-                      <div className="py-8 px-4 text-center text-[#72777d] dark:text-[#888e96] text-[13px]">
+                      <div className="py-8 px-4 text-center text-[#72777d] text-[13px]">
                         Aucune notification pour le moment.
                       </div>
                     ) : (
@@ -233,8 +233,8 @@ export default function WikiHeader({
                             }}
                             className={`p-3 cursor-pointer transition-colors ${
                               isRead
-                                ? 'bg-white dark:bg-[#181d24] hover:bg-[#f8f9fa] dark:hover:bg-[#1f2630]'
-                                : 'bg-[#eaf3ff]/40 dark:bg-[#1c293d]/50 hover:bg-[#eaf3ff] dark:hover:bg-[#1c293d]'
+                                ? 'bg-white hover:bg-[#f8f9fa]'
+                                : 'bg-[#eaf3ff]/40 hover:bg-[#eaf3ff]'
                             }`}
                           >
                             <div className="w-full">
@@ -242,8 +242,8 @@ export default function WikiHeader({
                                 <span
                                   className={`text-[12.5px] truncate ${
                                     isRead
-                                      ? 'font-medium text-[#202122] dark:text-[#eaecf0]'
-                                      : 'font-bold text-[#101418] dark:text-white'
+                                      ? 'font-medium text-[#202122]'
+                                      : 'font-bold text-[#101418]'
                                   }`}
                                 >
                                   {notif.title}
@@ -252,11 +252,11 @@ export default function WikiHeader({
                                   <span className="w-2 h-2 rounded-full bg-[#3366cc] shrink-0" />
                                 )}
                               </div>
-                              <p className="text-[11.5px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-0.5 line-clamp-2 leading-[1.4]">
+                              <p className="text-[11.5px] text-[#54595d] m-0 mt-0.5 line-clamp-2 leading-[1.4]">
                                 {notif.message}
                               </p>
                               {notif.time && (
-                                <span className="text-[10px] text-[#72777d] dark:text-[#888e96] mt-1 block">
+                                <span className="text-[10px] text-[#72777d] mt-1 block">
                                   {notif.time}
                                 </span>
                               )}

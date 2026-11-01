@@ -145,7 +145,7 @@ export default function AuthGateway({ onLoginSuccess }) {
 
       {/* Contenu central */}
       <main className="flex-1 flex items-center justify-center p-4 py-10">
-        <div className="w-full max-w-[490px] bg-white dark:bg-[#101418] border border-[#a2a9b1] dark:border-[#2a2d30] rounded-[2px] overflow-hidden transition-colors">
+        <div className="w-full max-w-[490px] bg-white dark:bg-[#101418] border border-[#a2a9b1] dark:border-[#2a2d30] rounded-[2px] shadow-sm overflow-hidden transition-colors">
           {/* Bandeau d'en-tête de la boîte */}
           <div className="bg-[#f8f9fa] dark:bg-[#15191e] border-b border-[#eaecf0] dark:border-[#2a2d30] px-6 py-4 transition-colors">
             <h2 className="wiki-serif text-[21px] font-normal text-[#101418] dark:text-white m-0">
@@ -224,7 +224,7 @@ export default function AuthGateway({ onLoginSuccess }) {
                 <button
                   type="button"
                   onClick={handleEnterGame}
-                  className="w-full h-[40px] bg-[#3366cc] hover:bg-[#2a4b8d] active:bg-[#1a3568] text-white font-bold text-[14px] rounded-[2px] cursor-pointer transition-colors flex items-center justify-center gap-2"
+                  className="w-full h-[40px] bg-[#3366cc] hover:bg-[#2a4b8d] active:bg-[#1a3568] text-white font-bold text-[14px] rounded-[2px] cursor-pointer transition-colors flex items-center justify-center gap-2 shadow-xs"
                 >
                   <span>Entrer dans l'encyclopédie</span>
                   <ArrowRight className="w-4 h-4" />

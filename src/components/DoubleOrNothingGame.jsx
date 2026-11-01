@@ -546,7 +546,7 @@ export default function DoubleOrNothingGame({
                 {cardWheels.map((wheel) => (
                   <div
                     key={wheel.key}
-                    className={`p-2 rounded-[2px] border flex flex-col items-center justify-between transition-all ${
+                    className={`p-2 rounded-[3px] border flex flex-col items-center justify-between transition-all ${
                       wheel.isFinished
                         ? wheel.isWin
                           ? 'bg-[#dff2eb]/70 dark:bg-[#113328]/80 border-[#099979]/50'
@@ -1023,12 +1023,13 @@ export default function DoubleOrNothingGame({
                     style={{
                       background: activeTier.cardBg,
                       border: `1px solid ${activeTier.borderColor}`,
+                      boxShadow: `0 8px 20px -6px ${activeTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
                       color: activeTier.textColor,
                     }}
                   >
                     <div className="relative z-20 p-3 flex items-center justify-between">
                       <div
-                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[2px] flex items-center justify-center font-extrabold tracking-wide"
+                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
                         style={{
                           backgroundColor: activeTier.badgeBg,
                           color: activeTier.badgeText,
@@ -1044,7 +1045,7 @@ export default function DoubleOrNothingGame({
                     <div className="relative flex-1 px-3.5 flex flex-col justify-center">
                       <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
                         <div
-                          className="w-full h-[168px] rounded-[2px]"
+                          className="w-full h-[168px] rounded-[8px]"
                           style={{
                             background:
                               'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
@@ -1059,7 +1060,7 @@ export default function DoubleOrNothingGame({
 
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                         <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center border border-[#c8ccd1] dark:border-slate-600 mb-2"
+                          className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
                           style={{
                             backgroundColor: activeTier.badgeBg,
                             borderColor: activeTier.borderColor,
@@ -1069,7 +1070,7 @@ export default function DoubleOrNothingGame({
                           <HelpCircle className="w-6 h-6 animate-pulse" />
                         </div>
                         <span
-                          className="px-3 py-1 rounded-[2px] text-[12px] font-bold border border-[#c8ccd1]"
+                          className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
                           style={{
                             backgroundColor: 'rgba(255, 255, 255, 0.9)',
                             color: '#202122',
@@ -1095,7 +1096,7 @@ export default function DoubleOrNothingGame({
                   {spinSnapshot.results.map((res) => (
                     <div
                       key={res.key}
-                      className={`p-2.5 rounded-[2px] border flex items-center justify-between gap-2.5 transition-all ${
+                      className={`p-2.5 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
                         !res.isFinished
                           ? 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748]'
                           : res.isWin
@@ -1108,7 +1109,7 @@ export default function DoubleOrNothingGame({
                           <img
                             src={res.card.image}
                             alt={res.card.title}
-                            className={`w-9 h-9 object-cover rounded-[2px] border shrink-0 ${
+                            className={`w-9 h-9 object-cover rounded-[3px] border shrink-0 ${
                               res.isFinished && !res.isWin
                                 ? 'border-[#c8ccd1] dark:border-slate-600 grayscale'
                                 : res.isFinished && res.isWin
@@ -1117,7 +1118,7 @@ export default function DoubleOrNothingGame({
                             }`}
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-[2px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                          <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
                             <img
                               src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
                               alt="Wikipédia"
@@ -1170,17 +1171,17 @@ export default function DoubleOrNothingGame({
                 {liveSelectedCards.map((card, idx) => (
                   <div
                     key={`${card.id}-${idx}`}
-                    className="p-2.5 rounded-[2px] border border-[#eaecf0] dark:border-[#2d3748] bg-[#f8f9fa] dark:bg-[#1a202c] flex items-center justify-between gap-2.5"
+                    className="p-2.5 rounded-[4px] border border-[#eaecf0] dark:border-[#2d3748] bg-[#f8f9fa] dark:bg-[#1a202c] flex items-center justify-between gap-2.5"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {card.image ? (
                         <img
                           src={card.image}
                           alt={card.title}
-                          className="w-9 h-9 object-cover rounded-[2px] border border-[#a2a9b1] dark:border-[#4a5360] shrink-0"
+                          className="w-9 h-9 object-cover rounded-[3px] border border-[#a2a9b1] dark:border-[#4a5360] shrink-0"
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-[2px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                        <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
                           <img
                             src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
                             alt="Wikipédia"
@@ -1217,12 +1218,13 @@ export default function DoubleOrNothingGame({
                       : activeTier.code === 'UR'
                       ? '1.5px solid #f5a642'
                       : `1px solid ${activeTier.borderColor}`,
+                  boxShadow: `0 8px 20px -6px ${activeTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
                   color: activeTier.textColor,
                 }}
               >
                 <div className="relative z-20 p-3 flex items-center justify-between">
                   <div
-                    className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[2px] flex items-center justify-center font-extrabold tracking-wide"
+                    className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
                     style={{
                       backgroundColor: activeTier.badgeBg,
                       color: activeTier.badgeText,
@@ -1238,7 +1240,7 @@ export default function DoubleOrNothingGame({
                 <div className="relative flex-1 px-3.5 flex flex-col justify-center">
                   <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
                     <div
-                      className="w-full h-[168px] rounded-[2px]"
+                      className="w-full h-[168px] rounded-[8px]"
                       style={{
                         background:
                           'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
@@ -1254,7 +1256,7 @@ export default function DoubleOrNothingGame({
 
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center border border-[#c8ccd1] dark:border-slate-600 mb-2"
+                      className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
                       style={{
                         backgroundColor: activeTier.badgeBg,
                         borderColor: activeTier.borderColor,
@@ -1264,7 +1266,7 @@ export default function DoubleOrNothingGame({
                       <HelpCircle className="w-6 h-6" />
                     </div>
                     <span
-                      className="px-3 py-1 rounded-[2px] text-[12px] font-bold border border-[#c8ccd1]"
+                      className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
                       style={{
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         color: '#202122',

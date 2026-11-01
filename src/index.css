@@ -417,24 +417,6 @@
   border-color: #202122;
 }
 
-/* Variante Danger / Destructif (--background-color-destructive-subtle: #ffe9e5, --color-destructive: #bf3c2c, --border-color-destructive: #f54739) */
-.wiki-casino-btn--danger {
-  background-color: #ffe9e5;
-  color: #bf3c2c;
-  border-color: #f54739;
-}
-
-.wiki-casino-btn--danger:hover:not(:disabled) {
-  background-color: #ffd8d2;
-  color: #9c271b;
-  border-color: #d73326;
-}
-
-.wiki-casino-btn--danger:active:not(:disabled) {
-  background-color: #fbc0b7;
-  border-color: #b52216;
-}
-
 /* =====================================================================
    MODE SOMBRE OFFICIEL WIKIPÉDIA VECTOR 2022 (html.dark)
    ===================================================================== */
@@ -617,18 +599,6 @@ html.dark .wiki-casino-btn--success {
 html.dark .wiki-casino-btn--success:hover:not(:disabled) {
   background-color: #164234;
   color: #6ee7b7;
-}
-
-html.dark .wiki-casino-btn--danger {
-  background-color: #3b1815;
-  color: #f87171;
-  border-color: #b32424;
-}
-
-html.dark .wiki-casino-btn--danger:hover:not(:disabled) {
-  background-color: #4d1f1c;
-  color: #fca5a5;
-  border-color: #d33;
 }
 
 html.dark .wiki-range-slider {
