@@ -131,17 +131,22 @@ export default function App() {
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundManager.isMuted());
 
-  // Étape 12 : Mode Sombre (Vector 2022) : initialisé selon les préférences système ou le choix sauvegardé
+  // Mode Sombre (Vector 2022) : par défaut en mode clair (false).
+  // Si l'utilisateur clique, sa préférence est enregistrée localement et dans son profil serveur.
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try {
+      const storedCode = getStoredUserCode();
+      if (storedCode) {
+        const localProf = loadLocalProfile(storedCode);
+        if (localProf?.themePreference) {
+          return localProf.themePreference === 'dark';
+        }
+      }
       const saved = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
       if (saved !== null) {
         return saved === 'true';
       }
-      return (
-        typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches
-      );
+      return false; // Par défaut : mode clair
     } catch {
       return false;
     }
@@ -155,6 +160,29 @@ export default function App() {
       // ignore
     }
   }, [isDarkMode]);
+
+  const handleToggleDarkMode = () => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      const themePref = next ? 'dark' : 'light';
+      setUserProfile((prevProf) => {
+        const nextProf = { ...(prevProf || {}), themePreference: themePref };
+        if (userCode) {
+          saveLocalProfile(nextProf, userCode);
+          syncUserAccountToServer(userCode, {
+            profile: nextProf,
+            collection,
+            favorites,
+            wikithunes,
+            stats,
+            lastDailyClaimDate,
+          }).catch(() => {});
+        }
+        return nextProf;
+      });
+      return next;
+    });
+  };
 
   // Mode sélection de cartes à recycler dans le classeur
   const [isRecycleMode, setIsRecycleMode] = useState(false);
@@ -357,6 +385,9 @@ export default function App() {
         ...getDefaultProfile(serverAccount.code || userCode),
         ...serverAccount.profile,
       });
+      if (serverAccount.profile.themePreference) {
+        setIsDarkMode(serverAccount.profile.themePreference === 'dark');
+      }
     }
     if (Array.isArray(serverAccount.collection)) {
       setCollection(
@@ -581,6 +612,9 @@ export default function App() {
     const nextProf = account.profile || getDefaultProfile(cleanCode);
     setUserProfile(nextProf);
     saveLocalProfile(nextProf, cleanCode);
+    if (nextProf.themePreference) {
+      setIsDarkMode(nextProf.themePreference === 'dark');
+    }
     setCollection(Array.isArray(account.collection) ? account.collection : []);
     setFavorites(Array.isArray(account.favorites) ? account.favorites : []);
     setWikithunes(
@@ -605,6 +639,7 @@ export default function App() {
   const handleLogout = () => {
     clearStoredUserCode();
     setUserCode(null);
+    setIsDarkMode(false);
   };
 
   const handleDeleteAccount = async () => {
@@ -1076,7 +1111,7 @@ export default function App() {
         wikithunes={wikithunes}
         userProfile={userProfile}
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+        onToggleDarkMode={handleToggleDarkMode}
         notifications={notifications}
         readNotificationIds={readNotifIds}
         onMarkAllNotifsRead={handleMarkAllNotifsRead}
@@ -1226,9 +1261,7 @@ export default function App() {
                                   <li className="mw-list-item">
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        setIsDarkMode((prev) => !prev)
-                                      }
+                                      onClick={handleToggleDarkMode}
                                       className="w-full text-left py-[6px] text-[#3366cc] hover:text-[#3056a9] hover:underline cursor-pointer inline-flex items-center gap-1.5 text-[14px]"
                                     >
                                       {isDarkMode ? (

@@ -9,6 +9,8 @@ import {
   ArrowRight,
   HelpCircle,
   Loader2,
+  Check,
+  X,
 } from 'lucide-react';
 
 // Multiplicateurs progressifs selon la longueur de la série gagnante
@@ -243,21 +245,21 @@ export default function HigherLowerGame({
               </span>
             </>
           ) : gameState === 'won_round' ? (
-            <>
-              <span className="text-[13px] font-bold uppercase tracking-wider text-[#177860]">
-                Bonne réponse (×{getMultiplierForStreak(streak)})
-              </span>
-              <div className="text-[40px] font-extrabold text-[#177860] mt-1.5 inline-flex items-center gap-2 leading-none">
+            <div className="flex flex-col items-center justify-center">
+              <div className="flex items-center justify-center mb-1">
+                <Check className="w-11 h-11 text-[#177860] dark:text-[#34d399] stroke-[2.75]" />
+              </div>
+              <div className="text-[34px] sm:text-[40px] font-extrabold text-[#177860] dark:text-[#34d399] mt-1 inline-flex items-center gap-2 leading-none">
                 <span>
                   +{new Intl.NumberFormat('fr-FR').format(currentPot)}
                 </span>
-                <WikithuneIcon className="w-7 h-7 text-[#177860]" />
+                <WikithuneIcon className="w-7 h-7 text-[#177860] dark:text-[#34d399]" />
               </div>
-            </>
+            </div>
           ) : gameState === 'lost_round' ? (
-            <span className="text-[32px] font-extrabold text-[#bf3c2c] leading-tight">
-              Perdu
-            </span>
+            <div className="flex items-center justify-center">
+              <X className="w-11 h-11 text-[#bf3c2c] dark:text-[#f87171] stroke-[2.75]" />
+            </div>
           ) : gameState === 'playing' ? (
             <>
               <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d]">
@@ -297,26 +299,20 @@ export default function HigherLowerGame({
                 </div>
 
                 <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { amount: 50, label: 'Facile' },
-                    { amount: 100, label: 'Modéré' },
-                    { amount: 250, label: 'Standard' },
-                    { amount: 500, label: 'Défi' },
-                  ].map(({ amount, label }) => (
+                  {[50, 100, 250, 500].map((amount) => (
                     <button
                       key={amount}
                       type="button"
                       disabled={gameState === 'loading' || wikithunes < amount}
                       onClick={() => setBetAmount(amount)}
-                      className={`wiki-casino-btn flex-col !h-auto !py-1.5 !px-1 text-center ${
+                      className={`wiki-casino-btn !min-h-[32px] !h-[32px] !py-0 !px-1 text-center font-bold text-[12.5px] ${
                         betAmount === amount
                           ? 'wiki-casino-btn--subtle'
                           : 'wiki-casino-btn--neutral'
                       }`}
-                      title={`Mise de ${amount} ₩ • Difficulté : ${label}`}
+                      title={`Mise de ${amount} ₩`}
                     >
-                      <span className="font-bold text-[12.5px] leading-tight">{amount} ₩</span>
-                      <span className="text-[10px] text-[#54595d] font-normal leading-tight">{label}</span>
+                      {amount} ₩
                     </button>
                   ))}
                 </div>

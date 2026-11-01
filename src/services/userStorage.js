@@ -93,6 +93,7 @@ export function getDefaultProfile(code) {
     avatar: 'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
     bio: 'Contributeur et collectionneur d’articles sur Wikipédia FR.',
     showcaseIds: [], // Jusqu'à 4 IDs de cartes exposées en vitrine
+    themePreference: 'light', // Mode clair par défaut
   };
 }
 
