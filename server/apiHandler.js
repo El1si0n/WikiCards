@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-  const dataDir = path.resolve(process.cwd(), 'data')
+  const dataDir = process.env.DATA_DIR
+    ? path.resolve(process.env.DATA_DIR)
+    : path.resolve(process.cwd(), 'data')
   const usersDir = path.join(dataDir, 'users')
   const tradesFile = path.join(dataDir, 'trades.json')
   const marketFile = path.join(dataDir, 'market.json')

@@ -1,19 +1,28 @@
 # 🃏 WikiCards — Le Jeu de Cartes Wikipédia
 
-Une application web immersive qui transforme l'encyclopédie libre **Wikipédia** en un véritable **jeu de cartes à collectionner (TCG)**. Chaque carte représente une véritable page encyclopédique dont la rareté, les reflets et les finitions visuelles sont déterminés par son **audience réelle sur les 30 derniers jours**.
+Une application web immersive et communautaire qui transforme l'encyclopédie libre **Wikipédia** en un véritable **jeu de cartes à collectionner (TCG)**. Chaque carte représente un véritable article encyclopédique dont la rareté, les reflets et les finitions visuelles sont déterminés par son **audience réelle sur les 30 derniers jours**.
 
-Conçue avec un profond respect de l'identité visuelle de **Wikipédia (thème Vector 2022)**, l'application associe l'élégance sobre de l'encyclopédie au plaisir addictif d'ouvrir des boosters de cartes physiques.
+Conçue avec un respect méticuleux de l'identité visuelle de **Wikipédia (thème officiel Vector 2022)**, l'application associe l'élégance sobre de l'encyclopédie au plaisir d'ouvrir des boosters de cartes physiques, d'échanger avec ses amis, de parier au casino et de bâtir la collection ultime.
 
 ---
 
 ## 🌟 Points Forts & Concept
 
 - 🌐 **100 % Direct Wikipédia** : Tirage d'articles réels en direct via l'API MediaWiki et calcul d'audience via l'API officielle Wikimedia Pageviews.
-- 📈 **Rareté Fondée sur la Fréquentation Réelle** : Fini les statistiques de combat artificielles (PV, attaque, défense). La valeur d'une carte dépend du nombre réel de lecteurs du sujet.
+- 📈 **Rareté Fondée sur la Fréquentation Réelle** : Fini les statistiques de combat artificielles. La valeur d'une carte dépend du nombre réel de lecteurs du sujet sur les 30 derniers jours.
 - 📦 **Simulation de Booster Ultra-Réaliste** : Sachet métallisé thermoscellé en 3D, animation de déchirure, ouverture carte par carte et suspense garanti.
-- 🔊 **Moteur Sonore Procédural (Web Audio API)** : Effets audio cristallins (froissement de sachet, glissement de carte, accords musicaux par rareté) générés en temps réel sans téléchargement de fichiers MP3.
-- 🔑 **Code Unique & Sauvegarde Cloud Légère** : Connexion par Code Unique (`WIKI-XXXX`) sauvegardant votre profil, vos Wikithunes et votre collection.
-- 🎰 **Le WikiSino & Marché Multijoueur** : Mini-jeux de casino (Roulette, Machine à sous, Quitte ou Double) et place de marché d'enchères entre joueurs.
+- 🔊 **Moteur Sonore Procédural (Web Audio API)** : Effets sonores cristallins (froissement de sachet, glissement de carte, clics de roulette, fanfare) générés mathématiquement en temps réel sans télécharger de fichiers MP3.
+- 🎰 **Le WikiSino (3 Mini-Jeux Intégrés)** :
+  - **L'Upgrader** : Sacrifiez une carte pour tenter d'obtenir une carte de rareté supérieure via une jauge circulaire de probabilité.
+  - **Le Plus ou Moins** : Devinez si l'article suivant a plus ou moins de visiteurs pour accumuler une série de multiplicateurs de Wikithunes.
+  - **Le Quitte ou Double (1 à 8 cartes)** : Misez jusqu'à 8 cartes en même temps, chacune dotée de sa propre roue animée à décélération échelonnée pour tenter de doubler vos exemplaires.
+- 🤝 **Multijoueur & Communauté** :
+  - **Code Unique (`WIKI-XXXX`)** : Connexion instantanée sans mot de passe, sauvegarde persistante sur le serveur.
+  - **Place de Marché d'Enchères** : Mettez vos cartes aux enchères sur 24h ou fixez un prix d'achat immédiat.
+  - **Échanges de Cartes** : Proposez des échanges directs de cartes à n'importe quel joueur de la communauté.
+- ♻️ **Économie & Recyclage** : Recyclez vos doublons contre des **Wikithunes (₩)** et récupérez un bonus quotidien de 250 ₩ par jour.
+- 🌓 **Mode Clair par Défaut & Mode Sombre Synchronisé** : Thème clair fidèle à Wikipédia de base, avec mode sombre activable sauvegardé directement sur votre profil joueur.
+- 🍓 **Prêt pour Docker, Coolify & Raspberry Pi** : Empreinte RAM ultra-légère (< 50 Mo), zéro dépendance native C/C++, déploiement en 1 clic.
 
 ---
 
@@ -30,53 +39,36 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 | **Ultra Rare** | `UR` | De 5 000 à 19 999 vues | **1,5 %** | Cuivre et ambre ardent, étincelles et confettis au tirage |
 | **Légendaire** | `L` | **20 000 vues et +** | **0,3 %** | Dorure or 24 carats, onde topographique solaire, éclat prismatique et pluie de confettis |
 
-> 💡 **Le Saviez-vous ?** Les cartes d'un booster sont automatiquement révélées dans l'ordre croissant de popularité afin de réserver le meilleur tirage pour la 5ᵉ et dernière carte.
+> 💡 **Cartes GIF Métal (.gif)** : Les articles Wikipédia comportant une image animée GIF bénéficient d'un badge spécial et d'une valeur de recyclage triplée (`×3`).
 
 ---
 
-## ✨ Fonctionnalités Détaillées
+## 🎮 Les Modes de Jeu & Fonctionnalités
 
-### 1. 📦 Expérience d'Ouverture de Booster
-- **Sachet 3D réaliste** : Texture thermo-scellée avec relief d'encoche *"Déchirer ici"*, dégradé bombé façon emballage physique et reflet lumineux au survol.
-- **Déchirure interactive** : Animation de séparation du haut du sachet avec faisceau lumineux et bruit de déchirure métallisée.
-- **Préchargement intelligent** : Le booster suivant est discrètement préchargé en arrière-plan pour un lancement instantané sans temps de chargement perceptible.
-- **Révélation progressive** : Découverte carte par carte (avec son et confettis pour les cartes UR et Légendaires) ou bascule rapide vers la vue récapitulative.
-- **Indicateurs de découverte** : Pastille *"Nouveau !"* pour les cartes inédites et compteur d'exemplaires (`×2`, `×3`...) pour les doublons.
+### 1. 📦 L'Ouverture de Booster
+- Sachet métallisé 3D interactif avec encoche *"Déchirer ici"*.
+- Révélation progressive des 5 cartes dans l'ordre croissant de popularité pour réserver la meilleure carte à la fin.
+- Préchargement intelligent du booster suivant pour un enchaînement fluide sans temps d'attente.
 
-### 2. 🎴 Anatomie des Cartes WikiCards
-- **Photographie ou globe officiel** : Image d'illustration haute définition issue de Wikipédia, avec bascule automatique vers le globe Wikipédia en cas d'absence d'illustration.
-- **Extrait encyclopédique soigné** : Formatage automatique assurant des phrases complètes (pas de coupure disgracieuse en plein mot) avec typographie ajustée.
-- **Reflet 3D Tilt dynamique** : Inclinaison fluide selon la position du curseur et reflet spéculaire dynamique.
-- **Reflets holographiques (Foil)** : Finition métallisée mouvante réservée aux rangs *Super Rare*, *Ultra Rare* et *Légendaire*.
-- **Accès direct** : Bouton *"Lire sur Wikipédia ↗"* pour plonger directement au cœur de l'article encyclopédique.
+### 2. 📚 Le Classeur & La Gestion de Collection
+- Grille responsive au format compact fidèle aux vignettes Wikipédia.
+- **Mode Recyclage** : Sélectionnez vos doublons pour les convertir en Wikithunes. Les cartes uniques et les favoris sont automatiquement protégés contre le recyclage accidentel.
+- **Système de Favoris** : Vos cartes marquées d'une étoile restent épinglées en tête de classeur.
+- **Filtres & Tris** : Par rareté (L, UR, SR, R, PC, C), par thématiques encyclopédiques (Histoire, Sciences, Géographie, etc.), par nombre de vues, ordre alphabétique, cartes GIF ou doublons.
 
-### 3. 📚 Classeur & Gestion de la Collection
-- **Grille adaptée** : Affichage optimisé à 4 cartes par ligne en format compact avec maintien de la perspective 3D.
-- **Épinglage des Favoris** : Système de mise en favori (icône étoile). Les cartes favorites restent toujours épinglées en première position dans le classeur.
-- **Filtres par rareté** : Boutons de filtrage rapide (Toutes, L, UR, SR, R, PC, C) avec compteur dynamique de cartes possédées pour chaque palier.
-- **Recherche plein texte** : Intégrée au champ de recherche officiel du bandeau pour filtrer simultanément sur les titres et résumés.
-- **Tris multiples** :
-  - Rareté (de la plus rare à la plus commune)
-  - Nombre de vues (décroissant ou croissant)
-  - Date d'obtention (plus récentes d'abord)
-  - Ordre alphabétique (A → Z)
-  - Nombre d'exemplaires (doublons)
-- **Tableau de bord statistique** : Suivi en direct du nombre d'articles uniques, du total d'exemplaires collectés et du nombre de boosters ouverts.
+### 3. 🎰 Le WikiSino
+- **L'Upgrader** : Tentez d'élever une carte d'un rang de rareté (Commun → Peu Commun → Rare → Super Rare → Ultra Rare). Une jauge circulaire indique précisément les chances de réussite.
+- **Le Plus ou Moins** : Choisissez votre mise (50 ₩, 100 ₩, 250 ₩, 500 ₩) et devinez si la carte masquée compte plus ou moins de visiteurs que la précédente pour faire grimper vos gains.
+- **Le Quitte ou Double** : Sélectionnez de 1 à 8 cartes d'une même rareté. Chaque carte bénéficie de sa propre roue indépendante avec arrêt échelonné et résultat sans spoiler.
 
-### 4. 🔊 Moteur Sonore Procédural (Web Audio API)
-- Aucun fichier MP3 externe n'est téléchargé.
-- Synthèse par oscillateurs et modulation de bruits blancs filtrés :
-  - Froissement et déchirement de l'emballage métallisé.
-  - Glissement et frottement des cartes papier.
-  - Carillons et accords harmoniques modulés selon la rareté révélée.
-  - Fanfare de synthèse au récapitulatif du booster.
-- Contrôle muet / son activé persistant, accessible dans le menu déroulant *Outils* (⋮).
+### 4. 🏛️ Le Marché aux Enchères & Échanges
+- Créez des ventes aux enchères d'une durée de 24h avec prix de départ et option d'achat immédiat.
+- Proposez des échanges de cartes d'égal à égal à vos amis grâce à leur identifiant `WIKI-XXXX`.
 
-### 5. 💾 Stockage 100 % Local & Sans Serveur
-- Sauvegarde continue dans le `localStorage` de votre navigateur (cartes, doublons, favoris, statistiques).
-- **Export JSON** : Exportez votre classeur pour sécuriser votre collection ou la partager.
-- **Import JSON** : Restaurez instantanément vos cartes sur un autre navigateur ou appareil.
-- **Réinitialisation sécurisée** : Double confirmation pour éviter toute perte accidentelle de données.
+### 5. 👤 Profil Joueur & Personnalisation
+- **Photo de profil dynamique** : Choisissez comme avatar l'illustration de n'importe quelle carte présente dans votre classeur.
+- **Vitrine** : Exposez jusqu'à 4 de vos plus belles cartes en vedette sur votre profil public.
+- **Suppression de compte intégrée** : Modal officiel conforme aux règles de confirmation Wikipédia pour réinitialiser ses données en toute autonomie.
 
 ---
 
@@ -89,9 +81,10 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 | **Animations & 3D** | [Framer Motion](https://www.framer.com/motion/) + CSS 3D Transforms |
 | **Effets Particules** | [Canvas Confetti](https://github.com/catdad/canvas-confetti) |
 | **Icônes** | [Lucide React](https://lucide.dev/) |
-| **Audio** | Web Audio API native (synthèse procédurale) |
+| **Audio** | Web Audio API native (synthèse procédurale 100 % synthétique) |
+| **Serveur Backend** | Serveur HTTP natif Node.js (zéro dépendance lourde) |
+| **Stockage & Base** | Fichiers JSON locaux structurés (facilement montables en volume Docker) |
 | **APIs Externes** | API MediaWiki (`action=query&list=random`) + Wikimedia REST API (`/page/summary` & `/metrics/pageviews`) |
-| **Qualité de code** | [Oxlint](https://oxc.rs/) |
 
 ---
 
@@ -99,41 +92,48 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 
 ```text
 WikiCards/
-├── data/                   # Données multijoueur (marché, échanges, utilisateurs)
+├── data/                       # Stockage persistant (utilisateurs, marché, échanges)
+│   └── users/                  # Fichiers JSON des comptes (ex: WIKI-4GU5.json)
 ├── server/
-│   └── apiHandler.js       # Logique API REST (/api/users, /api/trades, /api/market)
+│   └── apiHandler.js           # API REST (/api/users, /api/trades, /api/market)
 ├── src/
 │   ├── components/
 │   │   ├── AuthGateway.jsx     # Écran de connexion / création par Code Unique
 │   │   ├── BoosterOpening.jsx  # Booster 3D, déchirure et tirage animé
 │   │   ├── WikiCard.jsx        # Carte (tilt 3D, reflets foil, badge de rareté)
 │   │   ├── WikiHeader.jsx      # En-tête officiel Vector 2022
-│   │   ├── WikiSino.jsx        # Casino (Roulette, Machine à sous, Quitte ou double)
+│   │   ├── WikiSino.jsx        # Hub du Casino et jeu de l'Upgrader
+│   │   ├── HigherLowerGame.jsx # Jeu du Plus ou Moins (séries de cotes)
+│   │   ├── DoubleOrNothingGame.jsx # Quitte ou Double (multi-roues 1 à 8 cartes)
 │   │   ├── SocialHub.jsx       # Réseau communautaire et propositions d'échanges
 │   │   ├── AuctionMarket.jsx   # Place de marché et système d'enchères
-│   │   └── UserProfile.jsx     # Profil joueur, vitrine de collection et statistiques
+│   │   ├── UserProfile.jsx     # Profil joueur, vitrine et gestion du compte
+│   │   └── WikithuneIcon.jsx   # Symbole de la monnaie virtuelle (₩)
 │   ├── config/
-│   │   ├── rarities.js     # Paliers de rareté, taux de tirage, économie
-│   │   └── themes.js       # Détection thématique des articles (Histoire, Sciences...)
+│   │   ├── rarities.js         # Paliers de rareté, taux de tirage, économie
+│   │   └── themes.js           # Détection thématique des articles (Histoire, Sciences...)
 │   ├── services/
-│   │   ├── sound.js        # Moteur sonore Web Audio API
-│   │   ├── userStorage.js  # Gestion des comptes, profil et synchronisation API
-│   │   └── wikipedia.js    # Client API MediaWiki et Wikimedia Pageviews
-│   ├── App.jsx             # Orchestration globale
-│   ├── index.css           # Styles Vector 2022 et Tailwind CSS v4
-│   └── main.jsx            # Point d'entrée React
-├── server.js               # Serveur HTTP Node.js autonome pour la production
-├── vite.config.js          # Configuration Vite (dev server & build)
+│   │   ├── sound.js            # Moteur sonore Web Audio API
+│   │   ├── userStorage.js      # Synchronisation compte et stockage local
+│   │   └── wikipedia.js        # Client API MediaWiki et Wikimedia Pageviews
+│   ├── App.jsx                 # Orchestration globale
+│   ├── index.css               # Styles Vector 2022 et Tailwind CSS v4
+│   └── main.jsx                # Point d'entrée React
+├── Dockerfile                  # Image Docker multi-stage (ARM64 & AMD64)
+├── .dockerignore               # Fichiers exclus du build Docker
+├── server.js                   # Serveur HTTP Node.js de production (SPA + API)
+├── vite.config.js              # Configuration Vite
+├── package.json
 └── README.md
 ```
 
 ---
 
-## 🚀 Installation & Démarrage
+## 🚀 Installation & Démarrage en Local
 
 ### Prérequis
 - [Node.js](https://nodejs.org/) (version 18 ou supérieure)
-- Un gestionnaire de paquets (`npm`, `pnpm` ou `yarn`)
+- `npm` (ou `pnpm` / `yarn`)
 
 ### 1. Installation des dépendances
 ```bash
@@ -144,34 +144,59 @@ npm install
 ```bash
 npm run dev
 ```
-Par défaut, l'application est accessible sur : **[http://localhost:5173](http://localhost:5173)**.
+Accès par défaut sur : **[http://localhost:5173](http://localhost:5173)**.
 
-### 3. Lancer en production (Serveur complet Frontend + API Multijoueur)
+### 3. Lancer en mode production (Serveur complet Frontend + API)
 ```bash
-# 1. Compiler le bundle de production
+# 1. Compiler le bundle
 npm run build
 
-# 2. Démarrer le serveur Node de production
+# 2. Démarrer le serveur HTTP autonome
 npm start
 ```
-L'application démarre sur **[http://localhost:3000](http://localhost:3000)** (ou sur le port spécifié par la variable d'environnement `PORT`).
+Accès par défaut sur : **[http://localhost:3000](http://localhost:3000)**.
 
 ---
 
-## 🌐 Déploiement & Hébergement
+## 🍓 Déploiement avec Coolify / Docker (Raspberry Pi & Serveur Privé)
 
-### Option A : Hébergement avec serveur (Render, Railway, VPS, Raspberry Pi)
-Permet de profiter de toutes les fonctionnalités, y compris le **multijoueur** (marché d'enchères et échanges de cartes entre joueurs différents) :
-- **Render (Gratuit)** : Créez un nouveau *Web Service*, connectez votre dépôt GitHub.
-  - *Build Command* : `npm run build`
-  - *Start Command* : `npm start`
-- **Railway / Fly.io / VPS / Raspberry Pi** : Cloner le dépôt et exécuter `npm install && npm run build && npm start`.
+Le projet intègre un [`Dockerfile`](./Dockerfile) optimisé en multi-stage basé sur `node:20-alpine`. Il compile nativement sur architecture **ARM64** (Raspberry Pi 3, 4, 5) et **x86_64** (PC/Serveur Cloud), sans nécessiter de compilation C/C++ ni `node-gyp`.
 
-### Option B : Hébergement statique (GitHub Pages, Vercel, Netlify)
-Permet d'héberger le frontend gratuitement :
-- *Build Command* : `npm run build`
-- *Output Directory* : `dist`
-- Les fonctionnalités solo (boosters, classeur, WikiSino, bourse quotidienne) fonctionnent directement avec l'API publique de Wikipédia et le stockage local de votre navigateur.
+### Déploiement en 1 clic sur Coolify
+
+1. Dans **Coolify**, cliquez sur **+ Create New Resource** → **Git Repository**.
+2. Renseignez l'URL de votre dépôt GitHub public.
+3. Type de build : **Dockerfile** (détecté automatiquement).
+4. Port exposé : `3000`.
+
+### ⚠️ Point Clé : Le Volume Persistant (Pour ne jamais perdre les données)
+
+Lors des mises à jour ou des redéploiements, le container Docker est recréé. Pour préserver les cartes, les comptes et les enchères de vos joueurs :
+
+1. Dans les réglages de votre application Coolify, allez dans l'onglet **Storages** (ou **Persistent Volumes**).
+2. Ajoutez un nouveau montage :
+   - **Destination Path** : `/app/data`
+   - **Source / Volume Name** : `wikicards-data`
+3. Cliquez sur **Deploy** !
+
+Toutes les données de vos joueurs seront ainsi conservées en toute sécurité sur votre Raspberry Pi ou serveur hôte.
+
+---
+
+### Déploiement manuel avec Docker CLI
+
+```bash
+# Construire l'image Docker
+docker build -t wikicards .
+
+# Lancer le container avec volume persistant
+docker run -d \
+  -p 3000:3000 \
+  -v wikicards_data:/app/data \
+  --name wikicards \
+  --restart unless-stopped \
+  wikicards
+```
 
 ---
 
