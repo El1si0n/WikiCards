@@ -762,63 +762,58 @@ export default function UserProfile({
         </section>
       )}
 
-      {/* MODAL SIMPLIFIÉ DE CONFIRMATION DE SUPPRESSION DU COMPTE */}
+      {/* MODAL ÉPURÉ DE CONFIRMATION DE SUPPRESSION DU COMPTE */}
       {isConfirmingDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in duration-150">
           <div
-            className="bg-white dark:bg-[#181d24] border border-[#a2a9b1] dark:border-[#363e4a] rounded-[2px] shadow-2xl max-w-[440px] w-full p-5 space-y-4 text-left"
+            className="relative bg-white dark:bg-[#1a1f26] border border-[#d8dce2] dark:border-[#2d3540] rounded-[8px] shadow-2xl max-w-[360px] w-full p-6 text-center select-none"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"
           >
-            <div className="flex items-start gap-3 border-b border-[#eaecf0] dark:border-[#272d36] pb-3">
-              <div className="w-10 h-10 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3
-                  id="delete-account-title"
-                  className="text-[16px] font-bold text-[#202122] dark:text-[#eaecf0] m-0"
-                >
-                  Supprimer définitivement votre compte ?
-                </h3>
-                <p className="text-[12px] text-[#72777d] dark:text-[#a2a9b1] m-0 mt-0.5 font-mono font-bold">
-                  Code joueur : {userCode}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isDeleting) {
-                    setIsConfirmingDelete(false);
-                    setDeleteError(null);
-                  }
-                }}
-                disabled={isDeleting}
-                className="text-[#72777d] dark:text-[#a2a9b1] hover:text-[#202122] dark:hover:text-white cursor-pointer p-1"
-                aria-label="Fermer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!isDeleting) {
+                  setIsConfirmingDelete(false);
+                  setDeleteError(null);
+                }
+              }}
+              disabled={isDeleting}
+              className="absolute top-3 right-3 text-[#72777d] dark:text-[#8892a0] hover:text-[#202122] dark:hover:text-white p-1 rounded transition-colors cursor-pointer"
+              aria-label="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/50 text-[#d33] dark:text-[#f87171] border border-red-200 dark:border-red-900/60 flex items-center justify-center mx-auto mb-3.5">
+              <Trash2 className="w-5 h-5 stroke-[2.2]" />
             </div>
 
-            <p className="text-[13px] text-[#54595d] dark:text-[#c8ccd1] m-0 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Vos{' '}
-              <strong className="text-[#202122] dark:text-white">{collection.length} cartes</strong>{' '}
-              ({totalCopiesCount} exemplaires), vos{' '}
-              <strong className="text-[#202122] dark:text-white">
-                {new Intl.NumberFormat('fr-FR').format(wikithunes)} ₩
-              </strong>{' '}
-              et toutes vos données seront irrévocablement détruits.
+            <h3
+              id="delete-account-title"
+              className="text-[16px] font-bold text-[#101418] dark:text-white m-0"
+            >
+              Supprimer le compte ?
+            </h3>
+
+            <div className="mt-1">
+              <span className="inline-block font-mono text-[11px] font-semibold text-[#54595d] dark:text-[#94a3b8] bg-[#f0f2f5] dark:bg-slate-800/80 px-2 py-0.5 rounded-[4px]">
+                {userCode}
+              </span>
+            </div>
+
+            <p className="text-[13px] text-[#54595d] dark:text-[#cbd5e1] m-0 mt-3 leading-relaxed">
+              Cette action est irréversible. Toutes vos cartes ({collection.length}) et vos Wikithunes ({new Intl.NumberFormat('fr-FR').format(wikithunes)}&nbsp;₩) seront définitivement effacées.
             </p>
 
             {deleteError && (
-              <p className="text-[12px] text-[#bf3c2c] dark:text-[#f87171] font-medium m-0">
+              <p className="text-[12px] text-[#d33] dark:text-[#f87171] font-medium mt-2 m-0">
                 {deleteError}
               </p>
             )}
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#eaecf0] dark:border-[#272d36]">
+            <div className="grid grid-cols-2 gap-2 mt-5 pt-3 border-t border-[#eaecf0] dark:border-[#2a323d]">
               <button
                 type="button"
                 onClick={() => {
@@ -826,7 +821,7 @@ export default function UserProfile({
                   setDeleteError(null);
                 }}
                 disabled={isDeleting}
-                className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[34px] !py-1.5 !px-3.5 !text-[12.5px]"
+                className="h-[36px] px-3 rounded-[4px] border border-[#c8ccd1] dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-[#f8f9fa] dark:hover:bg-slate-700 text-[#202122] dark:text-slate-200 text-[13px] font-medium transition-colors cursor-pointer flex items-center justify-center"
               >
                 Annuler
               </button>
@@ -846,13 +841,11 @@ export default function UserProfile({
                     setIsDeleting(false);
                   }
                 }}
-                className="wiki-casino-btn wiki-casino-btn--danger !min-h-[34px] !py-1.5 !px-3.5 !text-[12.5px] font-bold inline-flex items-center gap-1.5"
+                className="h-[36px] px-3 rounded-[4px] bg-[#d33] hover:bg-[#b32424] active:bg-[#921e1e] text-white text-[13px] font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>
-                  {isDeleting
-                    ? 'Suppression en cours...'
-                    : 'Confirmer la suppression'}
+                  {isDeleting ? 'Suppression...' : 'Supprimer'}
                 </span>
               </button>
             </div>

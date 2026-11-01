@@ -9,6 +9,8 @@ import {
   ArrowUpDown,
   ArrowRight,
   XCircle,
+  Check,
+  X,
 } from 'lucide-react';
 
 const RARITY_ORDER = {
@@ -44,6 +46,7 @@ export default function DoubleOrNothingGame({
   const isRoundFinished = spinState === 'won' || spinState === 'lost';
   const [needleRotation, setNeedleRotation] = useState(0);
   const [spinSnapshot, setSpinSnapshot] = useState(null);
+  const [cardWheels, setCardWheels] = useState([]);
 
   // Filtres et tri du Classeur en bas (une seule rareté affichée à la fois)
   const [selectedRarityFilter, setSelectedRarityFilter] = useState('C');
@@ -117,12 +120,29 @@ export default function DoubleOrNothingGame({
     return isFav ? Math.max(0, count - 1) : count;
   };
 
+  // Synchronisation des roues individuelles en état d'attente (idle)
+  useEffect(() => {
+    if (spinState === 'idle') {
+      setCardWheels(
+        liveSelectedCards.map((card, idx) => ({
+          key: `${card.id}-${idx}`,
+          card,
+          isWin: false,
+          rotation: 0,
+          durationMs: 0,
+          isFinished: false,
+        }))
+      );
+    }
+  }, [liveSelectedCards, spinState]);
+
   const handleToggleCard = (card) => {
     if (spinState === 'spinning') return;
 
     if (spinSnapshot) {
       setSpinSnapshot(null);
       setSpinState('idle');
+      setCardWheels([]);
     }
 
     const maxCopies = getMaxSelectableCopies(card);
@@ -170,6 +190,7 @@ export default function DoubleOrNothingGame({
     setSpinSnapshot(null);
     setSpinState('idle');
     setSelectedCardIds([]);
+    setCardWheels([]);
   };
 
   const handleLaunchDouble = async () => {
@@ -178,6 +199,7 @@ export default function DoubleOrNothingGame({
     const lockedCards = [...liveSelectedCards];
     const rarity = activeRarityCode;
     const winPercent = DOUBLE_CHANCE_BY_RARITY[rarity] || 50;
+    const winArc = (winPercent / 100) * 360;
 
     // Retrait des exemplaires misés de la collection
     const consumedMap = {};
@@ -186,23 +208,42 @@ export default function DoubleOrNothingGame({
     });
     onConsumeCards(consumedMap);
 
-    // Tirage indépendant par carte
-    const results = lockedCards.map((card, idx) => {
+    // Tirage indépendant par carte avec angle d'arrêt et durée de rotation dédiés
+    const initialResults = lockedCards.map((card, idx) => {
       const isWin = Math.random() < winPercent / 100;
+      let landingAngle;
+      if (isWin) {
+        // Atterrissage net dans la zone gagnante [6°, winArc - 6°]
+        landingAngle = 6 + Math.random() * Math.max(8, winArc - 12);
+      } else {
+        // Atterrissage net dans la zone perdante [winArc + 6°, 354°]
+        landingAngle =
+          winArc + 6 + Math.random() * Math.max(8, 360 - winArc - 12);
+      }
+      const baseTurns = 360 * (5 + (idx % 2));
+      const targetRotation = baseTurns + landingAngle;
+      // Durée décalée pour un arrêt échelonné et plein de suspense
+      const durationMs =
+        lockedCards.length === 1 ? 3550 : 2200 + idx * 300;
+
       return {
         key: `${card.id}-${idx}`,
         card,
         isWin,
+        landingAngle,
+        targetRotation,
+        durationMs,
+        isFinished: false,
       };
     });
 
-    const wonCount = results.filter((r) => r.isWin).length;
+    const wonCount = initialResults.filter((r) => r.isWin).length;
     const totalCount = lockedCards.length;
     const hasWonAny = wonCount > 0;
 
     setSpinSnapshot({
       cards: lockedCards,
-      results,
+      results: initialResults,
       wonCount,
       totalCount,
       rarity,
@@ -210,51 +251,112 @@ export default function DoubleOrNothingGame({
     setSelectedCardIds([]);
     setSpinState('spinning');
 
-    const winArc = (winPercent / 100) * 360;
-    let landingAngle;
-    if (hasWonAny) {
-      // Atterrissage net dans la zone gagnante [5°, winArc - 5°]
-      landingAngle = 5 + Math.random() * Math.max(10, winArc - 10);
-    } else {
-      // Atterrissage net dans la zone perdante [winArc + 5°, 355°]
-      landingAngle =
-        winArc + 5 + Math.random() * Math.max(10, 360 - winArc - 10);
+    // Cas 1 carte : grande roue centrale unique
+    if (lockedCards.length === 1) {
+      const currentBaseTurns =
+        Math.ceil(needleRotation / 360) * 360 + 360 * 6;
+      const nextRotation = currentBaseTurns + initialResults[0].landingAngle;
+      setNeedleRotation(nextRotation);
+
+      tickTimersRef.current.forEach((t) => clearTimeout(t));
+      tickTimersRef.current = [];
+      const totalTicks = 26;
+      for (let i = 0; i < totalTicks; i++) {
+        const progress = i / totalTicks;
+        const delayMs = Math.round(Math.pow(progress, 2.15) * 3350);
+        const timerId = setTimeout(() => {
+          soundManager.playWheelTick(1 + (1 - progress) * 0.25);
+        }, delayMs);
+        tickTimersRef.current.push(timerId);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 3600));
+
+      if (initialResults[0].isWin) {
+        onCardWon(lockedCards[0]);
+        onCardWon(lockedCards[0]);
+        setSpinState('won');
+        soundManager.playUpgradeWin(rarity);
+      } else {
+        setSpinState('lost');
+        soundManager.playUpgradeLoss();
+      }
+      return;
     }
 
-    const currentBaseTurns =
-      Math.ceil(needleRotation / 360) * 360 + 360 * 6;
-    const nextRotation = currentBaseTurns + landingAngle;
-    setNeedleRotation(nextRotation);
+    // Cas multi-cartes (2 à 8 cartes) : animation propre à chaque roue
+    setCardWheels(
+      initialResults.map((r) => ({
+        key: r.key,
+        card: r.card,
+        isWin: r.isWin,
+        rotation: r.targetRotation,
+        durationMs: r.durationMs,
+        isFinished: false,
+      }))
+    );
 
     tickTimersRef.current.forEach((t) => clearTimeout(t));
     tickTimersRef.current = [];
-    const totalTicks = 26;
+
+    const maxDuration = Math.max(...initialResults.map((r) => r.durationMs));
+
+    // Clics sonores pendant la rotation globale
+    const totalTicks = 16 + lockedCards.length * 2;
     for (let i = 0; i < totalTicks; i++) {
       const progress = i / totalTicks;
-      const delayMs = Math.round(Math.pow(progress, 2.15) * 3350);
+      const delayMs = Math.round(Math.pow(progress, 1.85) * (maxDuration - 250));
       const timerId = setTimeout(() => {
-        soundManager.playWheelTick(1 + (1 - progress) * 0.25);
+        soundManager.playWheelTick(1 + (1 - progress) * 0.3);
       }, delayMs);
       tickTimersRef.current.push(timerId);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 3600));
+    // Arrêt individuel par roue avec mise à jour en direct sans spoiler
+    initialResults.forEach((res, idx) => {
+      const stopTimer = setTimeout(() => {
+        soundManager.playWheelTick(res.isWin ? 1.35 : 0.75);
 
-    // Attribution des cartes doublées : 2 exemplaires (original + double) pour chaque carte gagnante
-    results
-      .filter((r) => r.isWin)
-      .forEach((r) => {
-        onCardWon(r.card);
-        onCardWon(r.card);
-      });
+        setCardWheels((prev) =>
+          prev.map((w, wIdx) =>
+            wIdx === idx ? { ...w, isFinished: true } : w
+          )
+        );
 
-    if (hasWonAny) {
-      setSpinState('won');
-      soundManager.playUpgradeWin(rarity);
-    } else {
-      setSpinState('lost');
-      soundManager.playUpgradeLoss();
-    }
+        setSpinSnapshot((prev) => {
+          if (!prev) return prev;
+          const nextResults = prev.results.map((r, rIdx) =>
+            rIdx === idx ? { ...r, isFinished: true } : r
+          );
+          return {
+            ...prev,
+            results: nextResults,
+          };
+        });
+      }, res.durationMs);
+
+      tickTimersRef.current.push(stopTimer);
+    });
+
+    // Fin du round complet une fois toutes les roues arrêtées
+    const endTimer = setTimeout(() => {
+      initialResults
+        .filter((r) => r.isWin)
+        .forEach((r) => {
+          onCardWon(r.card);
+          onCardWon(r.card);
+        });
+
+      if (hasWonAny) {
+        setSpinState('won');
+        soundManager.playUpgradeWin(rarity);
+      } else {
+        setSpinState('lost');
+        soundManager.playUpgradeLoss();
+      }
+    }, maxDuration + 250);
+
+    tickTimersRef.current.push(endTimer);
   };
 
   const themeCounts = useMemo(() => {
@@ -338,10 +440,17 @@ export default function DoubleOrNothingGame({
     sortBy,
   ]);
 
+  const isMultiMode = displayedSelectedCards.length > 1;
+
   const gaugeRadius = 92;
   const gaugeCircumference = 2 * Math.PI * gaugeRadius;
   const gaugeArcLength = (displayChance / 100) * gaugeCircumference;
   const winArcDegrees = (displayChance / 100) * 360;
+
+  // Géométrie pour les mini-roues individuelles (2 à 8 cartes)
+  const miniRadius = 33;
+  const miniCircumference = 2 * Math.PI * miniRadius;
+  const miniArcLength = (displayChance / 100) * miniCircumference;
 
   return (
     <div className="space-y-5">
@@ -422,230 +531,434 @@ export default function DoubleOrNothingGame({
           </div>
         </div>
 
-        {/* COLONNE CENTRALE (4 col) : Jauge 50/50 */}
+        {/* COLONNE CENTRALE (4 col) : Jauge 50/50 ou Roues individuelles */}
         <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
-              Jauge de probabilité
+              {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
             </span>
+            {isMultiMode && (
+              <span className="text-[11.5px] font-bold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] px-2 py-0.5 rounded-[2px]">
+                {displayedSelectedCards.length} cartes • {displayChance}%
+              </span>
+            )}
           </div>
 
-          <div className="relative my-auto py-2 flex items-center justify-center">
-            <svg
-              width="264"
-              height="264"
-              viewBox="0 0 268 268"
-              className="select-none overflow-visible"
-            >
-              <defs>
-                <filter
-                  id="double-pointer-shadow"
-                  x="-30%"
-                  y="-30%"
-                  width="160%"
-                  height="160%"
-                >
-                  <feDropShadow
-                    dx="0"
-                    dy="1.5"
-                    stdDeviation="1.8"
-                    floodColor="#000000"
-                    floodOpacity="0.38"
-                  />
-                </filter>
-              </defs>
+          {isMultiMode ? (
+            /* GRILLE DE MINI-ROUES (2 à 8 cartes) AVEC ANIMATION INDIVIDUELLE */
+            <div className="w-full flex-1 flex flex-col justify-center my-auto py-2">
+              <div className="grid grid-cols-2 gap-2.5 w-full max-h-[380px] overflow-y-auto pr-1 select-none">
+                {cardWheels.map((wheel) => (
+                  <div
+                    key={wheel.key}
+                    className={`p-2 rounded-[3px] border flex flex-col items-center justify-between transition-all ${
+                      wheel.isFinished
+                        ? wheel.isWin
+                          ? 'bg-[#dff2eb]/70 dark:bg-[#113328]/80 border-[#099979]/50'
+                          : 'bg-[#ffe9e5]/60 dark:bg-[#3b1815]/60 border-[#f54739]/40 opacity-85'
+                        : 'bg-[#f8f9fa] dark:bg-[#151a21] border-[#c8ccd1] dark:border-[#363e4a]'
+                    }`}
+                  >
+                    {/* Entête de la mini-roue : miniature + titre */}
+                    <div className="w-full flex items-center gap-1.5 min-w-0 border-b border-[#eaecf0] dark:border-[#272d36] pb-1 mb-1">
+                      {wheel.card.image ? (
+                        <img
+                          src={wheel.card.image}
+                          alt={wheel.card.title}
+                          className={`w-5 h-5 rounded-[2px] object-cover border shrink-0 ${
+                            wheel.isFinished && !wheel.isWin
+                              ? 'grayscale border-[#c8ccd1] dark:border-slate-600'
+                              : 'border-[#a2a9b1] dark:border-[#4a5360]'
+                          }`}
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded-[2px] bg-[#eaecf0] dark:bg-slate-700 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-0.5">
+                          <img
+                            src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
+                            alt="Wikipédia"
+                            className="w-3.5 h-3.5 object-contain opacity-80"
+                          />
+                        </div>
+                      )}
+                      <span
+                        className="text-[11px] font-bold text-[#202122] dark:text-[#eaecf0] truncate flex-1"
+                        title={wheel.card.title}
+                      >
+                        {wheel.card.title}
+                      </span>
+                    </div>
 
-              <g transform="translate(134, 134)">
-                {Array.from({ length: 40 }).map((_, idx) => {
-                  const deg = idx * 9;
-                  const isMajor = idx % 5 === 0;
-                  const isInWinZone = displayChance > 0 && deg <= winArcDegrees;
-                  return (
-                    <line
-                      key={idx}
-                      x1="0"
-                      y1={isMajor ? -119 : -116}
-                      x2="0"
-                      y2="-110"
-                      transform={`rotate(${deg})`}
-                      stroke={
-                        isInWinZone
-                          ? activeTier.borderColor || '#3366cc'
-                          : isMajor
-                          ? '#a2a9b1'
-                          : '#d8dce2'
-                      }
-                      strokeWidth={isMajor ? '2' : '1.2'}
-                      strokeLinecap="round"
+                    {/* SVG Mini-Roue */}
+                    <div className="relative my-1 flex items-center justify-center">
+                      <svg
+                        width="84"
+                        height="84"
+                        viewBox="0 0 96 96"
+                        className="select-none overflow-visible"
+                      >
+                        {/* Piste de fond */}
+                        <circle
+                          cx="48"
+                          cy="48"
+                          r={miniRadius}
+                          fill="none"
+                          stroke="var(--wiki-gauge-track, #eef1f6)"
+                          strokeWidth="9"
+                        />
+
+                        {/* Arc de gain */}
+                        {displayChance > 0 && (
+                          <circle
+                            cx="48"
+                            cy="48"
+                            r={miniRadius}
+                            fill="none"
+                            stroke={activeTier.borderColor || '#3366cc'}
+                            strokeWidth="9"
+                            strokeDasharray={`${miniArcLength} ${miniCircumference}`}
+                            strokeDashoffset="0"
+                            strokeLinecap="butt"
+                            transform="rotate(-90 48 48)"
+                          />
+                        )}
+
+                        {/* Repère départ (12h) */}
+                        <line
+                          x1="48"
+                          y1={48 - miniRadius - 6}
+                          x2="48"
+                          y2={48 - miniRadius + 6}
+                          stroke="var(--wiki-text, #202122)"
+                          strokeWidth="1.5"
+                        />
+
+                        {/* Repère fin de zone gagnante */}
+                        {displayChance > 0 && (
+                          <g transform={`rotate(${winArcDegrees} 48 48)`}>
+                            <line
+                              x1="48"
+                              y1={48 - miniRadius - 6}
+                              x2="48"
+                              y2={48 - miniRadius + 6}
+                              stroke="var(--wiki-text, #202122)"
+                              strokeWidth="1.5"
+                            />
+                          </g>
+                        )}
+
+                        {/* Disque central */}
+                        <circle
+                          cx="48"
+                          cy="48"
+                          r="23"
+                          fill={
+                            wheel.isFinished
+                              ? wheel.isWin
+                                ? 'var(--wiki-gauge-won-bg, #dff2eb)'
+                                : 'var(--wiki-gauge-lost-bg, #ffe9e5)'
+                              : 'var(--wiki-bg-subtle, #f8f9fa)'
+                          }
+                          stroke={
+                            wheel.isFinished
+                              ? wheel.isWin
+                                ? '#099979'
+                                : '#f54739'
+                              : 'var(--wiki-border-subtle, #c8ccd1)'
+                          }
+                          strokeWidth="1.2"
+                        />
+
+                        {/* Aiguille animée propre à chaque carte */}
+                        <g
+                          style={{
+                            transform: `rotate(${wheel.rotation || 0}deg)`,
+                            transformOrigin: '48px 48px',
+                            transition:
+                              spinState === 'spinning' && !wheel.isFinished
+                                ? `transform ${wheel.durationMs}ms cubic-bezier(0.12, 0.82, 0.16, 1)`
+                                : 'none',
+                          }}
+                        >
+                          <line
+                            x1="48"
+                            y1="9"
+                            x2="48"
+                            y2="23"
+                            stroke="#ffffff"
+                            strokeWidth="3.2"
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1="48"
+                            y1="9"
+                            x2="48"
+                            y2="23"
+                            stroke="#1e293b"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M48 11 L44 5 L48 7 L52 5 Z"
+                            fill="#1e293b"
+                            stroke="#ffffff"
+                            strokeWidth="1"
+                            strokeLinejoin="round"
+                          />
+                        </g>
+                      </svg>
+
+                      {/* Icône de résultat ou pourcentage au centre */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                        {wheel.isFinished ? (
+                          wheel.isWin ? (
+                            <Check className="w-5 h-5 text-[#177860] dark:text-[#34d399] stroke-[3]" />
+                          ) : (
+                            <X className="w-5 h-5 text-[#bf3c2c] dark:text-[#f87171] stroke-[3]" />
+                          )
+                        ) : (
+                          <span className="text-[11px] font-extrabold text-[#202122] dark:text-[#eaecf0]">
+                            {displayChance}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Statut sous la roue */}
+                    <div className="pt-0.5 w-full text-center">
+                      {wheel.isFinished ? (
+                        wheel.isWin ? (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] px-2 py-0.5 rounded-[2px] border border-[#099979]/30">
+                            <Check className="w-3 h-3 stroke-[3]" /> Doublé
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#bf3c2c] dark:text-[#f87171] bg-[#ffe9e5] dark:bg-[#451a1a] px-2 py-0.5 rounded-[2px] border border-[#f54739]/30">
+                            <X className="w-3 h-3 stroke-[3]" /> Perdu
+                          </span>
+                        )
+                      ) : spinState === 'spinning' ? (
+                        <span className="text-[10.5px] font-semibold text-[#3366cc] dark:text-[#60a5fa] animate-pulse">
+                          Tirage...
+                        </span>
+                      ) : (
+                        <span className="text-[10.5px] text-[#72777d] dark:text-[#a2a9b1]">
+                          Prête
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* GRANDE ROUE CENTRALE (0 ou 1 carte) */
+            <div className="relative my-auto py-2 flex items-center justify-center">
+              <svg
+                width="264"
+                height="264"
+                viewBox="0 0 268 268"
+                className="select-none overflow-visible"
+              >
+                <defs>
+                  <filter
+                    id="double-pointer-shadow"
+                    x="-30%"
+                    y="-30%"
+                    width="160%"
+                    height="160%"
+                  >
+                    <feDropShadow
+                      dx="0"
+                      dy="1.5"
+                      stdDeviation="1.8"
+                      floodColor="#000000"
+                      floodOpacity="0.38"
                     />
-                  );
-                })}
-              </g>
+                  </filter>
+                </defs>
 
-              <circle
-                cx="134"
-                cy="134"
-                r={gaugeRadius}
-                fill="none"
-                stroke="var(--wiki-gauge-track, #eef1f6)"
-                strokeWidth="26"
-              />
+                <g transform="translate(134, 134)">
+                  {Array.from({ length: 40 }).map((_, idx) => {
+                    const deg = idx * 9;
+                    const isMajor = idx % 5 === 0;
+                    const isInWinZone = displayChance > 0 && deg <= winArcDegrees;
+                    return (
+                      <line
+                        key={idx}
+                        x1="0"
+                        y1={isMajor ? -119 : -116}
+                        x2="0"
+                        y2="-110"
+                        transform={`rotate(${deg})`}
+                        stroke={
+                          isInWinZone
+                            ? activeTier.borderColor || '#3366cc'
+                            : isMajor
+                            ? '#a2a9b1'
+                            : '#d8dce2'
+                        }
+                        strokeWidth={isMajor ? '2' : '1.2'}
+                        strokeLinecap="round"
+                      />
+                    );
+                  })}
+                </g>
 
-              <circle
-                cx="134"
-                cy="134"
-                r={gaugeRadius + 13}
-                fill="none"
-                stroke="var(--wiki-border-subtle, #c8ccd1)"
-                strokeWidth="1.2"
-              />
-              <circle
-                cx="134"
-                cy="134"
-                r={gaugeRadius - 13}
-                fill="none"
-                stroke="var(--wiki-border-subtle, #c8ccd1)"
-                strokeWidth="1.2"
-              />
-
-              {displayChance > 0 && (
                 <circle
                   cx="134"
                   cy="134"
                   r={gaugeRadius}
                   fill="none"
-                  stroke={activeTier.borderColor || '#3366cc'}
-                  strokeWidth="24"
-                  strokeDasharray={`${gaugeArcLength} ${gaugeCircumference}`}
-                  strokeDashoffset="0"
-                  strokeLinecap="butt"
-                  transform="rotate(-90 134 134)"
+                  stroke="var(--wiki-gauge-track, #eef1f6)"
+                  strokeWidth="26"
                 />
-              )}
 
-              <line
-                x1="134"
-                y1={134 - gaugeRadius - 13}
-                x2="134"
-                y2={134 - gaugeRadius + 13}
-                stroke="var(--wiki-text, #202122)"
-                strokeWidth="2"
-              />
+                <circle
+                  cx="134"
+                  cy="134"
+                  r={gaugeRadius + 13}
+                  fill="none"
+                  stroke="var(--wiki-border-subtle, #c8ccd1)"
+                  strokeWidth="1.2"
+                />
+                <circle
+                  cx="134"
+                  cy="134"
+                  r={gaugeRadius - 13}
+                  fill="none"
+                  stroke="var(--wiki-border-subtle, #c8ccd1)"
+                  strokeWidth="1.2"
+                />
 
-              {displayChance > 0 && (
-                <g transform={`rotate(${winArcDegrees} 134 134)`}>
+                {displayChance > 0 && (
+                  <circle
+                    cx="134"
+                    cy="134"
+                    r={gaugeRadius}
+                    fill="none"
+                    stroke={activeTier.borderColor || '#3366cc'}
+                    strokeWidth="24"
+                    strokeDasharray={`${gaugeArcLength} ${gaugeCircumference}`}
+                    strokeDashoffset="0"
+                    strokeLinecap="butt"
+                    transform="rotate(-90 134 134)"
+                  />
+                )}
+
+                <line
+                  x1="134"
+                  y1={134 - gaugeRadius - 13}
+                  x2="134"
+                  y2={134 - gaugeRadius + 13}
+                  stroke="var(--wiki-text, #202122)"
+                  strokeWidth="2"
+                />
+
+                {displayChance > 0 && (
+                  <g transform={`rotate(${winArcDegrees} 134 134)`}>
+                    <line
+                      x1="134"
+                      y1={134 - gaugeRadius - 13}
+                      x2="134"
+                      y2={134 - gaugeRadius + 13}
+                      stroke="var(--wiki-text, #202122)"
+                      strokeWidth="2"
+                    />
+                  </g>
+                )}
+
+                {/* Disque central fixe (un seul cercle épuré) */}
+                <circle
+                  cx="134"
+                  cy="134"
+                  r="64"
+                  fill={
+                    spinState === 'won'
+                      ? 'var(--wiki-gauge-won-bg, #dff2eb)'
+                      : spinState === 'lost'
+                      ? 'var(--wiki-gauge-lost-bg, #ffe9e5)'
+                      : 'var(--wiki-bg-subtle, #f8f9fa)'
+                  }
+                  stroke={
+                    spinState === 'won'
+                      ? '#099979'
+                      : spinState === 'lost'
+                      ? '#f54739'
+                      : 'var(--wiki-border-subtle, #c8ccd1)'
+                  }
+                  strokeWidth="1.5"
+                />
+
+                <g
+                  style={{
+                    transform: `rotate(${needleRotation}deg)`,
+                    transformOrigin: '134px 134px',
+                    transition:
+                      spinState === 'spinning'
+                        ? 'transform 3.55s cubic-bezier(0.12, 0.82, 0.16, 1)'
+                        : 'none',
+                  }}
+                  filter="url(#double-pointer-shadow)"
+                >
                   <line
                     x1="134"
-                    y1={134 - gaugeRadius - 13}
+                    y1="26"
                     x2="134"
-                    y2={134 - gaugeRadius + 13}
-                    stroke="var(--wiki-text, #202122)"
-                    strokeWidth="2"
+                    y2="58"
+                    stroke="#ffffff"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1="134"
+                    y1="26"
+                    x2="134"
+                    y2="58"
+                    stroke="#1e293b"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M134 31 L125 14 L134 18 L143 14 Z"
+                    fill="#1e293b"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <polygon
+                    points="134,53 129,63 139,63"
+                    fill="#1e293b"
+                    stroke="#ffffff"
+                    strokeWidth="1.2"
+                    strokeLinejoin="round"
                   />
                 </g>
-              )}
+              </svg>
 
-              {/* Disque central fixe (un seul cercle épuré) */}
-              <circle
-                cx="134"
-                cy="134"
-                r="64"
-                fill={
-                  spinState === 'won'
-                    ? 'var(--wiki-gauge-won-bg, #dff2eb)'
-                    : spinState === 'lost'
-                    ? 'var(--wiki-gauge-lost-bg, #ffe9e5)'
-                    : 'var(--wiki-bg-subtle, #f8f9fa)'
-                }
-                stroke={
-                  spinState === 'won'
-                    ? '#099979'
-                    : spinState === 'lost'
-                    ? '#f54739'
-                    : 'var(--wiki-border-subtle, #c8ccd1)'
-                }
-                strokeWidth="1.5"
-              />
-
-              <g
-                style={{
-                  transform: `rotate(${needleRotation}deg)`,
-                  transformOrigin: '134px 134px',
-                  transition:
-                    spinState === 'spinning'
-                      ? 'transform 3.55s cubic-bezier(0.12, 0.82, 0.16, 1)'
-                      : 'none',
-                }}
-                filter="url(#double-pointer-shadow)"
-              >
-                <line
-                  x1="134"
-                  y1="26"
-                  x2="134"
-                  y2="58"
-                  stroke="#ffffff"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="134"
-                  y1="26"
-                  x2="134"
-                  y2="58"
-                  stroke="#1e293b"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M134 31 L125 14 L134 18 L143 14 Z"
-                  fill="#1e293b"
-                  stroke="#ffffff"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                />
-                <polygon
-                  points="134,53 129,63 139,63"
-                  fill="#1e293b"
-                  stroke="#ffffff"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-              </g>
-            </svg>
-
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-              {spinState === 'won' ? (
-                <div className="flex flex-col items-center">
-                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#177860] dark:text-[#34d399] leading-tight">
-                    Réussi !
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                {spinState === 'won' ? (
+                  <div className="flex items-center justify-center">
+                    <Check className="w-11 h-11 text-[#177860] dark:text-[#34d399] stroke-[2.75]" />
+                  </div>
+                ) : spinState === 'lost' ? (
+                  <div className="flex items-center justify-center">
+                    <X className="w-11 h-11 text-[#bf3c2c] dark:text-[#f87171] stroke-[2.75]" />
+                  </div>
+                ) : (
+                  <span
+                    className="text-[30px] font-extrabold leading-none tracking-tight"
+                    style={{
+                      color:
+                        displayChance > 0
+                          ? 'var(--wiki-text-emphasized, #101418)'
+                          : '#72777d',
+                    }}
+                  >
+                    {displayChance}&nbsp;%
                   </span>
-                  {spinSnapshot && spinSnapshot.wonCount > 0 && (
-                    <span className="text-[11px] font-bold text-[#177860]/80 dark:text-[#34d399]/85 mt-0.5">
-                      +{spinSnapshot.wonCount} carte{spinSnapshot.wonCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              ) : spinState === 'lost' ? (
-                <div className="flex flex-col items-center">
-                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#bf3c2c] dark:text-[#f87171] leading-tight">
-                    Perdu
-                  </span>
-                </div>
-              ) : (
-                <span
-                  className="text-[30px] font-extrabold leading-none tracking-tight"
-                  style={{
-                    color:
-                      displayChance > 0
-                        ? 'var(--wiki-text-emphasized, #101418)'
-                        : '#72777d',
-                  }}
-                >
-                  {displayChance}&nbsp;%
-                </span>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="w-full pt-3 border-t border-[#eaecf0] dark:border-[#272d36]">
             {spinState === 'won' || spinState === 'lost' ? (
@@ -680,56 +993,144 @@ export default function DoubleOrNothingGame({
           </div>
         </div>
 
-        {/* COLONNE DROITE (4 col) : Carte cible / Résultat */}
+        {/* COLONNE DROITE (4 col) : Carte cible / Résultats du tirage */}
         <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
             <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
-              {isRoundFinished && spinSnapshot ? 'Résultats du tirage' : 'Carte cible'}
+              {spinSnapshot
+                ? spinSnapshot.totalCount > 1
+                  ? 'Résultats du tirage'
+                  : isRoundFinished
+                  ? 'Résultat du tirage'
+                  : 'Carte cible'
+                : liveSelectedCards.length > 1
+                ? 'Cartes sélectionnées'
+                : 'Carte cible'}
             </span>
-            {isRoundFinished && spinSnapshot && (
+            {spinSnapshot && spinSnapshot.totalCount > 1 && (
               <span className="text-[12px] font-bold text-[#54595d] dark:text-[#a2a9b1]">
-                {spinSnapshot.wonCount}/{spinSnapshot.totalCount} gagné{spinSnapshot.wonCount > 1 ? 's' : ''}
+                {isRoundFinished
+                  ? `${spinSnapshot.wonCount}/${spinSnapshot.totalCount} gagné${spinSnapshot.wonCount > 1 ? 's' : ''}`
+                  : `${spinSnapshot.results.filter((r) => r.isFinished).length}/${spinSnapshot.totalCount} terminé${spinSnapshot.results.filter((r) => r.isFinished).length > 1 ? 's' : ''}`}
               </span>
             )}
           </div>
 
           <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px] w-full">
-            {isRoundFinished && spinSnapshot ? (
+            {spinSnapshot ? (
               spinSnapshot.totalCount === 1 ? (
-                spinState === 'won' ? (
-                  <div className="w-full max-w-[272px]">
-                    <WikiCard
-                      card={spinSnapshot.results[0].card}
-                      compact={true}
-                      duplicateCount={2}
-                      isFavorite={favorites.includes(spinSnapshot.results[0].card.id)}
-                      onToggleFavorite={onToggleFavorite}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] dark:border-[#b32424] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center mb-3">
-                      <XCircle className="w-6 h-6" />
+                /* Résultat pour 1 carte */
+                isRoundFinished ? (
+                  spinState === 'won' ? (
+                    <div className="w-full max-w-[272px]">
+                      <WikiCard
+                        card={spinSnapshot.results[0].card}
+                        compact={true}
+                        duplicateCount={2}
+                        isFavorite={favorites.includes(spinSnapshot.results[0].card.id)}
+                        onToggleFavorite={onToggleFavorite}
+                      />
                     </div>
-                    <span className="text-[14px] font-bold text-[#bf3c2c] dark:text-[#f87171] mb-1">
-                      Carte perdue
-                    </span>
-                    <p className="text-[12px] text-[#72777d] dark:text-[#a2a9b1] m-0">
-                      « {spinSnapshot.results[0].card.title} » a été détruite.
-                    </p>
+                  ) : (
+                    <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] dark:border-[#b32424] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center mb-3">
+                        <XCircle className="w-6 h-6" />
+                      </div>
+                      <span className="text-[14px] font-bold text-[#bf3c2c] dark:text-[#f87171] mb-1">
+                        Carte perdue
+                      </span>
+                      <p className="text-[12px] text-[#72777d] dark:text-[#a2a9b1] m-0">
+                        « {spinSnapshot.results[0].card.title} » a été détruite.
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  /* Pendant le tirage 1 carte : carte mystère avec "Révélation en cours..." */
+                  <div
+                    className="relative w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                    style={{
+                      background: activeTier.cardBg,
+                      border: `1px solid ${activeTier.borderColor}`,
+                      boxShadow: `0 8px 20px -6px ${activeTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
+                      color: activeTier.textColor,
+                    }}
+                  >
+                    <div className="relative z-20 p-3 flex items-center justify-between">
+                      <div
+                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                        style={{
+                          backgroundColor: activeTier.badgeBg,
+                          color: activeTier.badgeText,
+                        }}
+                      >
+                        {activeTier.code}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-[2px] bg-black/65 text-white text-[11px] font-bold">
+                        ×2
+                      </span>
+                    </div>
+
+                    <div className="relative flex-1 px-3.5 flex flex-col justify-center">
+                      <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
+                        <div
+                          className="w-full h-[168px] rounded-[8px]"
+                          style={{
+                            background:
+                              'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
+                          }}
+                        />
+                        <div className="space-y-2.5 pt-2">
+                          <div className="h-4 w-3/4 rounded bg-black/25" />
+                          <div className="h-3 w-full rounded bg-black/20" />
+                          <div className="h-3 w-11/12 rounded bg-black/20" />
+                        </div>
+                      </div>
+
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
+                          style={{
+                            backgroundColor: activeTier.badgeBg,
+                            borderColor: activeTier.borderColor,
+                            color: activeTier.badgeText,
+                          }}
+                        >
+                          <HelpCircle className="w-6 h-6 animate-pulse" />
+                        </div>
+                        <span
+                          className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            color: '#202122',
+                          }}
+                        >
+                          Révélation en cours...
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className="relative z-10 px-3.5 py-2.5 border-t flex items-center justify-between text-[12px] font-bold"
+                      style={{ borderColor: activeTier.dividerColor }}
+                    >
+                      <span>{activeTier.thresholdLabel}</span>
+                      <span>Wikipédia FR</span>
+                    </div>
                   </div>
                 )
               ) : (
-                /* Résultats pour plusieurs cartes (2 à 8) */
+                /* Résultats progressifs pour plusieurs cartes (2 à 8) */
                 <div className="w-full h-full max-h-[446px] flex flex-col justify-between">
                   <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[380px]">
                     {spinSnapshot.results.map((res) => (
                       <div
                         key={res.key}
                         className={`p-2.5 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
-                          res.isWin
+                          !res.isFinished
+                            ? 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748]'
+                            : res.isWin
                             ? 'bg-[#dff2eb] dark:bg-[#113328] border-[#099979]/40 dark:border-[#099979]/60'
-                            : 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748] opacity-75'
+                            : 'bg-[#fff5f5] dark:bg-[#201515] border-[#f54739]/30 dark:border-[#b32424]/40 opacity-75'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -738,32 +1139,48 @@ export default function DoubleOrNothingGame({
                               src={res.card.image}
                               alt={res.card.title}
                               className={`w-9 h-9 object-cover rounded-[3px] border shrink-0 ${
-                                res.isWin
+                                res.isFinished && !res.isWin
+                                  ? 'border-[#c8ccd1] dark:border-slate-600 grayscale'
+                                  : res.isFinished && res.isWin
                                   ? 'border-[#099979]'
-                                  : 'border-[#c8ccd1] dark:border-slate-600 grayscale'
+                                  : 'border-[#a2a9b1] dark:border-[#4a5360]'
                               }`}
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700 flex items-center justify-center shrink-0 text-[10px] font-bold text-[#54595d] dark:text-slate-300">
-                              {res.card.rarity}
+                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                              <img
+                                src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
+                                alt="Wikipédia"
+                                className="w-6 h-6 object-contain opacity-80"
+                              />
                             </div>
                           )}
-                          <div className="min-w-0">
-                            <p className={`text-[12px] font-bold truncate m-0 leading-tight ${
-                              res.isWin
-                                ? 'text-[#0f5132] dark:text-[#34d399]'
-                                : 'text-[#202122] dark:text-[#eaecf0]'
-                            }`}>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-[12px] font-bold truncate m-0 leading-tight ${
+                                res.isFinished && res.isWin
+                                  ? 'text-[#0f5132] dark:text-[#34d399]'
+                                  : res.isFinished && !res.isWin
+                                  ? 'text-[#72777d] dark:text-[#a2a9b1]'
+                                  : 'text-[#202122] dark:text-[#eaecf0]'
+                              }`}
+                            >
                               {res.card.title}
                             </p>
-                            <span className="text-[10.5px] text-[#54595d] dark:text-[#a2a9b1]">
-                              {res.card.rarity}
-                            </span>
+                            <p className="text-[11px] text-[#54595d] dark:text-[#a2a9b1] truncate m-0 mt-0.5 leading-tight">
+                              {res.card.description ||
+                                res.card.extract ||
+                                'Article Wikipédia...'}
+                            </p>
                           </div>
                         </div>
 
                         <div className="shrink-0">
-                          {res.isWin ? (
+                          {!res.isFinished ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#3366cc] dark:text-[#60a5fa] bg-[#eef3fb] dark:bg-[#1e2a3a] border border-[#3366cc]/30 px-2 py-0.5 rounded-[2px] animate-pulse">
+                              Tirage...
+                            </span>
+                          ) : res.isWin ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] border border-[#099979]/40 px-2 py-0.5 rounded-[2px]">
                               Doublé
                             </span>
@@ -778,28 +1195,84 @@ export default function DoubleOrNothingGame({
                   </div>
 
                   <div className="pt-2 border-t border-[#eaecf0] dark:border-[#272d36] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
-                    <span>
-                      Gain net :{' '}
-                      {spinSnapshot.wonCount > 0
-                        ? `+${spinSnapshot.wonCount} carte${spinSnapshot.wonCount > 1 ? 's' : ''}`
-                        : '0 carte'}
-                    </span>
-                    <span
-                      className={
-                        spinSnapshot.wonCount > 0
-                          ? 'text-[#177860] dark:text-[#34d399]'
-                          : 'text-[#bf3c2c] dark:text-[#f87171]'
-                      }
-                    >
-                      {spinSnapshot.wonCount > 0
-                        ? `${spinSnapshot.wonCount * 2} exemplaires reçus`
-                        : '0 exemplaire reçu'}
-                    </span>
+                    {isRoundFinished ? (
+                      <>
+                        <span>
+                          Gain net :{' '}
+                          {spinSnapshot.wonCount > 0
+                            ? `+${spinSnapshot.wonCount} carte${spinSnapshot.wonCount > 1 ? 's' : ''}`
+                            : '0 carte'}
+                        </span>
+                        <span
+                          className={
+                            spinSnapshot.wonCount > 0
+                              ? 'text-[#177860] dark:text-[#34d399]'
+                              : 'text-[#bf3c2c] dark:text-[#f87171]'
+                          }
+                        >
+                          {spinSnapshot.wonCount > 0
+                            ? `${spinSnapshot.wonCount * 2} exemplaires reçus`
+                            : '0 exemplaire reçu'}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[#3366cc] dark:text-[#60a5fa] animate-pulse">
+                        Tirage en cours ({spinSnapshot.results.filter((r) => r.isFinished).length}/{spinSnapshot.totalCount})...
+                      </span>
+                    )}
                   </div>
                 </div>
               )
+            ) : liveSelectedCards.length > 1 ? (
+              /* En attente : résumé des 2 à 8 cartes sélectionnées */
+              <div className="w-full h-full max-h-[446px] flex flex-col justify-between">
+                <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[380px]">
+                  {liveSelectedCards.map((card, idx) => (
+                    <div
+                      key={`${card.id}-${idx}`}
+                      className="p-2.5 rounded-[4px] border border-[#eaecf0] dark:border-[#2d3748] bg-[#f8f9fa] dark:bg-[#1a202c] flex items-center justify-between gap-2.5"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {card.image ? (
+                          <img
+                            src={card.image}
+                            alt={card.title}
+                            className="w-9 h-9 object-cover rounded-[3px] border border-[#a2a9b1] dark:border-[#4a5360] shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                            <img
+                              src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
+                              alt="Wikipédia"
+                              className="w-6 h-6 object-contain opacity-80"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-bold text-[#202122] dark:text-[#eaecf0] truncate m-0 leading-tight">
+                            {card.title}
+                          </p>
+                          <p className="text-[11px] text-[#54595d] dark:text-[#a2a9b1] truncate m-0 mt-0.5 leading-tight">
+                            {card.description || card.extract || 'Article Wikipédia...'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#54595d] dark:text-[#a2a9b1] bg-[#eaecf0] dark:bg-slate-700 px-2 py-0.5 rounded-[2px]">
+                          Prête
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-[#eaecf0] dark:border-[#272d36] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
+                  <span>{liveSelectedCards.length} cartes sélectionnées</span>
+                  <span className="text-[#3366cc] dark:text-[#60a5fa]">Prêtes pour le tirage</span>
+                </div>
+              </div>
             ) : (
-              /* Carte cible en attente */
+              /* Carte cible en attente (0 ou 1 carte) */
               <div
                 className="relative w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
@@ -864,12 +1337,8 @@ export default function DoubleOrNothingGame({
                         color: '#202122',
                       }}
                     >
-                      {spinState === 'spinning'
-                        ? 'Révélation en cours...'
-                        : liveSelectedCards.length === 1
+                      {liveSelectedCards.length === 1
                         ? `${liveSelectedCards[0].title} (×2)`
-                        : liveSelectedCards.length > 1
-                        ? `Double exemplaire (${liveSelectedCards.length} cartes)`
                         : `Double exemplaire (${activeTier.name})`}
                     </span>
                   </div>

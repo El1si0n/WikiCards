@@ -12,6 +12,8 @@ import {
   BookOpen,
   ArrowUpDown,
   ArrowRight,
+  Check,
+  X,
 } from 'lucide-react';
 
 // Configuration des paliers d'Upgrade (N -> N+1)
@@ -846,16 +848,16 @@ export default function WikiSino({
                   </g>
                 </svg>
 
-                {/* Affichage central simple et lisible (uniquement le texte principal) */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-6">
+                {/* Affichage central sobre avec icône */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
                   {spinState === 'won' ? (
-                    <span className="text-[22px] font-extrabold text-[#177860] leading-tight">
-                      Réussi !
-                    </span>
+                    <div className="flex items-center justify-center">
+                      <Check className="w-11 h-11 text-[#177860] dark:text-[#34d399] stroke-[2.75]" />
+                    </div>
                   ) : spinState === 'lost' ? (
-                    <span className="text-[22px] font-extrabold text-[#bf3c2c] leading-tight">
-                      Perdu
-                    </span>
+                    <div className="flex items-center justify-center">
+                      <X className="w-11 h-11 text-[#bf3c2c] dark:text-[#f87171] stroke-[2.75]" />
+                    </div>
                   ) : (
                     <span
                       className="text-[30px] font-extrabold leading-none tracking-tight"
