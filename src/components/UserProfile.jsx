@@ -48,7 +48,6 @@ export default function UserProfile({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Sélection d'une carte pour l'un des 4 emplacements de la vitrine (0, 1, 2, 3 ou null)
   const [activeShowcaseSlot, setActiveShowcaseSlot] = useState(null);
@@ -304,7 +303,7 @@ export default function UserProfile({
               ) : (
                 <form
                   onSubmit={handleSaveIdentity}
-                  className="flex flex-col sm:flex-row sm:items-center gap-2.5 bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-2.5 max-w-[620px]"
+                  className="flex flex-col sm:flex-row sm:items-stretch gap-2.5 bg-[#f8f9fa] dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-2.5 max-w-[620px]"
                 >
                   <div className="flex-1 space-y-2 min-w-0 w-full">
                     <input
@@ -314,7 +313,7 @@ export default function UserProfile({
                       maxLength={36}
                       placeholder="Nom d'utilisateur"
                       autoFocus
-                      className="w-full h-[30px] px-2 text-[13.5px] font-bold bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
+                      className="w-full h-[30px] px-2.5 text-[13.5px] font-bold bg-white dark:bg-[#12161c] text-[#202122] dark:text-white border border-[#a2a9b1] dark:border-[#4a5360] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                     />
                     <input
                       type="text"
@@ -322,22 +321,22 @@ export default function UserProfile({
                       onChange={(e) => setDraftBio(e.target.value)}
                       maxLength={160}
                       placeholder="Présentation courte..."
-                      className="w-full h-[30px] px-2 text-[12.5px] bg-white border border-[#a2a9b1] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
+                      className="w-full h-[30px] px-2.5 text-[12.5px] bg-white dark:bg-[#12161c] text-[#202122] dark:text-white border border-[#a2a9b1] dark:border-[#4a5360] rounded-[2px] focus:border-[#3366cc] focus:outline-none"
                     />
                   </div>
-                  <div className="flex items-center justify-end gap-1.5 shrink-0">
+                  <div className="flex flex-row sm:flex-col justify-between gap-1.5 shrink-0 sm:w-[105px]">
+                    <button
+                      type="submit"
+                      className="wiki-casino-btn wiki-casino-btn--primary !h-[30px] !py-0 !px-3 !text-[12.5px] w-full font-bold flex items-center justify-center"
+                    >
+                      Enregistrer
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsEditingIdentity(false)}
-                      className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[26px] !py-0.5 !px-2.5 !text-[12px]"
+                      className="wiki-casino-btn wiki-casino-btn--neutral !h-[30px] !py-0 !px-3 !text-[12.5px] w-full flex items-center justify-center"
                     >
                       Annuler
-                    </button>
-                    <button
-                      type="submit"
-                      className="wiki-casino-btn wiki-casino-btn--primary !min-h-[26px] !py-0.5 !px-2.5 !text-[12px]"
-                    >
-                      Enregistrer
                     </button>
                   </div>
                 </form>
@@ -373,14 +372,12 @@ export default function UserProfile({
                 onClick={() => {
                   setIsConfirmingDelete(true);
                   setDeleteError(null);
-                  setDeleteConfirmText('');
                 }}
-                className="h-[32px] px-2.5 rounded-[2px] border border-[#f54739] bg-[#fff5f5] hover:bg-[#ffe9e5] text-[#bf3c2c] inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors text-[12px] font-bold"
+                className="w-[32px] h-[32px] rounded-[2px] border border-[#f54739] dark:border-[#b32424] bg-[#fff5f5] dark:bg-[#3b1815] hover:bg-[#ffe9e5] dark:hover:bg-[#4d1f1c] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center shrink-0 cursor-pointer transition-colors"
                 title="Supprimer définitivement mon compte"
                 aria-label="Supprimer mon compte"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Supprimer le compte</span>
               </button>
             )}
           </div>
@@ -518,9 +515,6 @@ export default function UserProfile({
       <section className="accueil_2017_cadre">
         <div className="wiki-cadre-header flex flex-wrap items-center justify-between gap-2">
           <h2 className="wiki-smallcaps m-0">Vitrine du collectionneur</h2>
-          <span className="text-[12.5px] text-[#54595d]">
-            Cliquez sur un emplacement pour exposer ou modifier une carte
-          </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
@@ -533,10 +527,6 @@ export default function UserProfile({
                 key={slotIdx}
                 className="w-full max-w-[272px] flex flex-col items-center"
               >
-                <div className="w-full mb-2 px-1 text-[12px] font-bold text-[#54595d] uppercase tracking-wider">
-                  Vitrine #{slotIdx + 1}
-                </div>
-
                 {card ? (
                   <div
                     className={`w-full rounded-[14px] transition-all ${
@@ -719,9 +709,7 @@ export default function UserProfile({
                       duplicateCount={card.count || 1}
                       isSelected={isAlreadyInShowcase}
                       selectionBadgeText={
-                        isAlreadyInShowcase
-                          ? `Vitrine #${slotPosition + 1}`
-                          : 'Exposer'
+                        isAlreadyInShowcase ? 'Exposée' : 'Exposer'
                       }
                       onSelectCard={() => handleAssignCardToShowcase(card)}
                     />
@@ -741,20 +729,20 @@ export default function UserProfile({
 
       {/* ZONE DE DANGER : SUPPRESSION DÉFINITIVE DU COMPTE */}
       {onDeleteAccount && (
-        <section className="accueil_2017_cadre !border-[#f54739]/40 bg-[#fffdfd]">
-          <div className="wiki-cadre-header border-b border-[#f54739]/30 flex items-center justify-between">
-            <h2 className="wiki-smallcaps m-0 text-[#bf3c2c] flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-[#bf3c2c]" />
+        <section className="accueil_2017_cadre !border-[#f54739]/40 dark:!border-[#b32424]/60 bg-[#fffdfd] dark:bg-[#1a1414]">
+          <div className="wiki-cadre-header border-b border-[#f54739]/30 dark:border-[#b32424]/40 flex items-center justify-between">
+            <h2 className="wiki-smallcaps m-0 text-[#bf3c2c] dark:text-[#f87171] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#bf3c2c] dark:text-[#f87171]" />
               <span>Zone de danger</span>
             </h2>
           </div>
 
           <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[13.5px] font-bold text-[#202122] m-0">
+              <p className="text-[13.5px] font-bold text-[#202122] dark:text-[#eaecf0] m-0">
                 Supprimer définitivement ce compte
               </p>
-              <p className="text-[12.5px] text-[#54595d] m-0 leading-relaxed">
+              <p className="text-[12.5px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-relaxed">
                 Une fois votre compte supprimé, toutes vos cartes obtenues, vos Wikithunes, vos statistiques et vos annonces seront irrévocablement effacées. Cette opération ne peut pas être annulée.
               </p>
             </div>
@@ -764,7 +752,6 @@ export default function UserProfile({
               onClick={() => {
                 setIsConfirmingDelete(true);
                 setDeleteError(null);
-                setDeleteConfirmText('');
               }}
               className="wiki-casino-btn wiki-casino-btn--danger shrink-0 !min-h-[36px] !py-1.5 !px-4 text-[13px] font-bold inline-flex items-center gap-2"
             >
@@ -775,31 +762,28 @@ export default function UserProfile({
         </section>
       )}
 
-      {/* MODAL DE CONFIRMATION DE SUPPRESSION DU COMPTE */}
+      {/* MODAL SIMPLIFIÉ DE CONFIRMATION DE SUPPRESSION DU COMPTE */}
       {isConfirmingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div
-            className="bg-white border border-[#a2a9b1] rounded-[2px] shadow-2xl max-w-[500px] w-full p-5 space-y-4 text-left"
+            className="bg-white dark:bg-[#181d24] border border-[#a2a9b1] dark:border-[#363e4a] rounded-[2px] shadow-2xl max-w-[440px] w-full p-5 space-y-4 text-left"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"
           >
-            <div className="flex items-start gap-3 border-b border-[#eaecf0] pb-3">
-              <div className="w-10 h-10 rounded-full bg-[#ffe9e5] border border-[#f54739] text-[#bf3c2c] flex items-center justify-center shrink-0">
+            <div className="flex items-start gap-3 border-b border-[#eaecf0] dark:border-[#272d36] pb-3">
+              <div className="w-10 h-10 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3
                   id="delete-account-title"
-                  className="text-[17px] font-bold text-[#202122] m-0"
+                  className="text-[16px] font-bold text-[#202122] dark:text-[#eaecf0] m-0"
                 >
                   Supprimer définitivement votre compte ?
                 </h3>
-                <p className="text-[12.5px] text-[#72777d] m-0 mt-0.5">
-                  Code joueur :{' '}
-                  <span className="font-mono font-bold text-[#202122]">
-                    {userCode}
-                  </span>
+                <p className="text-[12px] text-[#72777d] dark:text-[#a2a9b1] m-0 mt-0.5 font-mono font-bold">
+                  Code joueur : {userCode}
                 </p>
               </div>
               <button
@@ -807,82 +791,38 @@ export default function UserProfile({
                 onClick={() => {
                   if (!isDeleting) {
                     setIsConfirmingDelete(false);
-                    setDeleteConfirmText('');
                     setDeleteError(null);
                   }
                 }}
                 disabled={isDeleting}
-                className="text-[#72777d] hover:text-[#202122] cursor-pointer p-1"
+                className="text-[#72777d] dark:text-[#a2a9b1] hover:text-[#202122] dark:hover:text-white cursor-pointer p-1"
                 aria-label="Fermer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-[13px] text-[#202122]">
-              <div className="p-3 bg-[#fff5f5] border border-[#f54739]/40 rounded-[2px] space-y-1.5 text-[#bf3c2c]">
-                <p className="font-bold m-0 flex items-center gap-1.5">
-                  <span>Attention : cette action est irréversible.</span>
-                </p>
-                <ul className="list-disc list-inside text-[12.5px] space-y-0.5 m-0 text-[#202122]">
-                  <li>
-                    Votre classeur de <strong>{collection.length} cartes</strong>{' '}
-                    ({totalCopiesCount} exemplaires) sera détruit.
-                  </li>
-                  <li>
-                    Votre solde de{' '}
-                    <strong>
-                      {new Intl.NumberFormat('fr-FR').format(wikithunes)} ₩
-                    </strong>{' '}
-                    sera réinitialisé.
-                  </li>
-                  <li>
-                    Vos offres sur le marché et vos propositions d'échanges
-                    seront annulées.
-                  </li>
-                  <li>
-                    Votre identifiant{' '}
-                    <strong className="font-mono">{userCode}</strong> sera
-                    définitivement effacé du serveur.
-                  </li>
-                </ul>
-              </div>
+            <p className="text-[13px] text-[#54595d] dark:text-[#c8ccd1] m-0 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Vos{' '}
+              <strong className="text-[#202122] dark:text-white">{collection.length} cartes</strong>{' '}
+              ({totalCopiesCount} exemplaires), vos{' '}
+              <strong className="text-[#202122] dark:text-white">
+                {new Intl.NumberFormat('fr-FR').format(wikithunes)} ₩
+              </strong>{' '}
+              et toutes vos données seront irrévocablement détruits.
+            </p>
 
-              <div>
-                <label
-                  htmlFor="confirm-delete-input"
-                  className="block text-[12.5px] font-medium text-[#54595d] mb-1.5"
-                >
-                  Pour confirmer, saisissez votre code{' '}
-                  <strong className="text-[#202122]">{userCode}</strong> ou le
-                  mot <strong className="text-[#bf3c2c]">SUPPRIMER</strong> :
-                </label>
-                <input
-                  id="confirm-delete-input"
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  disabled={isDeleting}
-                  placeholder={`${userCode} ou SUPPRIMER`}
-                  className="w-full px-3 py-2 text-[13px] font-mono border border-[#a2a9b1] rounded-[2px] focus:outline-none focus:border-[#f54739] focus:ring-1 focus:ring-[#f54739]"
-                  autoComplete="off"
-                  autoFocus
-                />
-              </div>
+            {deleteError && (
+              <p className="text-[12px] text-[#bf3c2c] dark:text-[#f87171] font-medium m-0">
+                {deleteError}
+              </p>
+            )}
 
-              {deleteError && (
-                <p className="text-[12px] text-[#bf3c2c] font-medium m-0">
-                  {deleteError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#eaecf0]">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#eaecf0] dark:border-[#272d36]">
               <button
                 type="button"
                 onClick={() => {
                   setIsConfirmingDelete(false);
-                  setDeleteConfirmText('');
                   setDeleteError(null);
                 }}
                 disabled={isDeleting}
@@ -893,11 +833,7 @@ export default function UserProfile({
 
               <button
                 type="button"
-                disabled={
-                  isDeleting ||
-                  (deleteConfirmText.trim().toUpperCase() !== userCode &&
-                    deleteConfirmText.trim().toUpperCase() !== 'SUPPRIMER')
-                }
+                disabled={isDeleting}
                 onClick={async () => {
                   setIsDeleting(true);
                   setDeleteError(null);

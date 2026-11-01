@@ -41,6 +41,7 @@ export default function DoubleOrNothingGame({
 }) {
   const [selectedCardIds, setSelectedCardIds] = useState([]);
   const [spinState, setSpinState] = useState('idle'); // 'idle' | 'spinning' | 'won' | 'lost'
+  const isRoundFinished = spinState === 'won' || spinState === 'lost';
   const [needleRotation, setNeedleRotation] = useState(0);
   const [spinSnapshot, setSpinSnapshot] = useState(null);
 
@@ -346,12 +347,12 @@ export default function DoubleOrNothingGame({
     <div className="space-y-5">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* COLONNE GAUCHE (4 col) : Carte sélectionnée */}
-        <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-          <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+        <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+          <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               Cartes sélectionnées
             </span>
-            <span className="text-[12px] text-[#54595d] font-medium">
+            <span className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] font-medium">
               {displayedSelectedCards.length}/{MAX_SELECTED_CARDS}
             </span>
           </div>
@@ -411,8 +412,8 @@ export default function DoubleOrNothingGame({
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-                <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+              <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+                <p className="text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                   Cliquez sur 1 à 8 cartes dans le classeur ci-dessous pour
                   tenter de les doubler en même temps.
                 </p>
@@ -422,9 +423,9 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE CENTRALE (4 col) : Jauge 50/50 */}
-        <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-          <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
-            <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+        <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+          <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
+            <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               Jauge de probabilité
             </span>
           </div>
@@ -615,29 +616,20 @@ export default function DoubleOrNothingGame({
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
               {spinState === 'won' ? (
                 <div className="flex flex-col items-center">
-                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#177860] leading-tight">
-                    {spinSnapshot?.totalCount > 1
-                      ? `${spinSnapshot.wonCount}/${spinSnapshot.totalCount} Réussi${spinSnapshot.wonCount > 1 ? 's' : ''}`
-                      : 'Réussi !'}
+                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#177860] dark:text-[#34d399] leading-tight">
+                    Réussi !
                   </span>
-                  {spinSnapshot?.totalCount > 1 && (
-                    <span className="text-[11px] font-bold text-[#177860]/80 mt-0.5">
-                      +{spinSnapshot.wonCount * 2} cartes
+                  {spinSnapshot && spinSnapshot.wonCount > 0 && (
+                    <span className="text-[11px] font-bold text-[#177860]/80 dark:text-[#34d399]/85 mt-0.5">
+                      +{spinSnapshot.wonCount} carte{spinSnapshot.wonCount > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>
               ) : spinState === 'lost' ? (
                 <div className="flex flex-col items-center">
-                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#bf3c2c] leading-tight">
-                    {spinSnapshot?.totalCount > 1
-                      ? `0/${spinSnapshot.totalCount} Réussi`
-                      : 'Perdu'}
+                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#bf3c2c] dark:text-[#f87171] leading-tight">
+                    Perdu
                   </span>
-                  {spinSnapshot?.totalCount > 1 && (
-                    <span className="text-[11px] font-bold text-[#bf3c2c]/80 mt-0.5">
-                      Cartes perdues
-                    </span>
-                  )}
                 </div>
               ) : (
                 <span
@@ -655,7 +647,7 @@ export default function DoubleOrNothingGame({
             </div>
           </div>
 
-          <div className="w-full pt-3 border-t border-[#eaecf0]">
+          <div className="w-full pt-3 border-t border-[#eaecf0] dark:border-[#272d36]">
             {spinState === 'won' || spinState === 'lost' ? (
               <button
                 type="button"
@@ -689,20 +681,20 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE DROITE (4 col) : Carte cible / Résultat */}
-        <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-          <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
-              {spinSnapshot ? 'Résultats du tirage' : 'Carte cible'}
+        <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+          <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+            <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
+              {isRoundFinished && spinSnapshot ? 'Résultats du tirage' : 'Carte cible'}
             </span>
-            {spinSnapshot && (
-              <span className="text-[12px] font-bold text-[#54595d]">
+            {isRoundFinished && spinSnapshot && (
+              <span className="text-[12px] font-bold text-[#54595d] dark:text-[#a2a9b1]">
                 {spinSnapshot.wonCount}/{spinSnapshot.totalCount} gagné{spinSnapshot.wonCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
 
           <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px] w-full">
-            {spinSnapshot ? (
+            {isRoundFinished && spinSnapshot ? (
               spinSnapshot.totalCount === 1 ? (
                 spinState === 'won' ? (
                   <div className="w-full max-w-[272px]">
@@ -715,14 +707,14 @@ export default function DoubleOrNothingGame({
                     />
                   </div>
                 ) : (
-                  <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 bg-[#fff5f5] flex flex-col items-center justify-center p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-[#ffe9e5] border border-[#f54739] text-[#bf3c2c] flex items-center justify-center mb-3">
+                  <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] dark:border-[#b32424] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center mb-3">
                       <XCircle className="w-6 h-6" />
                     </div>
-                    <span className="text-[14px] font-bold text-[#bf3c2c] mb-1">
+                    <span className="text-[14px] font-bold text-[#bf3c2c] dark:text-[#f87171] mb-1">
                       Carte perdue
                     </span>
-                    <p className="text-[12px] text-[#72777d] m-0">
+                    <p className="text-[12px] text-[#72777d] dark:text-[#a2a9b1] m-0">
                       « {spinSnapshot.results[0].card.title} » a été détruite.
                     </p>
                   </div>
@@ -734,13 +726,13 @@ export default function DoubleOrNothingGame({
                     {spinSnapshot.results.map((res) => (
                       <div
                         key={res.key}
-                        className={`p-2 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
+                        className={`p-2.5 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
                           res.isWin
-                            ? 'bg-[#f0f9f5] border-[#099979]/40'
-                            : 'bg-[#fafafa] border-[#e2e2e2] opacity-60'
+                            ? 'bg-[#dff2eb] dark:bg-[#113328] border-[#099979]/40 dark:border-[#099979]/60'
+                            : 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748] opacity-75'
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           {res.card.image ? (
                             <img
                               src={res.card.image}
@@ -748,19 +740,23 @@ export default function DoubleOrNothingGame({
                               className={`w-9 h-9 object-cover rounded-[3px] border shrink-0 ${
                                 res.isWin
                                   ? 'border-[#099979]'
-                                  : 'border-[#c8ccd1] grayscale'
+                                  : 'border-[#c8ccd1] dark:border-slate-600 grayscale'
                               }`}
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] flex items-center justify-center shrink-0 text-[10px] font-bold text-[#54595d]">
+                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700 flex items-center justify-center shrink-0 text-[10px] font-bold text-[#54595d] dark:text-slate-300">
                               {res.card.rarity}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="text-[12px] font-bold text-[#202122] truncate m-0 leading-tight">
+                            <p className={`text-[12px] font-bold truncate m-0 leading-tight ${
+                              res.isWin
+                                ? 'text-[#0f5132] dark:text-[#34d399]'
+                                : 'text-[#202122] dark:text-[#eaecf0]'
+                            }`}>
                               {res.card.title}
                             </p>
-                            <span className="text-[10.5px] text-[#54595d]">
+                            <span className="text-[10.5px] text-[#54595d] dark:text-[#a2a9b1]">
                               {res.card.rarity}
                             </span>
                           </div>
@@ -768,12 +764,12 @@ export default function DoubleOrNothingGame({
 
                         <div className="shrink-0">
                           {res.isWin ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] bg-[#dff2eb] border border-[#099979]/30 px-2 py-0.5 rounded-[2px]">
-                              Doublé (×2)
+                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] border border-[#099979]/40 px-2 py-0.5 rounded-[2px]">
+                              Doublé
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#bf3c2c] bg-[#ffe9e5] border border-[#f54739]/30 px-2 py-0.5 rounded-[2px]">
-                              Perdu (-1)
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#bf3c2c] dark:text-[#f87171] bg-[#ffe9e5] dark:bg-[#451a1a] border border-[#f54739]/40 px-2 py-0.5 rounded-[2px]">
+                              Perdu
                             </span>
                           )}
                         </div>
@@ -781,7 +777,7 @@ export default function DoubleOrNothingGame({
                     ))}
                   </div>
 
-                  <div className="pt-2 border-t border-[#eaecf0] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d]">
+                  <div className="pt-2 border-t border-[#eaecf0] dark:border-[#272d36] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
                     <span>
                       Gain net :{' '}
                       {spinSnapshot.wonCount > 0
@@ -791,8 +787,8 @@ export default function DoubleOrNothingGame({
                     <span
                       className={
                         spinSnapshot.wonCount > 0
-                          ? 'text-[#177860]'
-                          : 'text-[#bf3c2c]'
+                          ? 'text-[#177860] dark:text-[#34d399]'
+                          : 'text-[#bf3c2c] dark:text-[#f87171]'
                       }
                     >
                       {spinSnapshot.wonCount > 0
