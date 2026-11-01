@@ -935,65 +935,28 @@ export default function App() {
     );
   };
 
-  // Sélection / Désélection d'une carte en mode recyclage
+  // Sélection incrémentale d'une carte en mode recyclage :
+  // 1er clic = 1 exemplaire, 2e clic = 2 exemplaires, etc.
+  // Quand on atteint le max d'exemplaires, le clic suivant désélectionne la carte (revient à 0).
   const handleToggleSelectForRecycle = (card) => {
     const cardIdStr = String(card.id);
     const isFav = favorites.some((id) => String(id) === cardIdStr);
     const currentCount = card.count || 1;
-    if (isFav && currentCount <= 1) return;
+    const maxAllowed = isFav ? Math.max(0, currentCount - 1) : currentCount;
+    if (maxAllowed <= 0) return;
 
     setSelectedRecycleCounts((prev) => {
       const currentSelected = prev[cardIdStr] || 0;
-      if (currentSelected > 0) {
-        // Déjà sélectionné : désélectionne
-        const next = { ...prev };
-        delete next[cardIdStr];
-        return next;
-      }
-      // Non sélectionné : sélectionne tous les doublons par défaut (ou tous les exemplaires si pas en favori)
-      const maxAllowed = isFav ? Math.max(0, currentCount - 1) : currentCount;
-      const defaultQty = currentCount > 1 ? currentCount - 1 : maxAllowed;
-      return {
-        ...prev,
-        [cardIdStr]: Math.max(1, defaultQty),
-      };
-    });
-  };
-
-  // Mise à jour de la quantité précise à recycler pour une carte donnée
-  const handleUpdateRecycleCount = (card, newCount) => {
-    const cardIdStr = String(card.id);
-    const isFav = favorites.some((id) => String(id) === cardIdStr);
-    const currentCount = card.count || 1;
-    const maxAllowed = isFav ? Math.max(0, currentCount - 1) : currentCount;
-    const safeCount = Math.max(0, Math.min(maxAllowed, Number(newCount) || 0));
-
-    setSelectedRecycleCounts((prev) => {
-      if (safeCount <= 0) {
+      if (currentSelected >= maxAllowed) {
         const next = { ...prev };
         delete next[cardIdStr];
         return next;
       }
       return {
         ...prev,
-        [cardIdStr]: safeCount,
+        [cardIdStr]: currentSelected + 1,
       };
     });
-  };
-
-  // Sélectionne en 1 clic tous les doublons de la collection (en conservant 1 exemplaire de chaque carte)
-  const handleSelectAllDuplicates = () => {
-    const nextMap = {};
-    for (const card of collection) {
-      const cardIdStr = String(card.id);
-      const isFav = favorites.some((id) => String(id) === cardIdStr);
-      const currentCount = card.count || 1;
-      const duplicates = Math.max(0, currentCount - 1);
-      if (duplicates > 0) {
-        nextMap[cardIdStr] = duplicates;
-      }
-    }
-    setSelectedRecycleCounts(nextMap);
   };
 
   // Nombre total d'exemplaires sélectionnés pour le recyclage
@@ -1776,16 +1739,6 @@ export default function App() {
                           </button>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 h-[28px]">
-                            {/* Bouton rapide : Tous les doublons */}
-                            <button
-                              type="button"
-                              onClick={handleSelectAllDuplicates}
-                              className="bg-[#f8f9fa] dark:bg-[#1a202c] hover:bg-[#eaf3ff] dark:hover:bg-[#202b3a] border border-[#a2a9b1] dark:border-[#3a4454] rounded-[2px] px-2 h-[28px] text-[11.5px] font-bold text-[#202122] dark:text-[#eaecf0] inline-flex items-center gap-1 cursor-pointer transition-colors shrink-0"
-                              title="Sélectionner automatiquement tous les doublons de la collection"
-                            >
-                              <span>Tous les doublons</span>
-                            </button>
-
                             <button
                               type="button"
                               disabled={totalSelectedRecycleCount === 0}
@@ -1793,7 +1746,7 @@ export default function App() {
                               className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
                               title={
                                 totalSelectedRecycleCount > 0
-                                  ? `Recycler ${totalSelectedRecycleCount} carte${totalSelectedRecycleCount > 1 ? 's' : ''} pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikifeet`
+                                  ? `Recycler pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikifeet`
                                   : 'Sélectionnez des cartes à recycler'
                               }
                             >
@@ -1835,7 +1788,6 @@ export default function App() {
                               isSelectedForRecycle={cardQty > 0}
                               selectedRecycleCount={cardQty}
                               onSelectForRecycle={handleToggleSelectForRecycle}
-                              onUpdateRecycleCount={handleUpdateRecycleCount}
                             />
                           );
                         })}

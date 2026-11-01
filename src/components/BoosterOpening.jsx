@@ -646,17 +646,8 @@ export default function BoosterOpening({
               )}
 
               {errorMsg && (
-                <div className="mt-1 text-[12.5px] text-[#b32424] bg-[#fee7e6] border border-[#f8b3b0] px-3 py-1.5 rounded-[2px] flex flex-col items-center gap-1">
+                <div className="mt-1 text-[12.5px] text-[#b32424] bg-[#fee7e6] border border-[#f8b3b0] px-3 py-1.5 rounded-[2px] text-center font-bold">
                   <span>{errorMsg}</span>
-                  {wikithunes < activePrice && onGoToClasseur && (
-                    <button
-                      type="button"
-                      onClick={onGoToClasseur}
-                      className="wiki-link font-bold text-[12px]"
-                    >
-                      Aller au classeur pour recycler des cartes →
-                    </button>
-                  )}
                 </div>
               )}
             </div>
