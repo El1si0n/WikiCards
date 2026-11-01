@@ -537,11 +537,6 @@ export default function DoubleOrNothingGame({
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
             </span>
-            {isMultiMode && (
-              <span className="text-[11.5px] font-bold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] px-2 py-0.5 rounded-[2px]">
-                {displayedSelectedCards.length} cartes • {displayChance}%
-              </span>
-            )}
           </div>
 
           {isMultiMode ? (
@@ -551,7 +546,7 @@ export default function DoubleOrNothingGame({
                 {cardWheels.map((wheel) => (
                   <div
                     key={wheel.key}
-                    className={`p-2 rounded-[3px] border flex flex-col items-center justify-between transition-all ${
+                    className={`p-2 rounded-[2px] border flex flex-col items-center justify-between transition-all ${
                       wheel.isFinished
                         ? wheel.isWin
                           ? 'bg-[#dff2eb]/70 dark:bg-[#113328]/80 border-[#099979]/50'
@@ -721,29 +716,6 @@ export default function DoubleOrNothingGame({
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    {/* Statut sous la roue */}
-                    <div className="pt-0.5 w-full text-center">
-                      {wheel.isFinished ? (
-                        wheel.isWin ? (
-                          <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] px-2 py-0.5 rounded-[2px] border border-[#099979]/30">
-                            <Check className="w-3 h-3 stroke-[3]" /> Doublé
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#bf3c2c] dark:text-[#f87171] bg-[#ffe9e5] dark:bg-[#451a1a] px-2 py-0.5 rounded-[2px] border border-[#f54739]/30">
-                            <X className="w-3 h-3 stroke-[3]" /> Perdu
-                          </span>
-                        )
-                      ) : spinState === 'spinning' ? (
-                        <span className="text-[10.5px] font-semibold text-[#3366cc] dark:text-[#60a5fa] animate-pulse">
-                          Tirage...
-                        </span>
-                      ) : (
-                        <span className="text-[10.5px] text-[#72777d] dark:text-[#a2a9b1]">
-                          Prête
-                        </span>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -1051,13 +1023,12 @@ export default function DoubleOrNothingGame({
                     style={{
                       background: activeTier.cardBg,
                       border: `1px solid ${activeTier.borderColor}`,
-                      boxShadow: `0 8px 20px -6px ${activeTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
                       color: activeTier.textColor,
                     }}
                   >
                     <div className="relative z-20 p-3 flex items-center justify-between">
                       <div
-                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[2px] flex items-center justify-center font-extrabold tracking-wide"
                         style={{
                           backgroundColor: activeTier.badgeBg,
                           color: activeTier.badgeText,
@@ -1073,7 +1044,7 @@ export default function DoubleOrNothingGame({
                     <div className="relative flex-1 px-3.5 flex flex-col justify-center">
                       <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
                         <div
-                          className="w-full h-[168px] rounded-[8px]"
+                          className="w-full h-[168px] rounded-[2px]"
                           style={{
                             background:
                               'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
@@ -1088,7 +1059,7 @@ export default function DoubleOrNothingGame({
 
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                         <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
+                          className="w-12 h-12 rounded-full flex items-center justify-center border border-[#c8ccd1] dark:border-slate-600 mb-2"
                           style={{
                             backgroundColor: activeTier.badgeBg,
                             borderColor: activeTier.borderColor,
@@ -1098,7 +1069,7 @@ export default function DoubleOrNothingGame({
                           <HelpCircle className="w-6 h-6 animate-pulse" />
                         </div>
                         <span
-                          className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
+                          className="px-3 py-1 rounded-[2px] text-[12px] font-bold border border-[#c8ccd1]"
                           style={{
                             backgroundColor: 'rgba(255, 255, 255, 0.9)',
                             color: '#202122',
@@ -1120,127 +1091,33 @@ export default function DoubleOrNothingGame({
                 )
               ) : (
                 /* Résultats progressifs pour plusieurs cartes (2 à 8) */
-                <div className="w-full h-full max-h-[446px] flex flex-col justify-between">
-                  <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[380px]">
-                    {spinSnapshot.results.map((res) => (
-                      <div
-                        key={res.key}
-                        className={`p-2.5 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
-                          !res.isFinished
-                            ? 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748]'
-                            : res.isWin
-                            ? 'bg-[#dff2eb] dark:bg-[#113328] border-[#099979]/40 dark:border-[#099979]/60'
-                            : 'bg-[#fff5f5] dark:bg-[#201515] border-[#f54739]/30 dark:border-[#b32424]/40 opacity-75'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {res.card.image ? (
-                            <img
-                              src={res.card.image}
-                              alt={res.card.title}
-                              className={`w-9 h-9 object-cover rounded-[3px] border shrink-0 ${
-                                res.isFinished && !res.isWin
-                                  ? 'border-[#c8ccd1] dark:border-slate-600 grayscale'
-                                  : res.isFinished && res.isWin
-                                  ? 'border-[#099979]'
-                                  : 'border-[#a2a9b1] dark:border-[#4a5360]'
-                              }`}
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
-                              <img
-                                src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
-                                alt="Wikipédia"
-                                className="w-6 h-6 object-contain opacity-80"
-                              />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={`text-[12px] font-bold truncate m-0 leading-tight ${
-                                res.isFinished && res.isWin
-                                  ? 'text-[#0f5132] dark:text-[#34d399]'
-                                  : res.isFinished && !res.isWin
-                                  ? 'text-[#72777d] dark:text-[#a2a9b1]'
-                                  : 'text-[#202122] dark:text-[#eaecf0]'
-                              }`}
-                            >
-                              {res.card.title}
-                            </p>
-                            <p className="text-[11px] text-[#54595d] dark:text-[#a2a9b1] truncate m-0 mt-0.5 leading-tight">
-                              {res.card.description ||
-                                res.card.extract ||
-                                'Article Wikipédia...'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0">
-                          {!res.isFinished ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#3366cc] dark:text-[#60a5fa] bg-[#eef3fb] dark:bg-[#1e2a3a] border border-[#3366cc]/30 px-2 py-0.5 rounded-[2px] animate-pulse">
-                              Tirage...
-                            </span>
-                          ) : res.isWin ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] border border-[#099979]/40 px-2 py-0.5 rounded-[2px]">
-                              Doublé
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#bf3c2c] dark:text-[#f87171] bg-[#ffe9e5] dark:bg-[#451a1a] border border-[#f54739]/40 px-2 py-0.5 rounded-[2px]">
-                              Perdu
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 border-t border-[#eaecf0] dark:border-[#272d36] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
-                    {isRoundFinished ? (
-                      <>
-                        <span>
-                          Gain net :{' '}
-                          {spinSnapshot.wonCount > 0
-                            ? `+${spinSnapshot.wonCount} carte${spinSnapshot.wonCount > 1 ? 's' : ''}`
-                            : '0 carte'}
-                        </span>
-                        <span
-                          className={
-                            spinSnapshot.wonCount > 0
-                              ? 'text-[#177860] dark:text-[#34d399]'
-                              : 'text-[#bf3c2c] dark:text-[#f87171]'
-                          }
-                        >
-                          {spinSnapshot.wonCount > 0
-                            ? `${spinSnapshot.wonCount * 2} exemplaires reçus`
-                            : '0 exemplaire reçu'}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-[#3366cc] dark:text-[#60a5fa] animate-pulse">
-                        Tirage en cours ({spinSnapshot.results.filter((r) => r.isFinished).length}/{spinSnapshot.totalCount})...
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            ) : liveSelectedCards.length > 1 ? (
-              /* En attente : résumé des 2 à 8 cartes sélectionnées */
-              <div className="w-full h-full max-h-[446px] flex flex-col justify-between">
-                <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[380px]">
-                  {liveSelectedCards.map((card, idx) => (
+                <div className="w-full h-full max-h-[446px] overflow-y-auto pr-1 space-y-2">
+                  {spinSnapshot.results.map((res) => (
                     <div
-                      key={`${card.id}-${idx}`}
-                      className="p-2.5 rounded-[4px] border border-[#eaecf0] dark:border-[#2d3748] bg-[#f8f9fa] dark:bg-[#1a202c] flex items-center justify-between gap-2.5"
+                      key={res.key}
+                      className={`p-2.5 rounded-[2px] border flex items-center justify-between gap-2.5 transition-all ${
+                        !res.isFinished
+                          ? 'bg-[#f8f9fa] dark:bg-[#1a202c] border-[#eaecf0] dark:border-[#2d3748]'
+                          : res.isWin
+                          ? 'bg-[#dff2eb] dark:bg-[#113328] border-[#099979]/40 dark:border-[#099979]/60'
+                          : 'bg-[#fff5f5] dark:bg-[#201515] border-[#f54739]/30 dark:border-[#b32424]/40 opacity-75'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        {card.image ? (
+                        {res.card.image ? (
                           <img
-                            src={card.image}
-                            alt={card.title}
-                            className="w-9 h-9 object-cover rounded-[3px] border border-[#a2a9b1] dark:border-[#4a5360] shrink-0"
+                            src={res.card.image}
+                            alt={res.card.title}
+                            className={`w-9 h-9 object-cover rounded-[2px] border shrink-0 ${
+                              res.isFinished && !res.isWin
+                                ? 'border-[#c8ccd1] dark:border-slate-600 grayscale'
+                                : res.isFinished && res.isWin
+                                ? 'border-[#099979]'
+                                : 'border-[#a2a9b1] dark:border-[#4a5360]'
+                            }`}
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                          <div className="w-9 h-9 rounded-[2px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
                             <img
                               src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
                               alt="Wikipédia"
@@ -1249,27 +1126,84 @@ export default function DoubleOrNothingGame({
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-[12px] font-bold text-[#202122] dark:text-[#eaecf0] truncate m-0 leading-tight">
-                            {card.title}
+                          <p
+                            className={`text-[12px] font-bold truncate m-0 leading-tight ${
+                              res.isFinished && res.isWin
+                                ? 'text-[#0f5132] dark:text-[#34d399]'
+                                : res.isFinished && !res.isWin
+                                ? 'text-[#72777d] dark:text-[#a2a9b1]'
+                                : 'text-[#202122] dark:text-[#eaecf0]'
+                            }`}
+                          >
+                            {res.card.title}
                           </p>
                           <p className="text-[11px] text-[#54595d] dark:text-[#a2a9b1] truncate m-0 mt-0.5 leading-tight">
-                            {card.description || card.extract || 'Article Wikipédia...'}
+                            {res.card.description ||
+                              res.card.extract ||
+                              'Article Wikipédia...'}
                           </p>
                         </div>
                       </div>
+
                       <div className="shrink-0">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#54595d] dark:text-[#a2a9b1] bg-[#eaecf0] dark:bg-slate-700 px-2 py-0.5 rounded-[2px]">
-                          Prête
-                        </span>
+                        {!res.isFinished ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#3366cc] dark:text-[#60a5fa] bg-[#eef3fb] dark:bg-[#1e2a3a] border border-[#3366cc]/30 px-2 py-0.5 rounded-[2px] animate-pulse">
+                            Tirage...
+                          </span>
+                        ) : res.isWin ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] dark:text-[#34d399] bg-[#dff2eb] dark:bg-[#064e3b] border border-[#099979]/40 px-2 py-0.5 rounded-[2px]">
+                            Doublé
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#bf3c2c] dark:text-[#f87171] bg-[#ffe9e5] dark:bg-[#451a1a] border border-[#f54739]/40 px-2 py-0.5 rounded-[2px]">
+                            Perdu
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-
-                <div className="pt-2 border-t border-[#eaecf0] dark:border-[#272d36] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d] dark:text-[#a2a9b1]">
-                  <span>{liveSelectedCards.length} cartes sélectionnées</span>
-                  <span className="text-[#3366cc] dark:text-[#60a5fa]">Prêtes pour le tirage</span>
-                </div>
+              )
+            ) : liveSelectedCards.length > 1 ? (
+              /* En attente : résumé des 2 à 8 cartes sélectionnées */
+              <div className="w-full h-full max-h-[446px] overflow-y-auto pr-1 space-y-2">
+                {liveSelectedCards.map((card, idx) => (
+                  <div
+                    key={`${card.id}-${idx}`}
+                    className="p-2.5 rounded-[2px] border border-[#eaecf0] dark:border-[#2d3748] bg-[#f8f9fa] dark:bg-[#1a202c] flex items-center justify-between gap-2.5"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {card.image ? (
+                        <img
+                          src={card.image}
+                          alt={card.title}
+                          className="w-9 h-9 object-cover rounded-[2px] border border-[#a2a9b1] dark:border-[#4a5360] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-[2px] bg-[#eaecf0] dark:bg-slate-700/60 border border-[#c8ccd1] dark:border-slate-600 flex items-center justify-center shrink-0 p-1">
+                          <img
+                            src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
+                            alt="Wikipédia"
+                            className="w-6 h-6 object-contain opacity-80"
+                          />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-bold text-[#202122] dark:text-[#eaecf0] truncate m-0 leading-tight">
+                          {card.title}
+                        </p>
+                        <p className="text-[11px] text-[#54595d] dark:text-[#a2a9b1] truncate m-0 mt-0.5 leading-tight">
+                          {card.description || card.extract || 'Article Wikipédia...'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#54595d] dark:text-[#a2a9b1] bg-[#eaecf0] dark:bg-slate-700 px-2 py-0.5 rounded-[2px]">
+                        Prête
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               /* Carte cible en attente (0 ou 1 carte) */
@@ -1283,13 +1217,12 @@ export default function DoubleOrNothingGame({
                       : activeTier.code === 'UR'
                       ? '1.5px solid #f5a642'
                       : `1px solid ${activeTier.borderColor}`,
-                  boxShadow: `0 8px 20px -6px ${activeTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
                   color: activeTier.textColor,
                 }}
               >
                 <div className="relative z-20 p-3 flex items-center justify-between">
                   <div
-                    className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                    className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[2px] flex items-center justify-center font-extrabold tracking-wide"
                     style={{
                       backgroundColor: activeTier.badgeBg,
                       color: activeTier.badgeText,
@@ -1305,7 +1238,7 @@ export default function DoubleOrNothingGame({
                 <div className="relative flex-1 px-3.5 flex flex-col justify-center">
                   <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
                     <div
-                      className="w-full h-[168px] rounded-[8px]"
+                      className="w-full h-[168px] rounded-[2px]"
                       style={{
                         background:
                           'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
@@ -1321,7 +1254,7 @@ export default function DoubleOrNothingGame({
 
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
+                      className="w-12 h-12 rounded-full flex items-center justify-center border border-[#c8ccd1] dark:border-slate-600 mb-2"
                       style={{
                         backgroundColor: activeTier.badgeBg,
                         borderColor: activeTier.borderColor,
@@ -1331,7 +1264,7 @@ export default function DoubleOrNothingGame({
                       <HelpCircle className="w-6 h-6" />
                     </div>
                     <span
-                      className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
+                      className="px-3 py-1 rounded-[2px] text-[12px] font-bold border border-[#c8ccd1]"
                       style={{
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         color: '#202122',

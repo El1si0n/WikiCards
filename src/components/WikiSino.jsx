@@ -557,12 +557,12 @@ export default function WikiSino({
           ===================================================================== */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
             {/* COLONNE GAUCHE (4 col) : Cartes sélectionnées (limite de 8 cartes) */}
-            <div className="lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
-              <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-                <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+            <div className="lg:col-span-4 flex flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-4">
+              <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+                <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
                   Cartes sélectionnées
                 </span>
-                <span className="text-[12px] text-[#54595d] font-medium">
+                <span className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] font-medium">
                   {displayedSelectedCards.length}/{MAX_SELECTED_CARDS}
                 </span>
               </div>
@@ -623,8 +623,8 @@ export default function WikiSino({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-                    <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+                  <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+                    <p className="text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                       Cliquez sur une ou plusieurs cartes dans le classeur
                       ci-dessous pour les placer dans l'Upgrader.
                     </p>
@@ -634,9 +634,9 @@ export default function WikiSino({
             </div>
 
             {/* COLONNE CENTRALE (4 col) : Jauge de probabilité + Boost en Wikithunes + Bouton Lancer / Suivant */}
-            <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
-              <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
-                <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+            <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-4">
+              <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
+                <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
                   Jauge de probabilité
                 </span>
               </div>
@@ -953,9 +953,9 @@ export default function WikiSino({
             </div>
 
             {/* COLONNE DROITE (4 col) : Carte cible (dimensions exactes 272x446 et netteté 100 % native) */}
-            <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
-              <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-                <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+            <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-4">
+              <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+                <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
                   Carte cible
                 </span>
               </div>
@@ -981,14 +981,13 @@ export default function WikiSino({
                           : targetTier.code === 'UR'
                           ? '1.5px solid #f5a642'
                           : `1px solid ${targetTier.borderColor}`,
-                      boxShadow: `0 8px 20px -6px ${targetTier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
                       color: targetTier.textColor,
                     }}
                   >
                     {/* Badge de rareté en haut à gauche */}
                     <div className="relative z-20 p-3 flex items-center justify-between">
                       <div
-                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                        className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[2px] flex items-center justify-center font-extrabold tracking-wide"
                         style={{
                           backgroundColor: targetTier.badgeBg,
                           color: targetTier.badgeText,
@@ -1002,7 +1001,7 @@ export default function WikiSino({
                     <div className="relative flex-1 px-3.5 flex flex-col justify-center">
                       <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
                         <div
-                          className="w-full h-[168px] rounded-[8px]"
+                          className="w-full h-[168px] rounded-[2px]"
                           style={{
                             background:
                               'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
@@ -1019,7 +1018,7 @@ export default function WikiSino({
                       {/* Médaillon central */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                         <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
+                          className="w-12 h-12 rounded-full flex items-center justify-center border border-[#c8ccd1] dark:border-slate-600 mb-2"
                           style={{
                             backgroundColor: targetTier.badgeBg,
                             borderColor: targetTier.borderColor,
@@ -1029,7 +1028,7 @@ export default function WikiSino({
                           <HelpCircle className="w-6 h-6" />
                         </div>
                         <span
-                          className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
+                          className="px-3 py-1 rounded-[2px] text-[12px] font-bold border border-[#c8ccd1]"
                           style={{
                             backgroundColor: 'rgba(255, 255, 255, 0.9)',
                             color: '#202122',
@@ -1071,7 +1070,7 @@ export default function WikiSino({
           </div>
 
           {/* Barre de filtres par rareté (1 seule rareté à la fois, sans Légendaire L) + Filtre par Thème + Sélecteur de tri */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0] dark:border-[#272d36]">
             <div className="flex flex-wrap items-center gap-1.5">
               {upgradeableRarityTiers.map((tier) => {
                 const count = upgradeableCollection.filter(
@@ -1084,8 +1083,8 @@ export default function WikiSino({
                     onClick={() => setSelectedRarityFilter(tier.code)}
                     className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                       selectedRarityFilter === tier.code
-                        ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
-                        : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
+                        ? 'font-bold bg-[#e8eeff] dark:bg-[#1e2a3a] border-[#3366cc] text-[#2a4b8d] dark:text-[#6699ff]'
+                        : 'bg-[#f8f9fa] dark:bg-[#151a21] hover:bg-white dark:hover:bg-[#1e2530] border-[#c8ccd1] dark:border-[#363e4a] text-[#202122] dark:text-[#eaecf0]'
                     }`}
                   >
                     <span
@@ -1104,7 +1103,7 @@ export default function WikiSino({
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="wikisino-classeur-theme"
-                  className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                  className="inline-flex items-center gap-1 text-[#54595d] dark:text-[#a2a9b1] font-medium"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   <span>Thème :</span>
@@ -1113,7 +1112,7 @@ export default function WikiSino({
                   id="wikisino-classeur-theme"
                   value={selectedThemeFilter}
                   onChange={(e) => setSelectedThemeFilter(e.target.value)}
-                  className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                  className="bg-[#f8f9fa] dark:bg-[#151a21] hover:bg-white dark:hover:bg-[#1e2530] border border-[#a2a9b1] dark:border-[#363e4a] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] dark:text-[#eaecf0] focus:outline-none focus:border-[#3366cc] cursor-pointer"
                 >
                   <option value="ALL">
                     Tous les thèmes ({upgradeableCollection.length})
@@ -1129,7 +1128,7 @@ export default function WikiSino({
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="wikisino-classeur-sort"
-                  className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                  className="inline-flex items-center gap-1 text-[#54595d] dark:text-[#a2a9b1] font-medium"
                 >
                   <ArrowUpDown className="w-3.5 h-3.5" />
                   <span>Trier par :</span>
@@ -1138,7 +1137,7 @@ export default function WikiSino({
                   id="wikisino-classeur-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                  className="bg-[#f8f9fa] dark:bg-[#151a21] hover:bg-white dark:hover:bg-[#1e2530] border border-[#a2a9b1] dark:border-[#363e4a] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] dark:text-[#eaecf0] focus:outline-none focus:border-[#3366cc] cursor-pointer"
                 >
                   <option value="rarity_desc">
                     Rareté (plus rare d'abord)
@@ -1191,8 +1190,8 @@ export default function WikiSino({
               })}
             </div>
           ) : (
-            <div className="py-14 text-center bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px]">
-              <p className="text-[14px] text-[#54595d] m-0">
+            <div className="py-14 text-center bg-[#f8f9fa] dark:bg-[#151a21] border border-[#eaecf0] dark:border-[#272d36] rounded-[2px]">
+              <p className="text-[14px] text-[#54595d] dark:text-[#a2a9b1] m-0">
                 {upgradeableCollection.length === 0
                   ? 'Aucune carte améliorable dans votre classeur. Ouvrez un booster pour obtenir des cartes !'
                   : 'Aucune carte ne correspond à votre filtre actuel.'}

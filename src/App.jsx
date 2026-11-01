@@ -1360,7 +1360,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleClaimDailyReward}
-                      className="wiki-casino-btn wiki-casino-btn--primary !min-h-[32px] !py-1 !px-3.5 text-[12.5px] font-bold shrink-0 inline-flex items-center gap-1.5 self-start sm:self-auto shadow-xs"
+                      className="wiki-casino-btn wiki-casino-btn--primary !min-h-[32px] !py-1 !px-3.5 text-[12.5px] font-bold shrink-0 inline-flex items-center gap-1.5 self-start sm:self-auto"
                     >
                       <Gift className="w-3.5 h-3.5" />
                       <span>Réclamer +{DAILY_REWARD_AMOUNT} ₩</span>
@@ -1411,7 +1411,7 @@ export default function App() {
                           <h2 className="wiki-smallcaps m-0">Présentation</h2>
                         </div>
 
-                        <p className="text-[14px] text-[#202122] leading-[1.6] mb-3 mt-0">
+                        <p className="text-[14px] text-[#202122] dark:text-[#eaecf0] leading-[1.6] mb-3 mt-0">
                           <a
                             href="https://fr.wikipedia.org"
                             target="_blank"
@@ -1425,19 +1425,19 @@ export default function App() {
                           dépend du nombre de visiteurs mensuels de la page.
                         </p>
 
-                        <div className="border border-[#eaecf0] bg-[#f8f9fa] p-3 rounded-[2px] space-y-1.5">
-                          <div className="flex items-center justify-between text-[11.5px] font-bold text-[#54595d] uppercase tracking-wider mb-1">
+                        <div className="border border-[#eaecf0] dark:border-[#272d36] bg-[#f8f9fa] dark:bg-[#151a21] p-3 rounded-[2px] space-y-1.5">
+                          <div className="flex items-center justify-between text-[11.5px] font-bold text-[#54595d] dark:text-[#a2a9b1] uppercase tracking-wider mb-1">
                             <span>Échelle des raretés</span>
                             <span>Chance</span>
                           </div>
                           {RARITY_TIERS.map((tier) => (
                             <div
                               key={tier.code}
-                              className="w-full flex items-center justify-between text-[12.5px] py-1.5 border-b last:border-b-0 border-[#eaecf0] gap-2"
+                              className="w-full flex items-center justify-between text-[12.5px] py-1.5 border-b last:border-b-0 border-[#eaecf0] dark:border-[#272d36] gap-2"
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span
-                                  className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-[5px] text-[11px] font-bold shadow-2xs shrink-0"
+                                  className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-[2px] text-[11px] font-bold shrink-0"
                                   style={{
                                     backgroundColor: tier.badgeBg,
                                     color: tier.badgeText,
@@ -1446,20 +1446,20 @@ export default function App() {
                                   {tier.code}
                                 </span>
                                 <div className="flex flex-col leading-tight min-w-0">
-                                  <span className="font-medium text-[#202122] truncate">
+                                  <span className="font-medium text-[#202122] dark:text-[#eaecf0] truncate">
                                     {tier.name}
                                   </span>
-                                  <span className="text-[#54595d] text-[11px] inline-flex items-center gap-1 flex-wrap">
+                                  <span className="text-[#54595d] dark:text-[#a2a9b1] text-[11px] inline-flex items-center gap-1 flex-wrap">
                                     <span>{tier.thresholdLabel}</span>
                                     <span>•</span>
-                                    <span className="inline-flex items-center gap-0.5 text-[#202122] font-medium">
+                                    <span className="inline-flex items-center gap-0.5 text-[#202122] dark:text-[#eaecf0] font-medium">
                                       {tier.recycleValue}
                                       <WikithuneIcon className="w-2.5 h-2.5 text-[#3366cc]" />
                                     </span>
                                   </span>
                                 </div>
                               </div>
-                              <span className="font-bold text-[#202122] text-[12.5px] shrink-0">
+                              <span className="font-bold text-[#202122] dark:text-[#eaecf0] text-[12.5px] shrink-0">
                                 {tier.dropRate}
                               </span>
                             </div>
@@ -1681,11 +1681,11 @@ export default function App() {
                             type="button"
                             disabled={collection.length === 0}
                             onClick={handleToggleRecycleMode}
-                            className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] w-[28px] h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center cursor-pointer disabled:opacity-50 transition-colors shrink-0"
+                            className="wiki-casino-btn wiki-casino-btn--success !min-h-[28px] !h-[28px] !w-[28px] !p-0 shrink-0"
                             title="Recycler des cartes"
                             aria-label="Recycler des cartes"
                           >
-                            <Recycle className="w-3.5 h-3.5 text-white" />
+                            <Recycle className="w-3.5 h-3.5" />
                           </button>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 h-[28px]">
@@ -1693,7 +1693,7 @@ export default function App() {
                               type="button"
                               disabled={selectedRecycleIds.length === 0}
                               onClick={handleConfirmRecycleSelection}
-                              className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
+                              className="wiki-casino-btn wiki-casino-btn--success !min-h-[28px] !h-[28px] !py-0 !px-2.5 !text-[12px] font-bold inline-flex items-center gap-1"
                               title={
                                 selectedRecycleIds.length > 0
                                   ? `Recycler pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikithunes`
@@ -1705,12 +1705,12 @@ export default function App() {
                                   selectedRecycleGain
                                 )}
                               </span>
-                              <WikithuneIcon className="w-3.5 h-3.5 text-white" />
+                              <WikithuneIcon className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={handleToggleRecycleMode}
-                              className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] w-[28px] h-[28px] text-[12.5px] text-[#202122] inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                              className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[28px] !h-[28px] !w-[28px] !p-0 shrink-0"
                               title="Annuler le recyclage"
                               aria-label="Annuler le recyclage"
                             >

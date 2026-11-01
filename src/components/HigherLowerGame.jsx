@@ -197,9 +197,9 @@ export default function HigherLowerGame({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
       {/* COLONNE GAUCHE (4 col) : Carte de référence */}
-      <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-        <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-          <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+      <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+        <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+          <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
             Carte de référence
           </span>
         </div>
@@ -210,8 +210,8 @@ export default function HigherLowerGame({
               <WikiCard card={leftCard} compact={true} />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-              <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+            <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+              <p className="text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                 Choisissez votre mise au centre et lancez une série pour
                 afficher la première page Wikipédia.
               </p>
@@ -221,14 +221,14 @@ export default function HigherLowerGame({
       </div>
 
       {/* COLONNE CENTRALE (4 col) : Tableau de bord simple et lisible */}
-      <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-        <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
-          <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+      <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+        <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
+          <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
             Plus ou Moins de vues
           </span>
           {gameState !== 'idle' && (
-            <span className="text-[12px] font-bold text-[#54595d]">
-              Série : <strong className="text-[#202122]">{streak}</strong>
+            <span className="text-[12px] font-bold text-[#54595d] dark:text-[#a2a9b1]">
+              Série : <strong className="text-[#202122] dark:text-[#eaecf0]">{streak}</strong>
             </span>
           )}
         </div>
@@ -238,32 +238,32 @@ export default function HigherLowerGame({
           {gameState === 'loading' ? (
             <>
               <Loader2 className="w-7 h-7 text-[#3366cc] animate-spin mb-2" />
-              <span className="text-[14px] font-bold text-[#202122]">
+              <span className="text-[14px] font-bold text-[#202122] dark:text-[#eaecf0]">
                 Tirage sur Wikipédia...
               </span>
             </>
           ) : gameState === 'won_round' ? (
             <>
-              <span className="text-[13px] font-bold uppercase tracking-wider text-[#177860]">
+              <span className="text-[13px] font-bold uppercase tracking-wider text-[#177860] dark:text-[#34d399]">
                 Bonne réponse (×{getMultiplierForStreak(streak)})
               </span>
-              <div className="text-[40px] font-extrabold text-[#177860] mt-1.5 inline-flex items-center gap-2 leading-none">
+              <div className="text-[40px] font-extrabold text-[#177860] dark:text-[#34d399] mt-1.5 inline-flex items-center gap-2 leading-none">
                 <span>
                   +{new Intl.NumberFormat('fr-FR').format(currentPot)}
                 </span>
-                <WikithuneIcon className="w-7 h-7 text-[#177860]" />
+                <WikithuneIcon className="w-7 h-7 text-[#177860] dark:text-[#34d399]" />
               </div>
             </>
           ) : gameState === 'lost_round' ? (
-            <span className="text-[32px] font-extrabold text-[#bf3c2c] leading-tight">
+            <span className="text-[32px] font-extrabold text-[#bf3c2c] dark:text-[#f87171] leading-tight">
               Perdu
             </span>
           ) : gameState === 'playing' ? (
             <>
-              <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d]">
+              <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d] dark:text-[#a2a9b1]">
                 Gain actuel (×{getMultiplierForStreak(streak)})
               </span>
-              <div className="text-[40px] font-extrabold text-[#202122] mt-1.5 inline-flex items-center gap-2 leading-none">
+              <div className="text-[40px] font-extrabold text-[#202122] dark:text-[#eaecf0] mt-1.5 inline-flex items-center gap-2 leading-none">
                 <span>
                   {new Intl.NumberFormat('fr-FR').format(currentPot)}
                 </span>
@@ -272,10 +272,10 @@ export default function HigherLowerGame({
             </>
           ) : (
             <>
-              <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d]">
+              <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d] dark:text-[#a2a9b1]">
                 Mise de départ
               </span>
-              <div className="text-[40px] font-extrabold text-[#202122] mt-1.5 inline-flex items-center gap-2 leading-none">
+              <div className="text-[40px] font-extrabold text-[#202122] dark:text-[#eaecf0] mt-1.5 inline-flex items-center gap-2 leading-none">
                 <span>
                   {new Intl.NumberFormat('fr-FR').format(betAmount)}
                 </span>
@@ -286,12 +286,12 @@ export default function HigherLowerGame({
         </div>
 
         {/* Contrôles en bas de la colonne centrale */}
-        <div className="w-full pt-3 border-t border-[#eaecf0] flex flex-col gap-2.5">
+        <div className="w-full pt-3 border-t border-[#eaecf0] dark:border-[#272d36] flex flex-col gap-2.5">
           {gameState === 'idle' || gameState === 'loading' ? (
             <>
               <div>
                 <div className="flex items-center justify-between mb-2 text-[12.5px]">
-                  <span className="font-bold text-[#202122]">
+                  <span className="font-bold text-[#202122] dark:text-[#eaecf0]">
                     Choisir la mise
                   </span>
                 </div>
@@ -316,7 +316,7 @@ export default function HigherLowerGame({
                       title={`Mise de ${amount} ₩ • Difficulté : ${label}`}
                     >
                       <span className="font-bold text-[12.5px] leading-tight">{amount} ₩</span>
-                      <span className="text-[10px] text-[#54595d] font-normal leading-tight">{label}</span>
+                      <span className="text-[10px] text-[#54595d] dark:text-[#a2a9b1] font-normal leading-tight">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -402,9 +402,9 @@ export default function HigherLowerGame({
       </div>
 
       {/* COLONNE DROITE (4 col) : Page à deviner */}
-      <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
-        <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
-          <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
+      <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+        <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
+          <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
             Page à deviner
           </span>
         </div>
@@ -419,11 +419,11 @@ export default function HigherLowerGame({
               />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-2">
+            <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] flex items-center justify-center text-[#72777d] dark:text-[#a2a9b1] mb-2">
                 <HelpCircle className="w-6 h-6" />
               </div>
-              <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+              <p className="text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                 La page adverse s'affichera ici avec son nombre de vues masqué.
               </p>
             </div>
