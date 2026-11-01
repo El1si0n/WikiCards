@@ -8,6 +8,7 @@ import {
   BookOpen,
   ArrowUpDown,
   ArrowRight,
+  XCircle,
 } from 'lucide-react';
 
 const RARITY_ORDER = {
@@ -18,6 +19,8 @@ const RARITY_ORDER = {
   PC: 2,
   C: 1,
 };
+
+const MAX_SELECTED_CARDS = 8;
 
 // Configuration des probabilités de réussite au Quitte ou Double selon la rareté :
 // 55% pour C; 52% pour PC; 49% pour Rare; 46% pour SR et 43% pour UR
@@ -36,7 +39,7 @@ export default function DoubleOrNothingGame({
   onCardWon,
   onToggleFavorite,
 }) {
-  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [selectedCardIds, setSelectedCardIds] = useState([]);
   const [spinState, setSpinState] = useState('idle'); // 'idle' | 'spinning' | 'won' | 'lost'
   const [needleRotation, setNeedleRotation] = useState(0);
   const [spinSnapshot, setSpinSnapshot] = useState(null);
@@ -65,44 +68,52 @@ export default function DoubleOrNothingGame({
     []
   );
 
-  const liveSelectedCard = useMemo(
-    () =>
-      selectedCardId
-        ? eligibleCollection.find(
-            (c) => String(c.id) === String(selectedCardId)
-          ) || null
-        : null,
-    [selectedCardId, eligibleCollection]
-  );
+  // Compteur du nombre d'exemplaires sélectionnés par ID de carte : { [cardId]: qty }
+  const selectedCountsMap = useMemo(() => {
+    const map = {};
+    selectedCardIds.forEach((id) => {
+      map[id] = (map[id] || 0) + 1;
+    });
+    return map;
+  }, [selectedCardIds]);
 
-  const displayedCard = spinSnapshot ? spinSnapshot.card : liveSelectedCard;
+  // Liste ordonnée des objets cartes sélectionnées (avec autant d'entrées que d'exemplaires)
+  const liveSelectedCards = useMemo(() => {
+    return selectedCardIds
+      .map((id) =>
+        eligibleCollection.find((c) => String(c.id) === String(id))
+      )
+      .filter(Boolean);
+  }, [selectedCardIds, eligibleCollection]);
 
-  // Rareté active de la cible (dérivée de la carte sélectionnée ou du filtre actif)
+  // Cartes affichées à gauche : les cartes sélectionnées ou celles du snapshot pendant/après tirage
+  const displayedSelectedCards = spinSnapshot
+    ? spinSnapshot.cards
+    : liveSelectedCards;
+
+  // Rareté active de la cible (dérivée des cartes sélectionnées, du snapshot ou du filtre actif)
   const activeRarityCode = useMemo(() => {
-    if (spinSnapshot?.card?.rarity) return spinSnapshot.card.rarity;
-    if (liveSelectedCard?.rarity) return liveSelectedCard.rarity;
+    if (spinSnapshot?.rarity) return spinSnapshot.rarity;
+    if (liveSelectedCards.length > 0) return liveSelectedCards[0].rarity;
     if (selectedRarityFilter && selectedRarityFilter !== 'ALL') {
       return selectedRarityFilter;
     }
     return 'C';
-  }, [spinSnapshot, liveSelectedCard, selectedRarityFilter]);
+  }, [spinSnapshot, liveSelectedCards, selectedRarityFilter]);
 
   const activeTier = useMemo(
     () => getRarityByCode(activeRarityCode),
     [activeRarityCode]
   );
 
-  const displayChance = displayedCard
-    ? DOUBLE_CHANCE_BY_RARITY[displayedCard.rarity] || 50
-    : DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
+  const displayChance = DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
 
-  // Une carte est sélectionnable si elle n'est pas Légendaire et n'est pas son dernier exemplaire protégé en favori
-  const isCardSelectable = (card) => {
-    if (!card || card.rarity === 'L') return false;
+  // Nombre maximum d'exemplaires sélectionnables pour une carte (protège les favoris)
+  const getMaxSelectableCopies = (card) => {
+    if (!card || card.rarity === 'L') return 0;
     const isFav = favorites.includes(card.id);
     const count = card.count || 1;
-    if (isFav && count <= 1) return false;
-    return true;
+    return isFav ? Math.max(0, count - 1) : count;
   };
 
   const handleToggleCard = (card) => {
@@ -113,14 +124,43 @@ export default function DoubleOrNothingGame({
       setSpinState('idle');
     }
 
-    if (selectedCardId === card.id) {
-      setSelectedCardId(null);
+    const maxCopies = getMaxSelectableCopies(card);
+    if (maxCopies <= 0) return;
+
+    // Si une autre rareté était sélectionnée, on remplace par 1 exemplaire de cette nouvelle carte
+    if (
+      liveSelectedCards.length > 0 &&
+      liveSelectedCards[0].rarity !== card.rarity
+    ) {
+      setSelectedCardIds([card.id]);
       soundManager.playCardSlide();
       return;
     }
 
-    if (!isCardSelectable(card)) return;
-    setSelectedCardId(card.id);
+    const currentSelectedQty = selectedCountsMap[card.id] || 0;
+
+    // Si on peut encore ajouter un exemplaire de cette carte sans dépasser 8 cartes au total
+    if (
+      currentSelectedQty < maxCopies &&
+      selectedCardIds.length < MAX_SELECTED_CARDS
+    ) {
+      setSelectedCardIds((prev) => [...prev, card.id]);
+      soundManager.playCardSlide();
+      return;
+    }
+
+    // Sinon (tous les exemplaires disponibles déjà sélectionnés ou limite de 8 cartes atteinte), on retire cette carte
+    if (currentSelectedQty > 0) {
+      const nextIds = selectedCardIds.filter((id) => id !== card.id);
+      setSelectedCardIds(nextIds);
+      soundManager.playCardSlide();
+    }
+  };
+
+  const handleRemoveSelectedInstanceAt = (indexToRemove) => {
+    if (spinState === 'spinning' || spinSnapshot) return;
+    const nextIds = selectedCardIds.filter((_, idx) => idx !== indexToRemove);
+    setSelectedCardIds(nextIds);
     soundManager.playCardSlide();
   };
 
@@ -128,33 +168,56 @@ export default function DoubleOrNothingGame({
     if (spinState === 'spinning') return;
     setSpinSnapshot(null);
     setSpinState('idle');
-    setSelectedCardId(null);
+    setSelectedCardIds([]);
   };
 
   const handleLaunchDouble = async () => {
-    if (spinState === 'spinning' || !liveSelectedCard) return;
+    if (spinState === 'spinning' || liveSelectedCards.length === 0) return;
 
-    const lockedCard = { ...liveSelectedCard };
-    setSpinSnapshot({ card: lockedCard });
-    setSelectedCardId(null);
+    const lockedCards = [...liveSelectedCards];
+    const rarity = activeRarityCode;
+    const winPercent = DOUBLE_CHANCE_BY_RARITY[rarity] || 50;
+
+    // Retrait des exemplaires misés de la collection
+    const consumedMap = {};
+    lockedCards.forEach((c) => {
+      consumedMap[c.id] = (consumedMap[c.id] || 0) + 1;
+    });
+    onConsumeCards(consumedMap);
+
+    // Tirage indépendant par carte
+    const results = lockedCards.map((card, idx) => {
+      const isWin = Math.random() < winPercent / 100;
+      return {
+        key: `${card.id}-${idx}`,
+        card,
+        isWin,
+      };
+    });
+
+    const wonCount = results.filter((r) => r.isWin).length;
+    const totalCount = lockedCards.length;
+    const hasWonAny = wonCount > 0;
+
+    setSpinSnapshot({
+      cards: lockedCards,
+      results,
+      wonCount,
+      totalCount,
+      rarity,
+    });
+    setSelectedCardIds([]);
     setSpinState('spinning');
 
-    // On retire l'exemplaire mis en jeu au départ :
-    // - Si gagné, on rendra 2 exemplaires (l'original + le double) !
-    // - Si perdu, l'exemplaire misé est définitivement perdu.
-    onConsumeCards({ [lockedCard.id]: 1 });
-
-    const winPercent = DOUBLE_CHANCE_BY_RARITY[lockedCard.rarity] || 50;
-    const isWin = Math.random() < winPercent / 100;
     const winArc = (winPercent / 100) * 360;
-
     let landingAngle;
-    if (isWin) {
-      // Atterrissage net dans la zone gagnante [0°, winArc]
+    if (hasWonAny) {
+      // Atterrissage net dans la zone gagnante [5°, winArc - 5°]
       landingAngle = 5 + Math.random() * Math.max(10, winArc - 10);
     } else {
-      // Atterrissage net dans la zone perdante [winArc, 360°]
-      landingAngle = (winArc + 5) + Math.random() * Math.max(10, 360 - winArc - 10);
+      // Atterrissage net dans la zone perdante [winArc + 5°, 355°]
+      landingAngle =
+        winArc + 5 + Math.random() * Math.max(10, 360 - winArc - 10);
     }
 
     const currentBaseTurns =
@@ -176,12 +239,17 @@ export default function DoubleOrNothingGame({
 
     await new Promise((resolve) => setTimeout(resolve, 3600));
 
-    if (isWin) {
-      // Rend la carte misée + 1 exemplaire supplémentaire gagné !
-      onCardWon(lockedCard);
-      onCardWon(lockedCard);
+    // Attribution des cartes doublées : 2 exemplaires (original + double) pour chaque carte gagnante
+    results
+      .filter((r) => r.isWin)
+      .forEach((r) => {
+        onCardWon(r.card);
+        onCardWon(r.card);
+      });
+
+    if (hasWonAny) {
       setSpinState('won');
-      soundManager.playUpgradeWin(lockedCard.rarity);
+      soundManager.playUpgradeWin(rarity);
     } else {
       setSpinState('lost');
       soundManager.playUpgradeLoss();
@@ -281,31 +349,72 @@ export default function DoubleOrNothingGame({
         <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
           <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
             <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
-              Carte sélectionnée
+              Cartes sélectionnées
+            </span>
+            <span className="text-[12px] text-[#54595d] font-medium">
+              {displayedSelectedCards.length}/{MAX_SELECTED_CARDS}
             </span>
           </div>
 
           <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px]">
-            {displayedCard ? (
-              <div
-                className="w-full max-w-[272px]"
-                title="Cliquez sur la carte pour la retirer"
-              >
-                <WikiCard
-                  card={displayedCard}
-                  compact={true}
-                  onSelectCard={
-                    spinState === 'spinning' || spinSnapshot
-                      ? undefined
-                      : () => handleToggleCard(displayedCard)
-                  }
-                />
+            {displayedSelectedCards.length > 0 ? (
+              <div className="relative w-full flex items-center justify-center">
+                {displayedSelectedCards.length === 1 ? (
+                  <div
+                    className="w-full max-w-[272px]"
+                    title="Cliquez sur la carte pour la retirer"
+                  >
+                    <WikiCard
+                      card={displayedSelectedCards[0]}
+                      compact={true}
+                      onSelectCard={
+                        spinState === 'spinning' || spinSnapshot
+                          ? undefined
+                          : () => handleRemoveSelectedInstanceAt(0)
+                      }
+                    />
+                  </div>
+                ) : (
+                  /* Plusieurs cartes sélectionnées : éventail à la taille native 272x446 */
+                  <div className="relative flex items-center justify-center w-full h-[320px] sm:h-[452px] overflow-hidden">
+                    {displayedSelectedCards.map((card, idx) => {
+                      const total = displayedSelectedCards.length;
+                      const offsetStep = Math.min(
+                        38,
+                        Math.floor(110 / Math.max(1, total - 1))
+                      );
+                      const startOffset = -((total - 1) * offsetStep) / 2;
+                      const translateX = startOffset + idx * offsetStep;
+                      return (
+                        <div
+                          key={`${card.id}-${idx}`}
+                          style={{
+                            transform: `translateX(${translateX}px)`,
+                            zIndex: 10 + idx,
+                          }}
+                          className="absolute w-full max-w-[272px] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          title="Cliquez sur cette carte pour la retirer"
+                        >
+                          <WikiCard
+                            card={card}
+                            compact={true}
+                            onSelectCard={
+                              spinState === 'spinning' || spinSnapshot
+                                ? undefined
+                                : () => handleRemoveSelectedInstanceAt(idx)
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
                 <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
-                  Cliquez sur une carte dans le classeur ci-dessous pour tenter
-                  de la dupliquer.
+                  Cliquez sur 1 à 8 cartes dans le classeur ci-dessous pour
+                  tenter de les doubler en même temps.
                 </p>
               </div>
             )}
@@ -503,15 +612,33 @@ export default function DoubleOrNothingGame({
               </g>
             </svg>
 
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-6">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
               {spinState === 'won' ? (
-                <span className="text-[22px] font-extrabold text-[#177860] leading-tight">
-                  Réussi !
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#177860] leading-tight">
+                    {spinSnapshot?.totalCount > 1
+                      ? `${spinSnapshot.wonCount}/${spinSnapshot.totalCount} Réussi${spinSnapshot.wonCount > 1 ? 's' : ''}`
+                      : 'Réussi !'}
+                  </span>
+                  {spinSnapshot?.totalCount > 1 && (
+                    <span className="text-[11px] font-bold text-[#177860]/80 mt-0.5">
+                      +{spinSnapshot.wonCount * 2} cartes
+                    </span>
+                  )}
+                </div>
               ) : spinState === 'lost' ? (
-                <span className="text-[22px] font-extrabold text-[#bf3c2c] leading-tight">
-                  Perdu
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="text-[20px] sm:text-[22px] font-extrabold text-[#bf3c2c] leading-tight">
+                    {spinSnapshot?.totalCount > 1
+                      ? `0/${spinSnapshot.totalCount} Réussi`
+                      : 'Perdu'}
+                  </span>
+                  {spinSnapshot?.totalCount > 1 && (
+                    <span className="text-[11px] font-bold text-[#bf3c2c]/80 mt-0.5">
+                      Cartes perdues
+                    </span>
+                  )}
+                </div>
               ) : (
                 <span
                   className="text-[30px] font-extrabold leading-none tracking-tight"
@@ -545,13 +672,15 @@ export default function DoubleOrNothingGame({
             ) : (
               <button
                 type="button"
-                disabled={spinState === 'spinning' || !liveSelectedCard}
+                disabled={spinState === 'spinning' || liveSelectedCards.length === 0}
                 onClick={handleLaunchDouble}
                 className="wiki-casino-btn wiki-casino-btn--primary w-full"
               >
                 <span>
                   {spinState === 'spinning'
                     ? 'Tirage en cours...'
+                    : liveSelectedCards.length > 1
+                    ? `Lancer (${liveSelectedCards.length} cartes)`
                     : 'Lancer le Quitte ou Double'}
                 </span>
               </button>
@@ -559,26 +688,122 @@ export default function DoubleOrNothingGame({
           </div>
         </div>
 
-        {/* COLONNE DROITE (4 col) : Carte cible (Double exemplaire) */}
+        {/* COLONNE DROITE (4 col) : Carte cible / Résultat */}
         <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
             <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
-              Carte cible
+              {spinSnapshot ? 'Résultats du tirage' : 'Carte cible'}
             </span>
+            {spinSnapshot && (
+              <span className="text-[12px] font-bold text-[#54595d]">
+                {spinSnapshot.wonCount}/{spinSnapshot.totalCount} gagné{spinSnapshot.wonCount > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
 
           <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px] w-full">
-            {spinState === 'won' && displayedCard ? (
-              <div className="w-full max-w-[272px]">
-                <WikiCard
-                  card={displayedCard}
-                  compact={true}
-                  duplicateCount={2}
-                  isFavorite={favorites.includes(displayedCard.id)}
-                  onToggleFavorite={onToggleFavorite}
-                />
-              </div>
+            {spinSnapshot ? (
+              spinSnapshot.totalCount === 1 ? (
+                spinState === 'won' ? (
+                  <div className="w-full max-w-[272px]">
+                    <WikiCard
+                      card={spinSnapshot.results[0].card}
+                      compact={true}
+                      duplicateCount={2}
+                      isFavorite={favorites.includes(spinSnapshot.results[0].card.id)}
+                      onToggleFavorite={onToggleFavorite}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 bg-[#fff5f5] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-[#ffe9e5] border border-[#f54739] text-[#bf3c2c] flex items-center justify-center mb-3">
+                      <XCircle className="w-6 h-6" />
+                    </div>
+                    <span className="text-[14px] font-bold text-[#bf3c2c] mb-1">
+                      Carte perdue
+                    </span>
+                    <p className="text-[12px] text-[#72777d] m-0">
+                      « {spinSnapshot.results[0].card.title} » a été détruite.
+                    </p>
+                  </div>
+                )
+              ) : (
+                /* Résultats pour plusieurs cartes (2 à 8) */
+                <div className="w-full h-full max-h-[446px] flex flex-col justify-between">
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[380px]">
+                    {spinSnapshot.results.map((res) => (
+                      <div
+                        key={res.key}
+                        className={`p-2 rounded-[4px] border flex items-center justify-between gap-2.5 transition-all ${
+                          res.isWin
+                            ? 'bg-[#f0f9f5] border-[#099979]/40'
+                            : 'bg-[#fafafa] border-[#e2e2e2] opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {res.card.image ? (
+                            <img
+                              src={res.card.image}
+                              alt={res.card.title}
+                              className={`w-9 h-9 object-cover rounded-[3px] border shrink-0 ${
+                                res.isWin
+                                  ? 'border-[#099979]'
+                                  : 'border-[#c8ccd1] grayscale'
+                              }`}
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-[3px] bg-[#eaecf0] flex items-center justify-center shrink-0 text-[10px] font-bold text-[#54595d]">
+                              {res.card.rarity}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-bold text-[#202122] truncate m-0 leading-tight">
+                              {res.card.title}
+                            </p>
+                            <span className="text-[10.5px] text-[#54595d]">
+                              {res.card.rarity}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          {res.isWin ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#177860] bg-[#dff2eb] border border-[#099979]/30 px-2 py-0.5 rounded-[2px]">
+                              Doublé (×2)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#bf3c2c] bg-[#ffe9e5] border border-[#f54739]/30 px-2 py-0.5 rounded-[2px]">
+                              Perdu (-1)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-[#eaecf0] flex items-center justify-between text-[11.5px] font-semibold text-[#54595d]">
+                    <span>
+                      Gain net :{' '}
+                      {spinSnapshot.wonCount > 0
+                        ? `+${spinSnapshot.wonCount} carte${spinSnapshot.wonCount > 1 ? 's' : ''}`
+                        : '0 carte'}
+                    </span>
+                    <span
+                      className={
+                        spinSnapshot.wonCount > 0
+                          ? 'text-[#177860]'
+                          : 'text-[#bf3c2c]'
+                      }
+                    >
+                      {spinSnapshot.wonCount > 0
+                        ? `${spinSnapshot.wonCount * 2} exemplaires reçus`
+                        : '0 exemplaire reçu'}
+                    </span>
+                  </div>
+                </div>
+              )
             ) : (
+              /* Carte cible en attente */
               <div
                 className="relative w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
@@ -645,8 +870,10 @@ export default function DoubleOrNothingGame({
                     >
                       {spinState === 'spinning'
                         ? 'Révélation en cours...'
-                        : displayedCard
-                        ? `${displayedCard.title} (×2)`
+                        : liveSelectedCards.length === 1
+                        ? `${liveSelectedCards[0].title} (×2)`
+                        : liveSelectedCards.length > 1
+                        ? `Double exemplaire (${liveSelectedCards.length} cartes)`
                         : `Double exemplaire (${activeTier.name})`}
                     </span>
                   </div>
@@ -761,15 +988,18 @@ export default function DoubleOrNothingGame({
         {filteredAndSortedCollection.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 justify-items-center">
             {filteredAndSortedCollection.map((card) => {
-              const isSelected = selectedCardId === card.id;
-              const isFavProtected =
-                favorites.includes(card.id) && (card.count || 1) <= 1;
+              const currentQty = selectedCountsMap[card.id] || 0;
+              const maxCopies = getMaxSelectableCopies(card);
+              const isFavProtected = maxCopies <= 0;
+              const isSelected = currentQty > 0;
 
               const cardChance = DOUBLE_CHANCE_BY_RARITY[card.rarity] || 50;
               const badgeText = isFavProtected
                 ? '★ Protégée'
                 : isSelected
-                ? `Sélectionnée (${cardChance} %)`
+                ? maxCopies > 1
+                  ? `${currentQty}/${maxCopies} sel. (${cardChance} %)`
+                  : `Sélectionnée (${cardChance} %)`
                 : `${cardChance} %`;
 
               return (

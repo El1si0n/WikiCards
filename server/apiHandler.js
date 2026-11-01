@@ -336,6 +336,60 @@ export async function handleApiRequest(req, res) {
               )
               return
             }
+
+            if (req.method === 'DELETE') {
+              const cleanCode = sanitizeCode(code)
+              if (fs.existsSync(filePath)) {
+                try {
+                  fs.unlinkSync(filePath)
+                } catch (unlinkErr) {
+                  console.error('[WikiCards Delete User Error]:', unlinkErr)
+                  res.statusCode = 500
+                  res.end(
+                    JSON.stringify({
+                      ok: false,
+                      error: 'Erreur lors de la suppression du fichier utilisateur',
+                    })
+                  )
+                  return
+                }
+              }
+
+              // Nettoyer les annonces du marché créées par cet utilisateur
+              try {
+                const allListings = loadJsonArrayFile(marketFile)
+                const nextListings = allListings.filter(
+                  (l) => l.sellerCode !== cleanCode
+                )
+                if (nextListings.length !== allListings.length) {
+                  saveJsonArrayFile(marketFile, nextListings)
+                }
+              } catch (marketErr) {
+                console.error('[Clean Market Error]:', marketErr)
+              }
+
+              // Nettoyer les échanges impliquant cet utilisateur
+              try {
+                const allTrades = loadJsonArrayFile(tradesFile)
+                const nextTrades = allTrades.filter(
+                  (t) => t.fromCode !== cleanCode && t.toCode !== cleanCode
+                )
+                if (nextTrades.length !== allTrades.length) {
+                  saveJsonArrayFile(tradesFile, nextTrades)
+                }
+              } catch (tradeErr) {
+                console.error('[Clean Trades Error]:', tradeErr)
+              }
+
+              res.statusCode = 200
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  message: 'Compte supprimé avec succès',
+                })
+              )
+              return
+            }
           }
 
           // ===================================================================

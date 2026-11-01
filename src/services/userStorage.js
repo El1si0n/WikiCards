@@ -476,3 +476,50 @@ export async function performMarketAction(listingId, action, payload = {}) {
   return json;
 }
 
+// =====================================================================
+// SUPPRESSION DÉFINITIVE DU COMPTE (/api/users/:code)
+// =====================================================================
+export async function deleteUserAccount(code) {
+  const cleanCode = normalizeUserCode(code);
+  if (!isValidUserCode(cleanCode)) {
+    throw new Error('Code utilisateur invalide');
+  }
+
+  // 1. Suppression sur le serveur
+  try {
+    await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+  } catch (err) {
+    console.warn('[deleteUserAccount] Serveur non joignable:', err);
+  }
+
+  // 2. Nettoyage de l'annuaire local de secours
+  try {
+    const raw = localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY);
+    if (raw) {
+      const dir = JSON.parse(raw);
+      if (dir[cleanCode]) {
+        delete dir[cleanCode];
+        localStorage.setItem(LOCAL_USERS_DIRECTORY_KEY, JSON.stringify(dir));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Suppression des clés locales liées à l'identification
+  try {
+    localStorage.removeItem(USER_CODE_STORAGE_KEY);
+    localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+    localStorage.removeItem(USER_UPDATED_AT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+
+  return true;
+}
+
+

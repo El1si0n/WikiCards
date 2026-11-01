@@ -51,6 +51,7 @@ import {
   syncUserAccountToServer,
   fetchUserTrades,
   fetchMarketListings,
+  deleteUserAccount,
 } from './services/userStorage';
 import {
   RARITY_TIERS,
@@ -604,6 +605,39 @@ export default function App() {
   const handleLogout = () => {
     clearStoredUserCode();
     setUserCode(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userCode) return;
+    try {
+      await deleteUserAccount(userCode);
+    } catch (err) {
+      console.error('[handleDeleteAccount Error]:', err);
+    }
+
+    // Effacer toutes les données locales
+    try {
+      localStorage.removeItem(STORAGE_KEYS.COLLECTION);
+      localStorage.removeItem(STORAGE_KEYS.FAVORITES);
+      localStorage.removeItem(STORAGE_KEYS.STATS);
+      localStorage.removeItem(STORAGE_KEYS.WIKITHUNES);
+      localStorage.removeItem(STORAGE_KEYS.DAILY_REWARD);
+      localStorage.removeItem(STORAGE_KEYS.READ_NOTIFS);
+    } catch {
+      // ignore
+    }
+
+    // Réinitialiser tout l'état de l'application
+    setUserCode(null);
+    setCollection([]);
+    setFavorites([]);
+    setWikithunes(INITIAL_WIKITHUNES);
+    setStats({ boostersOpened: 0, totalCardsDrawn: 0 });
+    setLastDailyClaimDate('');
+    setUserProfile(getDefaultProfile('WIKI-0000'));
+    setNotifications([]);
+    setActiveTab('booster');
+    soundManager.playCardSlide();
   };
 
   // État des notifications et liste des identifiants marqués comme lus
@@ -1491,6 +1525,7 @@ export default function App() {
                       profile={userProfile}
                       onUpdateProfile={handleUpdateUserProfile}
                       onLogout={handleLogout}
+                      onDeleteAccount={handleDeleteAccount}
                       collection={collection}
                       favorites={favorites}
                       onToggleFavorite={toggleFavorite}

@@ -13,6 +13,8 @@ import {
   Pencil,
   Camera,
   LogOut,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 const RARITY_ORDER = {
@@ -29,6 +31,7 @@ export default function UserProfile({
   profile,
   onUpdateProfile,
   onLogout,
+  onDeleteAccount,
   collection,
   favorites,
   onToggleFavorite,
@@ -40,6 +43,12 @@ export default function UserProfile({
   const [isEditingIdentity, setIsEditingIdentity] = useState(false);
   const [draftUsername, setDraftUsername] = useState(profile.username || '');
   const [draftBio, setDraftBio] = useState(profile.bio || '');
+
+  // Suppression du compte
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Sélection d'une carte pour l'un des 4 emplacements de la vitrine (0, 1, 2, 3 ou null)
   const [activeShowcaseSlot, setActiveShowcaseSlot] = useState(null);
@@ -355,6 +364,23 @@ export default function UserProfile({
                 aria-label="Se déconnecter"
               >
                 <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {onDeleteAccount && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmingDelete(true);
+                  setDeleteError(null);
+                  setDeleteConfirmText('');
+                }}
+                className="h-[32px] px-2.5 rounded-[2px] border border-[#f54739] bg-[#fff5f5] hover:bg-[#ffe9e5] text-[#bf3c2c] inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors text-[12px] font-bold"
+                title="Supprimer définitivement mon compte"
+                aria-label="Supprimer mon compte"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Supprimer le compte</span>
               </button>
             )}
           </div>
@@ -712,6 +738,191 @@ export default function UserProfile({
           </div>
         )}
       </section>
+
+      {/* ZONE DE DANGER : SUPPRESSION DÉFINITIVE DU COMPTE */}
+      {onDeleteAccount && (
+        <section className="accueil_2017_cadre !border-[#f54739]/40 bg-[#fffdfd]">
+          <div className="wiki-cadre-header border-b border-[#f54739]/30 flex items-center justify-between">
+            <h2 className="wiki-smallcaps m-0 text-[#bf3c2c] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#bf3c2c]" />
+              <span>Zone de danger</span>
+            </h2>
+          </div>
+
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[13.5px] font-bold text-[#202122] m-0">
+                Supprimer définitivement ce compte
+              </p>
+              <p className="text-[12.5px] text-[#54595d] m-0 leading-relaxed">
+                Une fois votre compte supprimé, toutes vos cartes obtenues, vos Wikithunes, vos statistiques et vos annonces seront irrévocablement effacées. Cette opération ne peut pas être annulée.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsConfirmingDelete(true);
+                setDeleteError(null);
+                setDeleteConfirmText('');
+              }}
+              className="wiki-casino-btn wiki-casino-btn--danger shrink-0 !min-h-[36px] !py-1.5 !px-4 text-[13px] font-bold inline-flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Supprimer mon compte</span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* MODAL DE CONFIRMATION DE SUPPRESSION DU COMPTE */}
+      {isConfirmingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="bg-white border border-[#a2a9b1] rounded-[2px] shadow-2xl max-w-[500px] w-full p-5 space-y-4 text-left"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+          >
+            <div className="flex items-start gap-3 border-b border-[#eaecf0] pb-3">
+              <div className="w-10 h-10 rounded-full bg-[#ffe9e5] border border-[#f54739] text-[#bf3c2c] flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3
+                  id="delete-account-title"
+                  className="text-[17px] font-bold text-[#202122] m-0"
+                >
+                  Supprimer définitivement votre compte ?
+                </h3>
+                <p className="text-[12.5px] text-[#72777d] m-0 mt-0.5">
+                  Code joueur :{' '}
+                  <span className="font-mono font-bold text-[#202122]">
+                    {userCode}
+                  </span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isDeleting) {
+                    setIsConfirmingDelete(false);
+                    setDeleteConfirmText('');
+                    setDeleteError(null);
+                  }
+                }}
+                disabled={isDeleting}
+                className="text-[#72777d] hover:text-[#202122] cursor-pointer p-1"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-[13px] text-[#202122]">
+              <div className="p-3 bg-[#fff5f5] border border-[#f54739]/40 rounded-[2px] space-y-1.5 text-[#bf3c2c]">
+                <p className="font-bold m-0 flex items-center gap-1.5">
+                  <span>Attention : cette action est irréversible.</span>
+                </p>
+                <ul className="list-disc list-inside text-[12.5px] space-y-0.5 m-0 text-[#202122]">
+                  <li>
+                    Votre classeur de <strong>{collection.length} cartes</strong>{' '}
+                    ({totalCopiesCount} exemplaires) sera détruit.
+                  </li>
+                  <li>
+                    Votre solde de{' '}
+                    <strong>
+                      {new Intl.NumberFormat('fr-FR').format(wikithunes)} ₩
+                    </strong>{' '}
+                    sera réinitialisé.
+                  </li>
+                  <li>
+                    Vos offres sur le marché et vos propositions d'échanges
+                    seront annulées.
+                  </li>
+                  <li>
+                    Votre identifiant{' '}
+                    <strong className="font-mono">{userCode}</strong> sera
+                    définitivement effacé du serveur.
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirm-delete-input"
+                  className="block text-[12.5px] font-medium text-[#54595d] mb-1.5"
+                >
+                  Pour confirmer, saisissez votre code{' '}
+                  <strong className="text-[#202122]">{userCode}</strong> ou le
+                  mot <strong className="text-[#bf3c2c]">SUPPRIMER</strong> :
+                </label>
+                <input
+                  id="confirm-delete-input"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  disabled={isDeleting}
+                  placeholder={`${userCode} ou SUPPRIMER`}
+                  className="w-full px-3 py-2 text-[13px] font-mono border border-[#a2a9b1] rounded-[2px] focus:outline-none focus:border-[#f54739] focus:ring-1 focus:ring-[#f54739]"
+                  autoComplete="off"
+                  autoFocus
+                />
+              </div>
+
+              {deleteError && (
+                <p className="text-[12px] text-[#bf3c2c] font-medium m-0">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#eaecf0]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmingDelete(false);
+                  setDeleteConfirmText('');
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[34px] !py-1.5 !px-3.5 !text-[12.5px]"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  isDeleting ||
+                  (deleteConfirmText.trim().toUpperCase() !== userCode &&
+                    deleteConfirmText.trim().toUpperCase() !== 'SUPPRIMER')
+                }
+                onClick={async () => {
+                  setIsDeleting(true);
+                  setDeleteError(null);
+                  try {
+                    await onDeleteAccount();
+                  } catch (err) {
+                    setDeleteError(
+                      err?.message || 'Erreur lors de la suppression.'
+                    );
+                    setIsDeleting(false);
+                  }
+                }}
+                className="wiki-casino-btn wiki-casino-btn--danger !min-h-[34px] !py-1.5 !px-3.5 !text-[12.5px] font-bold inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  {isDeleting
+                    ? 'Suppression en cours...'
+                    : 'Confirmer la suppression'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
