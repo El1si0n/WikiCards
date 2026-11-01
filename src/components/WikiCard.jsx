@@ -147,6 +147,8 @@ export default function WikiCard({
   trade = false, // true dans les propositions d'échanges
   isRecycleMode = false,
   isSelectedForRecycle = false,
+  selectedRecycleCount = 0,
+  onUpdateRecycleCount,
   onSelectForRecycle,
   onSelectCard,
   isSelected = false,
@@ -249,7 +251,9 @@ export default function WikiCard({
     : new Intl.NumberFormat('fr-FR').format(card.views ?? 0);
   const isHighTier =
     tier.code === 'L' || tier.code === 'UR' || tier.code === 'SR';
-  const showSelectedDim = isSelectedForRecycle || isSelected;
+  const effectiveRecycleQty =
+    selectedRecycleCount > 0 ? selectedRecycleCount : isSelectedForRecycle ? 1 : 0;
+  const showSelectedDim = effectiveRecycleQty > 0 || isSelected;
 
   return (
     <div
@@ -368,25 +372,95 @@ export default function WikiCard({
                 >
                   ★ Protégée
                 </span>
+              ) : effectiveRecycleQty > 0 ? (
+                <div
+                  className="h-7 px-1.5 sm:px-2 rounded-[2px] flex items-center gap-1 text-[11px] font-bold shadow-xs bg-[#006b24] text-white border border-[#00571d]"
+                  title="Exemplaire(s) sélectionné(s) pour le recyclage"
+                >
+                  {duplicateCount > 1 ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateRecycleCount) {
+                            onUpdateRecycleCount(card, Math.max(0, effectiveRecycleQty - 1));
+                          } else if (onSelectForRecycle) {
+                            onSelectForRecycle(card);
+                          }
+                        }}
+                        className="w-[18px] h-[18px] rounded-[2px] bg-black/25 hover:bg-black/50 active:scale-95 flex items-center justify-center text-white text-[12px] font-bold leading-none cursor-pointer transition-transform"
+                        title="Réduire d'un exemplaire"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono text-[11.5px] font-extrabold px-0.5 min-w-[14px] text-center">
+                        {effectiveRecycleQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateRecycleCount) {
+                            const maxAllowed = isFavorite
+                              ? Math.max(0, duplicateCount - 1)
+                              : duplicateCount;
+                            onUpdateRecycleCount(
+                              card,
+                              Math.min(maxAllowed, effectiveRecycleQty + 1)
+                            );
+                          }
+                        }}
+                        className="w-[18px] h-[18px] rounded-[2px] bg-black/25 hover:bg-black/50 active:scale-95 flex items-center justify-center text-white text-[12px] font-bold leading-none cursor-pointer transition-transform"
+                        title="Ajouter un exemplaire"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateRecycleCount) {
+                            const maxAllowed = isFavorite
+                              ? Math.max(0, duplicateCount - 1)
+                              : duplicateCount;
+                            const target =
+                              effectiveRecycleQty === maxAllowed &&
+                              duplicateCount > 1 &&
+                              maxAllowed > 1 &&
+                              !isFavorite
+                                ? duplicateCount - 1
+                                : maxAllowed;
+                            onUpdateRecycleCount(card, target);
+                          }
+                        }}
+                        className="px-1 py-0.2 rounded-[2px] bg-white/20 hover:bg-white/35 active:scale-95 text-[9.5px] font-bold uppercase cursor-pointer"
+                        title={
+                          effectiveRecycleQty === duplicateCount
+                            ? 'Garder 1 exemplaire'
+                            : 'Tout recycler'
+                        }
+                      >
+                        {effectiveRecycleQty === duplicateCount
+                          ? 'Garder 1'
+                          : 'Max'}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="w-3.5 h-3.5 rounded-[2px] flex items-center justify-center bg-white text-[#006b24] border border-white">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </span>
+                  )}
+                  <span className="ml-0.5 whitespace-nowrap">
+                    +{recycleValue * effectiveRecycleQty}
+                  </span>
+                  <WikithuneIcon className="w-3 h-3 text-white" />
+                </div>
               ) : (
                 <div
-                  className={`h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs transition-colors ${
-                    isSelectedForRecycle
-                      ? 'bg-[#006b24] text-white border border-[#00571d]'
-                      : 'bg-black/65 text-white border border-white/40 hover:bg-black/80'
-                  }`}
+                  className="h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs bg-black/65 text-white border border-white/40 hover:bg-black/80 transition-colors"
                 >
-                  <span
-                    className={`w-3.5 h-3.5 rounded-[2px] flex items-center justify-center border ${
-                      isSelectedForRecycle
-                        ? 'bg-white text-[#006b24] border-white'
-                        : 'border-white/70'
-                    }`}
-                  >
-                    {isSelectedForRecycle && (
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    )}
-                  </span>
+                  <span className="w-3.5 h-3.5 rounded-[2px] border border-white/70" />
                   <span>+{recycleValue}</span>
                   <WikithuneIcon className="w-3 h-3 text-white" />
                 </div>

@@ -149,9 +149,7 @@ export default function BoosterOpening({
     if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
       setStage('pack');
-      setErrorMsg(
-        `Solde insuffisant (${wikithunes} / ${priceToPay} ₩). Recyclez des cartes dans votre classeur pour obtenir des Wikithunes.`
-      );
+      setErrorMsg("Vous n'avez pas assez de Wikifeet");
       return;
     }
 

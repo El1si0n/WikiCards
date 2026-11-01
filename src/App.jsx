@@ -184,9 +184,9 @@ export default function App() {
     });
   };
 
-  // Mode sélection de cartes à recycler dans le classeur
+  // Mode sélection de cartes à recycler dans le classeur (map { [cardId]: count })
   const [isRecycleMode, setIsRecycleMode] = useState(false);
-  const [selectedRecycleIds, setSelectedRecycleIds] = useState([]);
+  const [selectedRecycleCounts, setSelectedRecycleCounts] = useState({});
 
   // Étape 10 : Code Unique d'identification (WIKI-XXXX) & Profil Utilisateur (style OpenGym)
   const [userCode, setUserCode] = useState(() => getStoredUserCode());
@@ -942,49 +942,106 @@ export default function App() {
     const currentCount = card.count || 1;
     if (isFav && currentCount <= 1) return;
 
-    setSelectedRecycleIds((prev) =>
-      prev.some((id) => String(id) === cardIdStr)
-        ? prev.filter((id) => String(id) !== cardIdStr)
-        : [...prev, card.id]
-    );
+    setSelectedRecycleCounts((prev) => {
+      const currentSelected = prev[cardIdStr] || 0;
+      if (currentSelected > 0) {
+        // Déjà sélectionné : désélectionne
+        const next = { ...prev };
+        delete next[cardIdStr];
+        return next;
+      }
+      // Non sélectionné : sélectionne tous les doublons par défaut (ou tous les exemplaires si pas en favori)
+      const maxAllowed = isFav ? Math.max(0, currentCount - 1) : currentCount;
+      const defaultQty = currentCount > 1 ? currentCount - 1 : maxAllowed;
+      return {
+        ...prev,
+        [cardIdStr]: Math.max(1, defaultQty),
+      };
+    });
   };
+
+  // Mise à jour de la quantité précise à recycler pour une carte donnée
+  const handleUpdateRecycleCount = (card, newCount) => {
+    const cardIdStr = String(card.id);
+    const isFav = favorites.some((id) => String(id) === cardIdStr);
+    const currentCount = card.count || 1;
+    const maxAllowed = isFav ? Math.max(0, currentCount - 1) : currentCount;
+    const safeCount = Math.max(0, Math.min(maxAllowed, Number(newCount) || 0));
+
+    setSelectedRecycleCounts((prev) => {
+      if (safeCount <= 0) {
+        const next = { ...prev };
+        delete next[cardIdStr];
+        return next;
+      }
+      return {
+        ...prev,
+        [cardIdStr]: safeCount,
+      };
+    });
+  };
+
+  // Sélectionne en 1 clic tous les doublons de la collection (en conservant 1 exemplaire de chaque carte)
+  const handleSelectAllDuplicates = () => {
+    const nextMap = {};
+    for (const card of collection) {
+      const cardIdStr = String(card.id);
+      const isFav = favorites.some((id) => String(id) === cardIdStr);
+      const currentCount = card.count || 1;
+      const duplicates = Math.max(0, currentCount - 1);
+      if (duplicates > 0) {
+        nextMap[cardIdStr] = duplicates;
+      }
+    }
+    setSelectedRecycleCounts(nextMap);
+  };
+
+  // Nombre total d'exemplaires sélectionnés pour le recyclage
+  const totalSelectedRecycleCount = useMemo(() => {
+    return Object.values(selectedRecycleCounts).reduce(
+      (sum, count) => sum + (count || 0),
+      0
+    );
+  }, [selectedRecycleCounts]);
 
   // Calcul du gain total des cartes sélectionnées pour le recyclage
   const selectedRecycleGain = useMemo(() => {
-    if (selectedRecycleIds.length === 0) return 0;
-    const selectedSet = new Set(selectedRecycleIds.map(String));
-    return collection.reduce((sum, card) => {
-      if (!selectedSet.has(String(card.id))) return sum;
-      return sum + getCardRecycleValue(card);
-    }, 0);
-  }, [collection, selectedRecycleIds]);
+    let total = 0;
+    for (const card of collection) {
+      const qty = selectedRecycleCounts[String(card.id)] || 0;
+      if (qty > 0) {
+        total += getCardRecycleValue(card) * qty;
+      }
+    }
+    return total;
+  }, [collection, selectedRecycleCounts]);
 
-  // Confirme le recyclage des cartes sélectionnées (retire 1 exemplaire de chaque carte sélectionnée)
+  // Confirme le recyclage des cartes sélectionnées selon les quantités choisies
   const handleConfirmRecycleSelection = () => {
-    if (selectedRecycleIds.length === 0) return;
-    const selectedSet = new Set(selectedRecycleIds.map(String));
+    if (totalSelectedRecycleCount === 0) return;
     const gain = selectedRecycleGain;
     bumpLocalUpdatedAt();
 
     setCollection((prev) =>
       prev
         .map((item) => {
-          if (!selectedSet.has(String(item.id))) return item;
-          return { ...item, count: (item.count || 1) - 1 };
+          const qtyToRemove = selectedRecycleCounts[String(item.id)] || 0;
+          if (qtyToRemove <= 0) return item;
+          return { ...item, count: (item.count || 1) - qtyToRemove };
         })
         .filter((item) => (item.count || 0) > 0)
     );
 
     addWikithunes(gain);
     soundManager.playCoinSound();
-    setSelectedRecycleIds([]);
+    setSelectedRecycleCounts({});
     setIsRecycleMode(false);
   };
 
   const handleToggleRecycleMode = () => {
     setIsRecycleMode((prev) => {
       const next = !prev;
-      if (!next) setSelectedRecycleIds([]);
+      if (!next) setSelectedRecycleCounts({});
       return next;
     });
   };
@@ -1534,7 +1591,7 @@ export default function App() {
                   </Suspense>
                 ) : activeTab === 'market' ? (
                   /* =====================================================================
-                     ONGLET MARCHÉ : HÔTEL DES VENTES & ENCHÈRES EN WIKITHUNES
+                     ONGLET MARCHÉ : HÔTEL DES VENTES & ENCHÈRES EN WIKIFEET
                   ===================================================================== */
                   <Suspense fallback={<TabLoadingFallback />}>
                     <AuctionMarket
@@ -1719,14 +1776,24 @@ export default function App() {
                           </button>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 h-[28px]">
+                            {/* Bouton rapide : Tous les doublons */}
                             <button
                               type="button"
-                              disabled={selectedRecycleIds.length === 0}
+                              onClick={handleSelectAllDuplicates}
+                              className="bg-[#f8f9fa] dark:bg-[#1a202c] hover:bg-[#eaf3ff] dark:hover:bg-[#202b3a] border border-[#a2a9b1] dark:border-[#3a4454] rounded-[2px] px-2 h-[28px] text-[11.5px] font-bold text-[#202122] dark:text-[#eaecf0] inline-flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                              title="Sélectionner automatiquement tous les doublons de la collection"
+                            >
+                              <span>Tous les doublons</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={totalSelectedRecycleCount === 0}
                               onClick={handleConfirmRecycleSelection}
                               className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
                               title={
-                                selectedRecycleIds.length > 0
-                                  ? `Recycler pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikithunes`
+                                totalSelectedRecycleCount > 0
+                                  ? `Recycler ${totalSelectedRecycleCount} carte${totalSelectedRecycleCount > 1 ? 's' : ''} pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikifeet`
                                   : 'Sélectionnez des cartes à recycler'
                               }
                             >
@@ -1754,21 +1821,24 @@ export default function App() {
                     {/* Grille 2 colonnes sur mobile, jusqu'à 4 sur grand écran (lg:grid-cols-4) avec cartes au format compact */}
                     {filteredAndSortedCollection.length > 0 ? (
                       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
-                        {filteredAndSortedCollection.map((card) => (
-                          <WikiCard
-                            key={card.id}
-                            card={card}
-                            compact={true}
-                            isFavorite={favorites.includes(card.id)}
-                            onToggleFavorite={toggleFavorite}
-                            duplicateCount={card.count || 1}
-                            isRecycleMode={isRecycleMode}
-                            isSelectedForRecycle={selectedRecycleIds.includes(
-                              card.id
-                            )}
-                            onSelectForRecycle={handleToggleSelectForRecycle}
-                          />
-                        ))}
+                        {filteredAndSortedCollection.map((card) => {
+                          const cardQty = selectedRecycleCounts[String(card.id)] || 0;
+                          return (
+                            <WikiCard
+                              key={card.id}
+                              card={card}
+                              compact={true}
+                              isFavorite={favorites.includes(card.id)}
+                              onToggleFavorite={toggleFavorite}
+                              duplicateCount={card.count || 1}
+                              isRecycleMode={isRecycleMode}
+                              isSelectedForRecycle={cardQty > 0}
+                              selectedRecycleCount={cardQty}
+                              onSelectForRecycle={handleToggleSelectForRecycle}
+                              onUpdateRecycleCount={handleUpdateRecycleCount}
+                            />
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="py-14 text-center bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px]">

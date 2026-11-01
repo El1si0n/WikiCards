@@ -874,12 +874,12 @@ export default function WikiSino({
                 </div>
               </div>
 
-              {/* Boost en Wikithunes + Bouton Lancer ou Bouton Suivant / Terminer */}
+              {/* Boost en Wikifeet + Bouton Lancer ou Bouton Suivant / Terminer */}
               <div className="w-full pt-3 border-t border-[#eaecf0] space-y-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[12.5px] font-bold text-[#202122]">
-                      Boost en Wikithunes
+                      Boost en Wikifeet
                     </span>
                     <span className="text-[12.5px] font-bold text-[#3366cc] inline-flex items-center gap-1">
                       <span>+{effectiveBonusPercent}&nbsp;%</span>
@@ -944,7 +944,7 @@ export default function WikiSino({
                       {spinState === 'spinning'
                         ? 'Tirage en cours...'
                         : moneyCost > 0 && wikithunes < moneyCost
-                        ? `Solde insuffisant (${new Intl.NumberFormat('fr-FR').format(wikithunes)} / ${new Intl.NumberFormat('fr-FR').format(moneyCost)} ₩)`
+                        ? "Pas assez de Wikifeet"
                         : "Lancer l'Upgrade"}
                     </span>
                   </button>

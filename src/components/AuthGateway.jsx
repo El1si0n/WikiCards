@@ -212,7 +212,7 @@ export default function AuthGateway({ onLoginSuccess }) {
                 </div>
 
                 <div className="flex items-center justify-between text-[13px] bg-[#f8f9fa] dark:bg-[#15191e] p-3 rounded-[2px] border border-[#eaecf0] dark:border-[#2a2d30] transition-colors">
-                  <span className="text-[#54595d] dark:text-[#a2a9b1]">Wikithunes de bienvenue :</span>
+                  <span className="text-[#54595d] dark:text-[#a2a9b1]">Wikifeet de bienvenue :</span>
                   <div className="font-bold text-[#202122] dark:text-white inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(INITIAL_WIKITHUNES)}
@@ -256,7 +256,7 @@ export default function AuthGateway({ onLoginSuccess }) {
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-[11.5px] text-[#72777d] dark:text-[#888e96]">
-                        Entrez votre code pour charger vos cartes et vos Wikithunes.
+                        Entrez votre code pour charger vos cartes et vos Wikifeet.
                       </span>
                       <button
                         type="button"

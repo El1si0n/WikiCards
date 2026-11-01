@@ -201,6 +201,13 @@ export async function handleApiRequest(req, res) {
                     0
                   ),
                   legendaryCount: col.filter((c) => c.rarity === 'L').length,
+                  ultraRareCount: col.filter((c) => c.rarity === 'UR').length,
+                  gifCount: col.filter(
+                    (c) =>
+                      c.isFoil ||
+                      (typeof c.image === 'string' &&
+                        c.image.toLowerCase().includes('.gif'))
+                  ).length,
                   wikithunes:
                     typeof parsed.wikithunes === 'number'
                       ? parsed.wikithunes
@@ -946,7 +953,7 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({
                     ok: false,
-                    error: 'Solde de Wikithunes insuffisant.',
+                    error: 'Solde de Wikifeet insuffisant.',
                   })
                 )
                 return true;
@@ -1057,7 +1064,7 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({
                     ok: false,
-                    error: 'Solde de Wikithunes insuffisant.',
+                    error: 'Solde de Wikifeet insuffisant.',
                   })
                 )
                 return true;

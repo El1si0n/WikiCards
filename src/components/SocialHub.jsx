@@ -420,7 +420,7 @@ export default function SocialHub({
                 className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[32px] !py-1 !px-3 !text-[12.5px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Retour à la liste des joueurs</span>
+                <span>Retour</span>
               </button>
 
               {selectedPeer.code !== userCode && (
@@ -440,7 +440,7 @@ export default function SocialHub({
                   <span>
                     {isProposingTrade
                       ? "Fermer l'interface d'échange"
-                      : 'Proposer un échange de cartes'}
+                      : 'Proposer un échange'}
                   </span>
                 </button>
               )}
@@ -728,11 +728,6 @@ export default function SocialHub({
                     key={idx}
                     className="w-full max-w-[272px] flex flex-col items-center"
                   >
-                    <div className="w-full flex items-center justify-between mb-2 px-1">
-                      <span className="text-[12px] font-bold text-[#54595d] uppercase tracking-wider">
-                        Vitrine #{idx + 1}
-                      </span>
-                    </div>
                     {card ? (
                       <WikiCard card={card} compact={true} />
                     ) : (
@@ -785,14 +780,38 @@ export default function SocialHub({
                   const displayLegendaryCount = isMe
                     ? collection.filter((c) => c.rarity === 'L').length
                     : u.legendaryCount || 0;
+                  const displayUltraRareCount = isMe
+                    ? collection.filter((c) => c.rarity === 'UR').length
+                    : u.ultraRareCount || 0;
+                  const displayGifCount = isMe
+                    ? collection.filter(
+                        (c) =>
+                          c.isFoil ||
+                          (typeof c.image === 'string' &&
+                            c.image.toLowerCase().includes('.gif'))
+                      ).length
+                    : u.gifCount || 0;
+                  const displayWikifeet = isMe
+                    ? wikithunes
+                    : u.wikithunes || 0;
 
                   return (
                     <div
                       key={u.code}
-                      className="bg-[#f8f9fa] border border-[#c8ccd1] hover:border-[#3366cc] rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-colors"
+                      onClick={() => handleInspectPeer(u.code)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleInspectPeer(u.code);
+                        }
+                      }}
+                      className="bg-[#f8f9fa] dark:bg-[#161a20] border border-[#c8ccd1] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff] hover:shadow-md rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-all cursor-pointer group select-none"
+                      title={isMe ? 'Voir mon profil public' : `Voir le profil de ${displayUsername}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-14 h-14 rounded-[2px] border border-[#a2a9b1] bg-white p-0.5 shrink-0 overflow-hidden">
+                        <div className="w-14 h-14 rounded-[2px] border border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c] p-0.5 shrink-0 overflow-hidden">
                           <img
                             src={
                               displayAvatar ||
@@ -804,69 +823,86 @@ export default function SocialHub({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-[15px] text-[#202122] truncate">
+                            <span className="font-bold text-[15px] text-[#202122] dark:text-white group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] transition-colors truncate">
                               {displayUsername}
                             </span>
                             {isMe && (
-                              <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] text-[#3366cc] border border-[#3366cc] rounded-[2px]">
+                              <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc] rounded-[2px]">
                                 Vous
                               </span>
                             )}
                           </div>
-                          <p className="text-[12px] text-[#54595d] m-0 mt-1 line-clamp-2">
+                          <p className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-1 line-clamp-2">
                             {displayBio ||
                               'Contributeur et collectionneur sur Wikipédia FR.'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#eaecf0] text-center text-[12px]">
-                        <div className="bg-white border border-[#eaecf0] rounded-[2px] py-1.5 px-2">
-                          <span className="block text-[10.5px] text-[#54595d] uppercase font-bold">
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#eaecf0] dark:border-[#2b3340] text-center text-[12px]">
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
                             Uniques
                           </span>
-                          <strong className="text-[13.5px] font-extrabold text-[#202122] block mt-0.5">
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] block mt-0.5">
                             {new Intl.NumberFormat('fr-FR').format(
                               displayUniqueCount
                             )}
                           </strong>
                         </div>
-                        <div className="bg-white border border-[#eaecf0] rounded-[2px] py-1.5 px-2">
-                          <span className="block text-[10.5px] text-[#54595d] uppercase font-bold">
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
                             Cartes
                           </span>
-                          <strong className="text-[13.5px] font-extrabold text-[#202122] block mt-0.5">
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] block mt-0.5">
                             {new Intl.NumberFormat('fr-FR').format(
                               displayTotalCount
                             )}
                           </strong>
                         </div>
-                        <div className="bg-white border border-[#eaecf0] rounded-[2px] py-1.5 px-2">
-                          <span className="block text-[10.5px] text-[#54595d] uppercase font-bold">
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
                             Légendaires
                           </span>
-                          <strong className="text-[13.5px] font-extrabold text-[#202122] block mt-0.5">
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] block mt-0.5">
                             {new Intl.NumberFormat('fr-FR').format(
                               displayLegendaryCount
                             )}
                           </strong>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleInspectPeer(u.code)}
-                          disabled={isLoadingPeer}
-                          className="wiki-casino-btn wiki-casino-btn--subtle w-full !min-h-[34px] !py-1 !text-[12.5px]"
-                        >
-                          <Users className="w-3.5 h-3.5" />
-                          <span>
-                            {isMe
-                              ? 'Voir mon profil public'
-                              : 'Voir le profil & Échanger'}
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
+                            Ultra Rares
                           </span>
-                        </button>
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] block mt-0.5">
+                            {new Intl.NumberFormat('fr-FR').format(
+                              displayUltraRareCount
+                            )}
+                          </strong>
+                        </div>
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
+                            Cartes GIF
+                          </span>
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] block mt-0.5">
+                            {new Intl.NumberFormat('fr-FR').format(
+                              displayGifCount
+                            )}
+                          </strong>
+                        </div>
+                        <div className="bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2b3340] rounded-[2px] py-1.5 px-2">
+                          <span className="block text-[10.5px] text-[#54595d] dark:text-[#a2a9b1] uppercase font-bold truncate">
+                            Wikifeet
+                          </span>
+                          <strong className="text-[13.5px] font-extrabold text-[#202122] dark:text-[#eaecf0] inline-flex items-center justify-center gap-1 mt-0.5">
+                            <span>
+                              {new Intl.NumberFormat('fr-FR').format(
+                                displayWikifeet
+                              )}
+                            </span>
+                            <WikithuneIcon className="w-3.5 h-3.5 text-[#3366cc]" />
+                          </strong>
+                        </div>
                       </div>
                     </div>
                   );

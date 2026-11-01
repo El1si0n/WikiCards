@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Icône officielle de la monnaie "Wikithunes" :
+ * Icône officielle de la monnaie "Wikifeet" :
  * Un "W" dans l'esprit typographique de Wikipédia traversé par deux barres monétaires (façon € / ₩ / $).
  */
 export default function WikithuneIcon({ className = 'w-4 h-4', style }) {
@@ -12,7 +12,7 @@ export default function WikithuneIcon({ className = 'w-4 h-4', style }) {
       xmlns="http://www.w3.org/2000/svg"
       className={`inline-block shrink-0 select-none ${className}`}
       style={style}
-      aria-label="Wikithunes"
+      aria-label="Wikifeet"
     >
       {/* Empattements supérieurs du W (style Linux Libertine / Wikipédia) */}
       <path

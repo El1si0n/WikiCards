@@ -14,13 +14,13 @@ Conçue avec un respect méticuleux de l'identité visuelle de **Wikipédia (th�
 - 🔊 **Moteur Sonore Procédural (Web Audio API)** : Effets sonores cristallins (froissement de sachet, glissement de carte, clics de roulette, fanfare) générés mathématiquement en temps réel sans télécharger de fichiers MP3.
 - 🎰 **Le WikiSino (3 Mini-Jeux Intégrés)** :
   - **L'Upgrader** : Sacrifiez une carte pour tenter d'obtenir une carte de rareté supérieure via une jauge circulaire de probabilité.
-  - **Le Plus ou Moins** : Devinez si l'article suivant a plus ou moins de visiteurs pour accumuler une série de multiplicateurs de Wikithunes.
+  - **Le Plus ou Moins** : Devinez si l'article suivant a plus ou moins de visiteurs pour accumuler une série de multiplicateurs de Wikifeet.
   - **Le Quitte ou Double (1 à 8 cartes)** : Misez jusqu'à 8 cartes en même temps, chacune dotée de sa propre roue animée à décélération échelonnée pour tenter de doubler vos exemplaires.
 - 🤝 **Multijoueur & Communauté** :
   - **Code Unique (`WIKI-XXXX`)** : Connexion instantanée sans mot de passe, sauvegarde persistante sur le serveur.
   - **Place de Marché d'Enchères** : Mettez vos cartes aux enchères sur 24h ou fixez un prix d'achat immédiat.
   - **Échanges de Cartes** : Proposez des échanges directs de cartes à n'importe quel joueur de la communauté.
-- ♻️ **Économie & Recyclage** : Recyclez vos doublons contre des **Wikithunes (₩)** et récupérez un bonus quotidien de 250 ₩ par jour.
+- ♻️ **Économie & Recyclage** : Recyclez vos doublons contre des **Wikifeet (₩)** et récupérez un bonus quotidien de 250 ₩ par jour.
 - 🌓 **Mode Clair par Défaut & Mode Sombre Synchronisé** : Thème clair fidèle à Wikipédia de base, avec mode sombre activable sauvegardé directement sur votre profil joueur.
 - 🍓 **Prêt pour Docker, Coolify & Raspberry Pi** : Empreinte RAM ultra-légère (< 50 Mo), zéro dépendance native C/C++, déploiement en 1 clic.
 
@@ -52,7 +52,7 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 
 ### 2. 📚 Le Classeur & La Gestion de Collection
 - Grille responsive au format compact fidèle aux vignettes Wikipédia.
-- **Mode Recyclage** : Sélectionnez vos doublons pour les convertir en Wikithunes. Les cartes uniques et les favoris sont automatiquement protégés contre le recyclage accidentel.
+- **Mode Recyclage** : Sélectionnez vos doublons pour les convertir en Wikifeet. Les cartes uniques et les favoris sont automatiquement protégés contre le recyclage accidentel.
 - **Système de Favoris** : Vos cartes marquées d'une étoile restent épinglées en tête de classeur.
 - **Filtres & Tris** : Par rareté (L, UR, SR, R, PC, C), par thématiques encyclopédiques (Histoire, Sciences, Géographie, etc.), par nombre de vues, ordre alphabétique, cartes GIF ou doublons.
 
@@ -108,7 +108,7 @@ WikiCards/
 │   │   ├── SocialHub.jsx       # Réseau communautaire et propositions d'échanges
 │   │   ├── AuctionMarket.jsx   # Place de marché et système d'enchères
 │   │   ├── UserProfile.jsx     # Profil joueur, vitrine et gestion du compte
-│   │   └── WikithuneIcon.jsx   # Symbole de la monnaie virtuelle (₩)
+│   │   └── WikithuneIcon.jsx   # Symbole de la monnaie virtuelle Wikifeet (₩)
 │   ├── config/
 │   │   ├── rarities.js         # Paliers de rareté, taux de tirage, économie
 │   │   └── themes.js           # Détection thématique des articles (Histoire, Sciences...)
