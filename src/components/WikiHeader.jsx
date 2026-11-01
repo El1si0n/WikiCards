@@ -160,7 +160,7 @@ export default function WikiHeader({
           >
             {/* Solde Wikithunes */}
             <div
-              className="h-[32px] px-[6px] sm:px-[10px] bg-[#f8f9fa] border border-[#a2a9b1] rounded-[2px] inline-flex items-center gap-1 sm:gap-1.5 text-[#202122] font-bold text-[12px] sm:text-[14px]"
+              className="h-[32px] px-[6px] sm:px-[10px] bg-[#f8f9fa] rounded-[2px] inline-flex items-center gap-1 sm:gap-1.5 text-[#202122] font-bold text-[12px] sm:text-[14px]"
               title="Votre solde de Wikithunes"
             >
               <span>{new Intl.NumberFormat('fr-FR').format(wikithunes)}</span>

@@ -36,24 +36,24 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer(async (req, res) => {
-  // 1. Healthcheck Render
-  if (req.url === '/healthz' || req.url === '/ping') {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.end('OK');
+  // 1. Healthcheck Render & Coolify
+  if (
+    req.url === '/healthz' ||
+    req.url === '/ping' ||
+    req.url === '/health'
+  ) {
+    if (!res.headersSent) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('OK');
+    }
     return;
   }
 
-  // 2. API routes (/api/users, /api/trades, /api/market)
-  if (
-    req.url &&
-    (req.url.startsWith('/api/users') ||
-      req.url.startsWith('/api/trades') ||
-      req.url.startsWith('/api/market'))
-  ) {
+  // 2. API routes (/api/*)
+  if (req.url && req.url.startsWith('/api/')) {
     try {
-      const handled = await handleApiRequest(req, res);
-      if (handled) return;
+      await handleApiRequest(req, res);
     } catch (apiErr) {
       console.error('[WikiCards API Error]:', apiErr);
       if (!res.headersSent) {
@@ -61,21 +61,29 @@ const server = http.createServer(async (req, res) => {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.end(JSON.stringify({ ok: false, error: 'Erreur serveur API' }));
       }
-      return;
     }
+    // Ne JAMAIS poursuivre l'exécution vers les fichiers statiques ou le fallback SPA pour une route API
+    return;
   }
+
+  // Sécurité headersSent avant traitement des fichiers statiques
+  if (res.headersSent) return;
 
   // 3. Fichiers statiques depuis dist/
   if (!fs.existsSync(DIST_DIR)) {
-    res.statusCode = 503;
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.end(
-      '<h1>WikiCards en cours d\'initialisation</h1><p>Veuillez d\'abord lancer <code>npm run build</code> avant de démarrer le serveur.</p>'
-    );
+    if (!res.headersSent) {
+      res.statusCode = 503;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.end(
+        '<h1>WikiCards en cours d\'initialisation</h1><p>Veuillez d\'abord lancer <code>npm run build</code> avant de démarrer le serveur.</p>'
+      );
+    }
     return;
   }
 
   try {
+    if (res.headersSent) return;
+
     const parsedUrl = new URL(
       req.url || '/',
       `http://${req.headers.host || 'localhost'}`
@@ -85,13 +93,16 @@ const server = http.createServer(async (req, res) => {
 
     let filePath = path.join(DIST_DIR, reqPath);
     if (!filePath.startsWith(DIST_DIR)) {
-      res.statusCode = 403;
-      res.end('Accès interdit');
+      if (!res.headersSent) {
+        res.statusCode = 403;
+        res.end('Accès interdit');
+      }
       return;
     }
 
     // Si le fichier physique existe, on le sert
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      if (res.headersSent) return;
       const ext = path.extname(filePath).toLowerCase();
       res.setHeader(
         'Content-Type',
@@ -117,30 +128,36 @@ const server = http.createServer(async (req, res) => {
     // (et JAMAIS index.html qui ferait crasher les imports dynamiques JS)
     const hasFileExt = path.extname(reqPath).length > 0;
     if (hasFileExt) {
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.end('Fichier introuvable');
+      if (!res.headersSent) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Fichier introuvable');
+      }
       return;
     }
 
     // SPA Fallback : pour toute navigation d'URL (ex: /wikisino, /profil), on sert index.html
     const indexPath = path.join(DIST_DIR, 'index.html');
     if (fs.existsSync(indexPath)) {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      const stream = fs.createReadStream(indexPath);
-      stream.on('error', (streamErr) => {
-        console.error('[WikiCards Stream Error index.html]:', streamErr);
-        if (!res.headersSent) {
-          res.statusCode = 500;
-          res.end('Erreur de chargement');
-        }
-      });
-      stream.pipe(res);
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        const stream = fs.createReadStream(indexPath);
+        stream.on('error', (streamErr) => {
+          console.error('[WikiCards Stream Error index.html]:', streamErr);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.end('Erreur de chargement');
+          }
+        });
+        stream.pipe(res);
+      }
       return;
     }
 
-    res.statusCode = 404;
-    res.end('Fichier non trouvé');
+    if (!res.headersSent) {
+      res.statusCode = 404;
+      res.end('Fichier non trouvé');
+    }
   } catch (err) {
     console.error('[WikiCards Request Error]:', err);
     if (!res.headersSent) {

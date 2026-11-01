@@ -1382,12 +1382,9 @@ export default function App() {
                         <Gift className="w-4 h-4" />
                       </div>
                       <div>
-                        <strong className="text-[#101418] font-bold block sm:inline">
+                        <strong className="text-[#101418] font-bold">
                           Bourse de recherche quotidienne disponible !
-                        </strong>{' '}
-                        <span className="text-[#54595d]">
-                          Recevez votre allocation journalière (+{DAILY_REWARD_AMOUNT} ₩) pour financer vos ouvertures de boosters.
-                        </span>
+                        </strong>
                       </div>
                     </div>
                     <button

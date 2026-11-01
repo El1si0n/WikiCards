@@ -137,13 +137,12 @@ import path from 'node:path';
     })
 
 export async function handleApiRequest(req, res) {
-  if (
-    !req.url ||
-    (!req.url.startsWith('/api/users') &&
-      !req.url.startsWith('/api/trades') &&
-      !req.url.startsWith('/api/market'))
-  ) {
+  if (!req.url || !req.url.startsWith('/api/')) {
     return false;
+  }
+
+  if (res.headersSent) {
+    return true;
   }
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -151,9 +150,16 @@ export async function handleApiRequest(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
-        try {
-          const urlObj = new URL(req.url, 'http://localhost')
-          const pathname = urlObj.pathname
+  try {
+    const urlObj = new URL(req.url, 'http://localhost');
+    const pathname = urlObj.pathname;
+
+    // Healthchecks API
+    if (pathname === '/api/health' || pathname === '/api/ping') {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ ok: true, status: 'healthy' }));
+      return true;
+    }
 
           // ===================================================================
           // 1. UTILISATEURS (/api/users)
@@ -208,7 +214,7 @@ export async function handleApiRequest(req, res) {
             users.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
             res.statusCode = 200
             res.end(JSON.stringify({ ok: true, users }))
-            return
+            return true;
           }
 
           const userMatch = pathname.match(/^\/api\/users\/([^/]+)$/)
@@ -218,7 +224,7 @@ export async function handleApiRequest(req, res) {
             if (!filePath) {
               res.statusCode = 400
               res.end(JSON.stringify({ ok: false, error: 'Code invalide' }))
-              return
+              return true;
             }
 
             if (req.method === 'GET') {
@@ -227,12 +233,12 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({ ok: false, error: 'Utilisateur introuvable' })
                 )
-                return
+                return true;
               }
               const raw = fs.readFileSync(filePath, 'utf-8')
               res.statusCode = 200
               res.end(JSON.stringify({ ok: true, user: JSON.parse(raw) }))
-              return
+              return true;
             }
 
             if (req.method === 'POST' || req.method === 'PUT') {
@@ -283,7 +289,7 @@ export async function handleApiRequest(req, res) {
                       serverIsNewer: true,
                     })
                   )
-                  return
+                  return true;
                 }
               }
 
@@ -336,7 +342,7 @@ export async function handleApiRequest(req, res) {
                   serverIsNewer: false,
                 })
               )
-              return
+              return true;
             }
 
             if (req.method === 'DELETE') {
@@ -353,7 +359,7 @@ export async function handleApiRequest(req, res) {
                       error: 'Erreur lors de la suppression du fichier utilisateur',
                     })
                   )
-                  return
+                  return true;
                 }
               }
 
@@ -390,7 +396,7 @@ export async function handleApiRequest(req, res) {
                   message: 'Compte supprimé avec succès',
                 })
               )
-              return
+              return true;
             }
           }
 
@@ -409,7 +415,7 @@ export async function handleApiRequest(req, res) {
             filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
             res.statusCode = 200
             res.end(JSON.stringify({ ok: true, trades: filtered }))
-            return
+            return true;
           }
 
           if (req.method === 'POST' && pathname === '/api/trades') {
@@ -424,7 +430,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Codes utilisateurs invalides pour cet échange.',
                 })
               )
-              return
+              return true;
             }
 
             const fromUser = loadUserFile(fromCode)
@@ -437,7 +443,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Un des deux profils est introuvable.',
                 })
               )
-              return
+              return true;
             }
 
             const offeredCards = Array.isArray(body.offeredCards)
@@ -455,7 +461,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Sélectionnez au moins une carte pour créer une offre.',
                 })
               )
-              return
+              return true;
             }
 
             const allTrades = loadJsonArrayFile(tradesFile)
@@ -481,7 +487,7 @@ export async function handleApiRequest(req, res) {
             saveJsonArrayFile(tradesFile, allTrades)
             res.statusCode = 200
             res.end(JSON.stringify({ ok: true, trade: newTrade }))
-            return
+            return true;
           }
 
           const tradeActionMatch = pathname.match(
@@ -497,7 +503,7 @@ export async function handleApiRequest(req, res) {
               res.end(
                 JSON.stringify({ ok: false, error: 'Offre introuvable.' })
               )
-              return
+              return true;
             }
 
             const trade = allTrades[idx]
@@ -509,7 +515,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Cette offre a déjà été traitée.',
                 })
               )
-              return
+              return true;
             }
 
             if (action === 'decline' || action === 'cancel') {
@@ -518,7 +524,7 @@ export async function handleApiRequest(req, res) {
               saveJsonArrayFile(tradesFile, allTrades)
               res.statusCode = 200
               res.end(JSON.stringify({ ok: true, trade }))
-              return
+              return true;
             }
 
             // Action === 'accept' : transfert atomique des cartes entre fromUser et toUser
@@ -532,7 +538,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Un des joueurs est introuvable.',
                 })
               )
-              return
+              return true;
             }
 
             const remFrom = removeCardsFromUserCollection(
@@ -547,7 +553,7 @@ export async function handleApiRequest(req, res) {
                   error: `${trade.fromUsername} ne possède plus toutes les cartes proposées.`,
                 })
               )
-              return
+              return true;
             }
 
             const remTo = removeCardsFromUserCollection(
@@ -563,7 +569,7 @@ export async function handleApiRequest(req, res) {
                     'Vous ne possédez plus toutes les cartes demandées dans cet échange.',
                 })
               )
-              return
+              return true;
             }
 
             const nextFromCol = addCardsToUserCollection(
@@ -597,7 +603,7 @@ export async function handleApiRequest(req, res) {
                 updatedTo,
               })
             )
-            return
+            return true;
           }
 
           // ===================================================================
@@ -655,7 +661,7 @@ export async function handleApiRequest(req, res) {
             listings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
             res.statusCode = 200
             res.end(JSON.stringify({ ok: true, listings }))
-            return
+            return true;
           }
 
           // Créer une annonce (vente directe / enchère avec achat immédiat)
@@ -678,7 +684,7 @@ export async function handleApiRequest(req, res) {
               res.end(
                 JSON.stringify({ ok: false, error: 'Vendeur introuvable.' })
               )
-              return
+              return true;
             }
 
             const cardObj = (seller.collection || []).find(
@@ -692,7 +698,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Carte introuvable dans votre classeur.',
                 })
               )
-              return
+              return true;
             }
 
             // Retirer 1 exemplaire du classeur du vendeur pour le mettre en vente
@@ -707,7 +713,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Exemplaire indisponible.',
                 })
               )
-              return
+              return true;
             }
 
             const updatedSeller = saveUserFile(sellerCode, {
@@ -745,7 +751,7 @@ export async function handleApiRequest(req, res) {
                 updatedUser: updatedSeller,
               })
             )
-            return
+            return true;
           }
 
           // Actions sur une annonce : /api/market/:id/(buy|bid|cancel|claim)
@@ -766,7 +772,7 @@ export async function handleApiRequest(req, res) {
               res.end(
                 JSON.stringify({ ok: false, error: 'Annonce introuvable.' })
               )
-              return
+              return true;
             }
 
             const listing = listings[idx]
@@ -778,7 +784,7 @@ export async function handleApiRequest(req, res) {
                   error: 'Cette vente est déjà terminée.',
                 })
               )
-              return
+              return true;
             }
 
             // Annuler son annonce (seulement s'il n'y a pas encore d'enchérisseur ou remboursement)
@@ -788,7 +794,7 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({ ok: false, error: 'Action non autorisée.' })
                 )
-                return
+                return true;
               }
 
               // Si quelqu'un avait enchéri, on lui rembourse sa mise
@@ -828,7 +834,7 @@ export async function handleApiRequest(req, res) {
                   updatedUser: updatedSeller,
                 })
               )
-              return
+              return true;
             }
 
             // Accepter l'enchère actuelle par le vendeur
@@ -844,7 +850,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Aucune enchère active à accepter.',
                   })
                 )
-                return
+                return true;
               }
 
               const seller = loadUserFile(listing.sellerCode)
@@ -857,7 +863,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Profil acheteur ou vendeur introuvable.',
                   })
                 )
-                return
+                return true;
               }
 
               const updatedSeller = saveUserFile(listing.sellerCode, {
@@ -889,7 +895,7 @@ export async function handleApiRequest(req, res) {
                   updatedUser: updatedSeller,
                 })
               )
-              return
+              return true;
             }
 
             // Placer une enchère (action === 'bid')
@@ -902,7 +908,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Vous ne pouvez pas enchérir sur votre propre carte.',
                   })
                 )
-                return
+                return true;
               }
 
               const bidAmount = Math.round(Number(body.bidAmount || 0))
@@ -918,7 +924,7 @@ export async function handleApiRequest(req, res) {
                     error: `L'enchère minimale est de ${minRequired} ₩.`,
                   })
                 )
-                return
+                return true;
               }
 
               const bidder = loadUserFile(actorCode)
@@ -927,7 +933,7 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({ ok: false, error: 'Profil introuvable.' })
                 )
-                return
+                return true;
               }
 
               // Si c'est le même joueur qui surenchérit, il ne paie que la différence
@@ -943,7 +949,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Solde de Wikithunes insuffisant.',
                   })
                 )
-                return
+                return true;
               }
 
               // Rembourser l'ancien enchérisseur s'il est différent
@@ -1005,7 +1011,7 @@ export async function handleApiRequest(req, res) {
                     updatedUser: finalBidder,
                   })
                 )
-                return
+                return true;
               }
 
               saveJsonArrayFile(marketFile, listings)
@@ -1017,7 +1023,7 @@ export async function handleApiRequest(req, res) {
                   updatedUser: updatedBidder,
                 })
               )
-              return
+              return true;
             }
 
             // Achat immédiat (action === 'buy')
@@ -1030,7 +1036,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Vous ne pouvez pas acheter votre propre carte.',
                   })
                 )
-                return
+                return true;
               }
 
               const buyer = loadUserFile(actorCode)
@@ -1039,7 +1045,7 @@ export async function handleApiRequest(req, res) {
                 res.end(
                   JSON.stringify({ ok: false, error: 'Acheteur introuvable.' })
                 )
-                return
+                return true;
               }
 
               const alreadyLocked =
@@ -1054,7 +1060,7 @@ export async function handleApiRequest(req, res) {
                     error: 'Solde de Wikithunes insuffisant.',
                   })
                 )
-                return
+                return true;
               }
 
               // Rembourser l'ancien enchérisseur s'il est différent
@@ -1105,20 +1111,26 @@ export async function handleApiRequest(req, res) {
                   updatedUser: updatedBuyer,
                 })
               )
-              return
+              return true;
             }
           }
 
-          res.statusCode = 404
-          res.end(JSON.stringify({ ok: false, error: 'Route inconnue' }))
+          if (!res.headersSent) {
+            res.statusCode = 404;
+            res.end(JSON.stringify({ ok: false, error: 'Route inconnue' }));
+          }
+          return true;
         } catch (err) {
-          res.statusCode = 500
-          res.end(
-            JSON.stringify({
-              ok: false,
-              error: err?.message || 'Erreur serveur',
-            })
-          )
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: err?.message || 'Erreur serveur',
+              })
+            );
+          }
+          return true;
         }
 
   return true;
