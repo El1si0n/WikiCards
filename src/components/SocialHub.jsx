@@ -147,29 +147,11 @@ export default function SocialHub({
     }
   };
 
-  // Filtrage de l'annuaire des joueurs
-  const filteredUsers = useMemo(() => {
-    const q = userSearchQuery.trim().toLowerCase();
-    return usersList.filter((u) => {
-      if (!q) return true;
-      return (
-        String(u.username || '')
-          .toLowerCase()
-          .includes(q) ||
-        String(u.code || '')
-          .toLowerCase()
-          .includes(q)
-      );
-    });
-  }, [usersList, userSearchQuery]);
+  // Calcul de la note cachée et classement ordonné de tous les joueurs
+  const rankedUsers = useMemo(() => {
+    if (!usersList || usersList.length === 0) return [];
 
-  // Calcul d'une note d'accomplissement cachée pour identifier le meilleur joueur
-  const topPlayerCode = useMemo(() => {
-    if (!usersList || usersList.length === 0) return null;
-    let bestCode = null;
-    let maxScore = 0;
-
-    usersList.forEach((u) => {
+    const scored = usersList.map((u) => {
       const isMe = u.code === userCode;
       const uStats = isMe ? stats || {} : u.stats || {};
       const uColCount = isMe ? collection.length : u.uniqueCardsCount || 0;
@@ -181,7 +163,7 @@ export default function SocialHub({
         : u.ultraRareCount || 0;
       const uMoney = isMe ? wikithunes : u.wikithunes || 0;
 
-      // Note composite : Légendaires (1000) + UR (300) + Collection (15) + Série record (80) + Gains casino (1/10) + Boosters (10) + Richesse
+      // Note composite d'accomplissement : Légendaires (1000) + UR (300) + Collection (15) + Série record (80) + Gains casino (1/10) + Boosters (10) + Richesse
       const score =
         uLegCount * 1000 +
         uUrCount * 300 +
@@ -191,14 +173,44 @@ export default function SocialHub({
         (Number(uStats.boostersOpened) || 0) * 10 +
         Math.floor(uMoney / 50);
 
-      if (score > maxScore) {
-        maxScore = score;
-        bestCode = u.code;
-      }
+      return {
+        ...u,
+        hiddenScore: score,
+      };
     });
 
-    return bestCode;
+    // Tri par note d'accomplissement décroissante
+    scored.sort((a, b) => (b.hiddenScore || 0) - (a.hiddenScore || 0));
+
+    // Attribution du rang (1, 2, 3...)
+    return scored.map((u, index) => ({
+      ...u,
+      rank: index + 1,
+    }));
   }, [usersList, userCode, stats, collection, wikithunes]);
+
+  // Filtrage de l'annuaire des joueurs avec préservation du classement
+  const filteredUsers = useMemo(() => {
+    const q = userSearchQuery.trim().toLowerCase();
+    if (!q) return rankedUsers;
+    return rankedUsers.filter((u) => {
+      return (
+        String(u.username || '')
+          .toLowerCase()
+          .includes(q) ||
+        String(u.code || '')
+          .toLowerCase()
+          .includes(q)
+      );
+    });
+  }, [rankedUsers, userSearchQuery]);
+
+  // Code du meilleur joueur (N°1)
+  const topPlayerCode = useMemo(() => {
+    return rankedUsers.length > 0 && rankedUsers[0].hiddenScore > 0
+      ? rankedUsers[0].code
+      : null;
+  }, [rankedUsers]);
 
   // Données du joueur inspecté
   const isSelectedPeerMe = selectedPeer?.code === userCode;
@@ -216,6 +228,11 @@ export default function SocialHub({
     }
     return Array.isArray(selectedPeer?.collection) ? selectedPeer.collection : [];
   }, [isSelectedPeerMe, collection, selectedPeer]);
+
+  const selectedPeerRank = useMemo(() => {
+    if (!selectedPeer?.code) return null;
+    return rankedUsers.find((u) => u.code === selectedPeer.code)?.rank || null;
+  }, [rankedUsers, selectedPeer]);
 
   const peerShowcaseCards = useMemo(() => {
     const ids = Array.isArray(activePeerProfile?.showcaseIds)
@@ -514,15 +531,22 @@ export default function SocialHub({
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {activePeerProfile?.username || selectedPeer.code}
                     </h3>
-                    {selectedPeer.code === topPlayerCode && (
+                    {selectedPeer.code === topPlayerCode ? (
                       <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] text-[#735100] border border-[#d4a11d] rounded-[2px] shadow-xs"
-                        title="Meilleur joueur de la communauté WikiCards"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-xs"
+                        title="1er au classement des joueurs"
                       >
                         <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
-                        <span>Meilleur joueur</span>
+                        <span>1er</span>
                       </span>
-                    )}
+                    ) : selectedPeerRank ? (
+                      <span
+                        className="px-2 py-0.5 text-[11px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
+                        title={`Rang #${selectedPeerRank} au classement`}
+                      >
+                        #{selectedPeerRank}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-[13.5px] text-[#54595d] mt-1 mb-0 leading-[1.5]">
                     {activePeerProfile?.bio ||
@@ -891,15 +915,22 @@ export default function SocialHub({
                             <span className="font-bold text-[15px] text-[#202122] dark:text-white group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] transition-colors truncate">
                               {displayUsername}
                             </span>
-                            {isTopPlayer && (
+                            {isTopPlayer ? (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-2xs"
-                                title="Meilleur joueur de la communauté WikiCards"
+                                title="1er au classement des joueurs"
                               >
                                 <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
                                 <span>1er</span>
                               </span>
-                            )}
+                            ) : u.rank ? (
+                              <span
+                                className="px-1.5 py-0.5 text-[10.5px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
+                                title={`Rang #${u.rank} au classement`}
+                              >
+                                #{u.rank}
+                              </span>
+                            ) : null}
                             {isMe && (
                               <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc] rounded-[2px]">
                                 Vous
