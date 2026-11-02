@@ -893,54 +893,60 @@ export default function SocialHub({
                             : `Voir le profil de ${displayUsername}`
                       }
                     >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`w-14 h-14 rounded-[2px] border p-0.5 shrink-0 overflow-hidden ${
-                            isTopPlayer
-                              ? 'border-[#d4a11d] bg-[#fff9db] dark:bg-[#3d3210] shadow-[0_0_8px_rgba(212,161,29,0.4)]'
-                              : 'border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c]'
-                          }`}
-                        >
-                          <img
-                            src={
-                              displayAvatar ||
-                              'https://fr.wikipedia.org/static/images/icons/wikipedia.png'
-                            }
-                            alt={displayUsername}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-[15px] text-[#202122] dark:text-white group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] transition-colors truncate">
-                              {displayUsername}
-                            </span>
-                            {isTopPlayer ? (
-                              <span
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-2xs"
-                                title="1er au classement des joueurs"
-                              >
-                                <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
-                                <span>1er</span>
-                              </span>
-                            ) : u.rank ? (
-                              <span
-                                className="px-1.5 py-0.5 text-[10.5px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
-                                title={`Rang #${u.rank} au classement`}
-                              >
-                                #{u.rank}
-                              </span>
-                            ) : null}
-                            {isMe && (
-                              <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc] rounded-[2px]">
-                                Vous
-                              </span>
-                            )}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div
+                            className={`w-14 h-14 rounded-[2px] border p-0.5 shrink-0 overflow-hidden ${
+                              isTopPlayer
+                                ? 'border-[#d4a11d] bg-[#fff9db] dark:bg-[#3d3210] shadow-[0_0_8px_rgba(212,161,29,0.4)]'
+                                : 'border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c]'
+                            }`}
+                          >
+                            <img
+                              src={
+                                displayAvatar ||
+                                'https://fr.wikipedia.org/static/images/icons/wikipedia.png'
+                              }
+                              alt={displayUsername}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                          <p className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-1 line-clamp-2">
-                            {displayBio ||
-                              'Contributeur et collectionneur sur Wikipédia FR.'}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-[15px] text-[#202122] dark:text-white group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] transition-colors truncate">
+                                {displayUsername}
+                              </span>
+                              {isMe && (
+                                <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc] rounded-[2px]">
+                                  Vous
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-1 line-clamp-2">
+                              {displayBio ||
+                                'Contributeur et collectionneur sur Wikipédia FR.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Rang du joueur au classement (en haut à droite de la card) */}
+                        <div className="shrink-0 pt-0.5">
+                          {isTopPlayer ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-2xs"
+                              title="1er au classement des joueurs"
+                            >
+                              <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
+                              <span>1er</span>
+                            </span>
+                          ) : u.rank ? (
+                            <span
+                              className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
+                              title={`Rang #${u.rank} au classement`}
+                            >
+                              #{u.rank}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
 
