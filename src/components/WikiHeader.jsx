@@ -29,6 +29,7 @@ export default function WikiHeader({
   readNotificationIds = [],
   onMarkAllNotifsRead,
   onSelectNotification,
+  onMarkNotifRead,
 }) {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifDropdownRef = useRef(null);
@@ -225,6 +226,11 @@ export default function WikiHeader({
                         return (
                           <div
                             key={notif.id}
+                            onMouseEnter={() => {
+                              if (!isRead && onMarkNotifRead) {
+                                onMarkNotifRead(notif.id);
+                              }
+                            }}
                             onClick={() => {
                               if (onSelectNotification) {
                                 onSelectNotification(notif);

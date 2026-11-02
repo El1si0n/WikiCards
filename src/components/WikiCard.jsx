@@ -384,7 +384,11 @@ export default function WikiCard({
                       ×{effectiveRecycleQty}
                     </span>
                   )}
-                  <span>+{recycleValue * effectiveRecycleQty}</span>
+                  <span>
+                    +{new Intl.NumberFormat('fr-FR').format(
+                      recycleValue * effectiveRecycleQty
+                    )}
+                  </span>
                   <WikithuneIcon className="w-3 h-3 text-white" />
                 </div>
               ) : (
@@ -392,7 +396,9 @@ export default function WikiCard({
                   className="h-7 px-2 rounded-[2px] flex items-center gap-1 text-[11.5px] font-bold shadow-xs bg-black/65 text-white border border-white/40 hover:bg-black/80 transition-colors"
                 >
                   <span className="w-3.5 h-3.5 rounded-[2px] border border-white/70" />
-                  <span>+{recycleValue}</span>
+                  <span>
+                    +{new Intl.NumberFormat('fr-FR').format(recycleValue)}
+                  </span>
                   <WikithuneIcon className="w-3 h-3 text-white" />
                 </div>
               )

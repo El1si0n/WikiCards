@@ -60,6 +60,9 @@ export default function BoosterOpening({
   boosterPrice = BOOSTER_PRICE,
   iconicBoosterPrice = ICONIC_BOOSTER_PRICE,
   onSpendWikithunes,
+  freeBoostersCount = 0,
+  timeRemainingFreeBoosters = '',
+  onUseFreeBooster,
 }) {
   // 'pack' | 'tearing' | 'card_by_card' | 'summary'
   const [stage, setStage] = useState('pack');
@@ -73,7 +76,12 @@ export default function BoosterOpening({
     getOrRollNextBoosterIsIconic()
   );
   const isIconicPack = isIconicRoll;
-  const activePrice = isIconicPack ? iconicBoosterPrice : boosterPrice;
+  const isFreeStandardPack = !isIconicPack && freeBoostersCount > 0;
+  const activePrice = isIconicPack
+    ? iconicBoosterPrice
+    : isFreeStandardPack
+    ? 0
+    : boosterPrice;
 
   // Reflet lumineux doux au survol (le booster reste bien de face au repos)
   const packRef = useRef(null);
@@ -144,7 +152,12 @@ export default function BoosterOpening({
     // (évite que le MouseEvent du clic React ne soit interprété comme truthy)
     const isPackIconic =
       typeof overrideIsIconic === 'boolean' ? overrideIsIconic : isIconicPack;
-    const priceToPay = isPackIconic ? iconicBoosterPrice : boosterPrice;
+    const isFree = !isPackIconic && freeBoostersCount > 0;
+    const priceToPay = isFree
+      ? 0
+      : isPackIconic
+      ? iconicBoosterPrice
+      : boosterPrice;
 
     if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
@@ -179,8 +192,12 @@ export default function BoosterOpening({
       return;
     }
 
-    // Débite le prix du booster (300 ₩ standard ou 1500 ₩ iconique)
-    if (onSpendWikithunes) {
+    // Débite le prix du booster ou décompte un booster gratuit
+    if (isFree) {
+      if (onUseFreeBooster) {
+        onUseFreeBooster();
+      }
+    } else if (onSpendWikithunes && priceToPay > 0) {
       onSpendWikithunes(priceToPay);
     }
 
@@ -574,7 +591,7 @@ export default function BoosterOpening({
                     </div>
                   </div>
 
-                  {/* Pied du sachet : affiche "Booster • 100 ₩" ou "Booster Iconique • 500 ₩" (sans violet) */}
+                  {/* Pied du sachet : affiche "Booster • 0" (si gratuit) ou "Booster • 100" ou "Booster Iconique • 500" */}
                   <div className="relative z-10 w-full flex flex-col items-center text-center">
                     <div
                       className={`px-3.5 py-1 rounded-[3px] text-[11.5px] font-bold tracking-wider uppercase shadow-2xs inline-flex items-center gap-1.5 ${
@@ -639,7 +656,7 @@ export default function BoosterOpening({
                       onClick={handleSkipIconicToStandard}
                       className="wiki-link text-[12px]"
                     >
-                      Passer au booster standard ({boosterPrice} ₩)
+                      Passer au booster standard ({freeBoostersCount > 0 ? 0 : boosterPrice} ₩)
                     </button>
                   )}
                 </div>

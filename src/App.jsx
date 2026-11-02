@@ -87,9 +87,14 @@ const STORAGE_KEYS = {
   WIKITHUNES: 'wikicards_wikithunes_v1',
   DARK_MODE: 'wikicards_dark_mode_v1',
   DAILY_REWARD: 'wikicards_daily_reward_claim_v1',
+  FREE_BOOSTERS: 'wikicards_free_boosters_count_v1',
+  FREE_BOOSTERS_RESET: 'wikicards_free_boosters_reset_v1',
   READ_NOTIFS: 'wikicards_read_notifs_v1',
   SHOW_RARITY_RULES: 'wikicards_show_rarity_rules_v1',
 };
+
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+const MAX_FREE_BOOSTERS = 2;
 
 const RARITY_ORDER = {
   L: 6,
@@ -337,6 +342,126 @@ export default function App() {
     return now;
   };
 
+  // 3 Boosters gratuits toutes les 12 heures
+  const [freeBoostersCount, setFreeBoostersCount] = useState(() => {
+    try {
+      const savedReset = localStorage.getItem(STORAGE_KEYS.FREE_BOOSTERS_RESET);
+      const savedCount = localStorage.getItem(STORAGE_KEYS.FREE_BOOSTERS);
+      if (savedReset !== null) {
+        const resetNum = Number(savedReset);
+        if (!Number.isNaN(resetNum) && resetNum > 0) {
+          const elapsed = Date.now() - resetNum;
+          if (elapsed >= TWELVE_HOURS_MS) {
+            return MAX_FREE_BOOSTERS;
+          }
+          if (savedCount !== null) {
+            const parsed = Number(savedCount);
+            if (!Number.isNaN(parsed) && parsed >= 0) {
+              return Math.min(MAX_FREE_BOOSTERS, parsed);
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return MAX_FREE_BOOSTERS;
+  });
+
+  const [lastFreeBoostersResetTime, setLastFreeBoostersResetTime] = useState(() => {
+    try {
+      const savedReset = localStorage.getItem(STORAGE_KEYS.FREE_BOOSTERS_RESET);
+      if (savedReset !== null) {
+        const resetNum = Number(savedReset);
+        if (!Number.isNaN(resetNum) && resetNum > 0) {
+          const elapsed = Date.now() - resetNum;
+          if (elapsed >= TWELVE_HOURS_MS) {
+            const newReset = Date.now();
+            try {
+              localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS_RESET, String(newReset));
+              localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(MAX_FREE_BOOSTERS));
+            } catch {
+              // ignore
+            }
+            return newReset;
+          }
+          return resetNum;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    const now = Date.now();
+    try {
+      localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS_RESET, String(now));
+      localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(MAX_FREE_BOOSTERS));
+    } catch {
+      // ignore
+    }
+    return now;
+  });
+
+  const [timeRemainingFreeBoosters, setTimeRemainingFreeBoosters] = useState('');
+
+  // Compte à rebours des 12 heures et réinitialisation automatique à 3 boosters gratuits
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = Date.now();
+      const nextReset = lastFreeBoostersResetTime + TWELVE_HOURS_MS;
+      const diff = nextReset - now;
+
+      if (diff <= 0) {
+        // Les 12h sont écoulées : recharge automatique à 3 boosters gratuits
+        setFreeBoostersCount(MAX_FREE_BOOSTERS);
+        setLastFreeBoostersResetTime(now);
+        try {
+          localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(MAX_FREE_BOOSTERS));
+          localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS_RESET, String(now));
+        } catch {
+          // ignore
+        }
+        bumpLocalUpdatedAt();
+      } else {
+        const h = Math.floor(diff / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeRemainingFreeBoosters(
+          `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+        );
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [lastFreeBoostersResetTime]);
+
+  const handleUseFreeBooster = () => {
+    setFreeBoostersCount((prev) => {
+      const next = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(next));
+      } catch {
+        // ignore
+      }
+      const now = bumpLocalUpdatedAt();
+      if (userCode) {
+        syncUserAccountToServer(userCode, {
+          profile: userProfile,
+          collection,
+          favorites,
+          wikithunes,
+          stats,
+          lastDailyClaimDate,
+          freeBoostersCount: next,
+          lastFreeBoostersResetTime,
+          clientUpdatedAt: now,
+        }).catch(() => {});
+      }
+      return next;
+    });
+  };
+
   // Sauvegarde automatique dans localStorage à chaque changement
   useEffect(() => {
     try {
@@ -421,6 +546,26 @@ export default function App() {
         // ignore
       }
     }
+    if (typeof serverAccount.freeBoostersCount === 'number') {
+      let serverCount = serverAccount.freeBoostersCount;
+      let serverReset =
+        Number(serverAccount.lastFreeBoostersResetTime) || Date.now();
+      if (Date.now() - serverReset >= TWELVE_HOURS_MS) {
+        serverCount = MAX_FREE_BOOSTERS;
+        serverReset = Date.now();
+      }
+      setFreeBoostersCount(serverCount);
+      setLastFreeBoostersResetTime(serverReset);
+      try {
+        localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(serverCount));
+        localStorage.setItem(
+          STORAGE_KEYS.FREE_BOOSTERS_RESET,
+          String(serverReset)
+        );
+      } catch {
+        // ignore
+      }
+    }
     if (serverAccount.updatedAt) {
       const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
       setLocalUpdatedAt(syncedTs);
@@ -436,6 +581,8 @@ export default function App() {
     wikithunes,
     stats,
     lastDailyClaimDate,
+    freeBoostersCount,
+    lastFreeBoostersResetTime,
     localUpdatedAt,
   });
   useEffect(() => {
@@ -447,6 +594,8 @@ export default function App() {
       wikithunes,
       stats,
       lastDailyClaimDate,
+      freeBoostersCount,
+      lastFreeBoostersResetTime,
       localUpdatedAt,
     };
   }, [
@@ -457,6 +606,8 @@ export default function App() {
     wikithunes,
     stats,
     lastDailyClaimDate,
+    freeBoostersCount,
+    lastFreeBoostersResetTime,
     localUpdatedAt,
   ]);
 
@@ -481,6 +632,12 @@ export default function App() {
         wikithunes: current.wikithunes,
         stats: current.stats,
         lastDailyClaimDate: current.lastDailyClaimDate || '',
+        freeBoostersCount:
+          typeof current.freeBoostersCount === 'number'
+            ? current.freeBoostersCount
+            : MAX_FREE_BOOSTERS,
+        lastFreeBoostersResetTime:
+          current.lastFreeBoostersResetTime || Date.now(),
         updatedAt: current.localUpdatedAt,
         clientUpdatedAt: current.localUpdatedAt,
       };
@@ -557,6 +714,8 @@ export default function App() {
         wikithunes,
         stats,
         lastDailyClaimDate,
+        freeBoostersCount,
+        lastFreeBoostersResetTime,
         clientUpdatedAt: localUpdatedAt,
       });
       if (result?.serverIsNewer && result?.user) {
@@ -572,6 +731,8 @@ export default function App() {
     wikithunes,
     stats,
     lastDailyClaimDate,
+    freeBoostersCount,
+    lastFreeBoostersResetTime,
     localUpdatedAt,
   ]);
 
@@ -634,6 +795,26 @@ export default function App() {
         // ignore
       }
     }
+    let loginCount =
+      typeof account.freeBoostersCount === 'number'
+        ? account.freeBoostersCount
+        : MAX_FREE_BOOSTERS;
+    let loginReset = Number(account.lastFreeBoostersResetTime) || Date.now();
+    if (Date.now() - loginReset >= TWELVE_HOURS_MS) {
+      loginCount = MAX_FREE_BOOSTERS;
+      loginReset = Date.now();
+    }
+    setFreeBoostersCount(loginCount);
+    setLastFreeBoostersResetTime(loginReset);
+    try {
+      localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(loginCount));
+      localStorage.setItem(
+        STORAGE_KEYS.FREE_BOOSTERS_RESET,
+        String(loginReset)
+      );
+    } catch {
+      // ignore
+    }
   };
 
   const handleLogout = () => {
@@ -657,6 +838,8 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEYS.STATS);
       localStorage.removeItem(STORAGE_KEYS.WIKITHUNES);
       localStorage.removeItem(STORAGE_KEYS.DAILY_REWARD);
+      localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS);
+      localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS_RESET);
       localStorage.removeItem(STORAGE_KEYS.READ_NOTIFS);
     } catch {
       // ignore
@@ -669,6 +852,8 @@ export default function App() {
     setWikithunes(INITIAL_WIKITHUNES);
     setStats({ boostersOpened: 0, totalCardsDrawn: 0 });
     setLastDailyClaimDate('');
+    setFreeBoostersCount(MAX_FREE_BOOSTERS);
+    setLastFreeBoostersResetTime(Date.now());
     setUserProfile(getDefaultProfile('WIKI-0000'));
     setNotifications([]);
     setActiveTab('booster');
@@ -707,6 +892,22 @@ export default function App() {
             type: 'daily_reward',
             title: 'Bourse de recherche disponible',
             message: `Réclamez votre allocation journalière (+${DAILY_REWARD_AMOUNT} ₩) pour financer vos boosters !`,
+            tab: 'booster',
+          });
+        }
+
+        // 1.b Notification Boosters gratuits (2 toutes les 12h)
+        if (freeBoostersCount > 0) {
+          const nextReset = lastFreeBoostersResetTime + TWELVE_HOURS_MS;
+          const nextTimeStr = new Date(nextReset).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          notifs.push({
+            id: `free-boosters-${lastFreeBoostersResetTime}`,
+            type: 'free_boosters',
+            title: 'Boosters gratuits',
+            message: `Vous avez ${freeBoostersCount} booster${freeBoostersCount > 1 ? 's' : ''} gratuit${freeBoostersCount > 1 ? 's' : ''}, les prochains à ${nextTimeStr}.`,
             tab: 'booster',
           });
         }
@@ -822,7 +1023,13 @@ export default function App() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [userCode, isDailyRewardAvailable, todayKey]);
+  }, [
+    userCode,
+    isDailyRewardAvailable,
+    todayKey,
+    freeBoostersCount,
+    lastFreeBoostersResetTime,
+  ]);
 
   const handleMarkAllNotifsRead = () => {
     const allIds = notifications.map((n) => n.id);
@@ -833,6 +1040,20 @@ export default function App() {
     } catch {
       // ignore
     }
+  };
+
+  const handleMarkNotifRead = (notifId) => {
+    if (!notifId) return;
+    setReadNotifIds((prev) => {
+      if (prev.includes(notifId)) return prev;
+      const updated = [...prev, notifId];
+      try {
+        localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
   };
 
   const handleSelectNotification = (notif) => {
@@ -1136,6 +1357,7 @@ export default function App() {
         readNotificationIds={readNotifIds}
         onMarkAllNotifsRead={handleMarkAllNotifsRead}
         onSelectNotification={handleSelectNotification}
+        onMarkNotifRead={handleMarkNotifRead}
       />
 
       {/* mw-page-container : Conteneur officiel Vector 2022 */}
@@ -1451,6 +1673,9 @@ export default function App() {
                         boosterPrice={BOOSTER_PRICE}
                         iconicBoosterPrice={ICONIC_BOOSTER_PRICE}
                         onSpendWikithunes={spendWikithunes}
+                        freeBoostersCount={freeBoostersCount}
+                        timeRemainingFreeBoosters={timeRemainingFreeBoosters}
+                        onUseFreeBooster={handleUseFreeBooster}
                       />
                     </section>
 
@@ -1503,7 +1728,9 @@ export default function App() {
                                     <span>{tier.thresholdLabel}</span>
                                     <span>•</span>
                                     <span className="inline-flex items-center gap-0.5 text-[#202122] font-medium">
-                                      {tier.recycleValue}
+                                      {new Intl.NumberFormat('fr-FR').format(
+                                        tier.recycleValue
+                                      )}
                                       <WikithuneIcon className="w-2.5 h-2.5 text-[#3366cc]" />
                                     </span>
                                   </span>
@@ -1646,7 +1873,7 @@ export default function App() {
                                   ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                                   : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
                               }`}
-                              title={`${tier.name} (${tier.thresholdLabel} • Recyclage : +${tier.recycleValue} ₩)`}
+                              title={`${tier.name} (${tier.thresholdLabel} • Recyclage : +${new Intl.NumberFormat('fr-FR').format(tier.recycleValue)} ₩)`}
                             >
                               <span
                                 className="inline-block w-2.5 h-2.5 rounded-full"
