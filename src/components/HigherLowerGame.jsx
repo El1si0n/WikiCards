@@ -350,9 +350,7 @@ export default function HigherLowerGame({
                 <span>
                   {gameState === 'loading'
                     ? 'Chargement des pages...'
-                    : wikithunes < betAmount
-                      ? `Solde insuffisant (${betAmount} ₩ requis)`
-                      : `Lancer la série (${betAmount} ₩)`}
+                    : `Lancer la série (${betAmount} ₩)`}
                 </span>
               </button>
             </>
