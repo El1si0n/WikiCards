@@ -90,11 +90,62 @@ const STORAGE_KEYS = {
   FREE_BOOSTERS: 'wikicards_free_boosters_count_v1',
   FREE_BOOSTERS_RESET: 'wikicards_free_boosters_reset_v1',
   READ_NOTIFS: 'wikicards_read_notifs_v1',
+  DISMISSED_NOTIFS: 'wikicards_dismissed_notifs_v1',
   SHOW_RARITY_RULES: 'wikicards_show_rarity_rules_v1',
 };
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 const MAX_FREE_BOOSTERS = 2;
+const NOTIF_MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48 heures de conservation pour l'historique des notifications
+
+function formatNotifTime(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - date.getTime());
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+
+  if (diffSec < 60) {
+    return "À l'instant";
+  }
+  if (diffMin < 60) {
+    return `Il y a ${diffMin} min`;
+  }
+
+  const today = new Date();
+  const isToday =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  const timeStr = date.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  if (isToday) {
+    return `Aujourd'hui à ${timeStr}`;
+  }
+  if (isYesterday) {
+    return `Hier à ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+  });
+  return `${dateStr} à ${timeStr}`;
+}
 
 const RARITY_ORDER = {
   L: 6,
@@ -821,6 +872,12 @@ export default function App() {
     clearStoredUserCode();
     setUserCode(null);
     setIsDarkMode(false);
+    setDismissedNotifIds([]);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.DISMISSED_NOTIFS);
+    } catch {
+      // ignore
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -841,6 +898,7 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS);
       localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS_RESET);
       localStorage.removeItem(STORAGE_KEYS.READ_NOTIFS);
+      localStorage.removeItem(STORAGE_KEYS.DISMISSED_NOTIFS);
     } catch {
       // ignore
     }
@@ -856,14 +914,25 @@ export default function App() {
     setLastFreeBoostersResetTime(Date.now());
     setUserProfile(getDefaultProfile('WIKI-0000'));
     setNotifications([]);
+    setDismissedNotifIds([]);
     setActiveTab('booster');
     soundManager.playCardSlide();
   };
 
-  // État des notifications et liste des identifiants marqués comme lus
+  // État des notifications et liste des identifiants marqués comme lus / supprimés
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.READ_NOTIFS);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const [dismissedNotifIds, setDismissedNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DISMISSED_NOTIFS);
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
@@ -893,22 +962,38 @@ export default function App() {
             title: 'Bourse de recherche disponible',
             message: `Réclamez votre allocation journalière (+${DAILY_REWARD_AMOUNT} ₩) pour financer vos boosters !`,
             tab: 'booster',
+            timestamp: Date.now(),
+            time: "Aujourd'hui",
           });
         }
 
         // 1.b Notification Boosters gratuits (2 toutes les 12h)
+        const nextReset = lastFreeBoostersResetTime + TWELVE_HOURS_MS;
+        const nextTimeStr = new Date(nextReset).toLocaleTimeString('fr-FR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
         if (freeBoostersCount > 0) {
-          const nextReset = lastFreeBoostersResetTime + TWELVE_HOURS_MS;
-          const nextTimeStr = new Date(nextReset).toLocaleTimeString('fr-FR', {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
           notifs.push({
             id: `free-boosters-${lastFreeBoostersResetTime}`,
             type: 'free_boosters',
             title: 'Boosters gratuits',
             message: `Vous avez ${freeBoostersCount} booster${freeBoostersCount > 1 ? 's' : ''} gratuit${freeBoostersCount > 1 ? 's' : ''}, les prochains à ${nextTimeStr}.`,
             tab: 'booster',
+            timestamp: lastFreeBoostersResetTime,
+            time: formatNotifTime(lastFreeBoostersResetTime),
+          });
+        } else if (Date.now() - lastFreeBoostersResetTime < TWELVE_HOURS_MS) {
+          // Si les boosters gratuits sont déjà ouverts, on maintient une notification informative (déjà lue)
+          notifs.push({
+            id: `free-boosters-${lastFreeBoostersResetTime}-used`,
+            type: 'free_boosters_used',
+            title: 'Boosters gratuits',
+            message: `Vos ${MAX_FREE_BOOSTERS} boosters gratuits ont été ouverts. Prochaine recharge à ${nextTimeStr}.`,
+            tab: 'booster',
+            timestamp: lastFreeBoostersResetTime,
+            time: formatNotifTime(lastFreeBoostersResetTime),
+            isAutoRead: true,
           });
         }
 
@@ -916,6 +1001,7 @@ export default function App() {
         const userTrades = await fetchUserTrades(userCode);
         if (Array.isArray(userTrades)) {
           userTrades.forEach((trade) => {
+            const tradeTime = trade.resolvedAt || trade.createdAt || Date.now();
             if (trade.toCode === userCode && trade.status === 'pending') {
               notifs.push({
                 id: `trade-incoming-${trade.id}`,
@@ -923,12 +1009,8 @@ export default function App() {
                 title: "Nouvelle offre d'échange",
                 message: `${trade.fromUsername || 'Un joueur'} vous propose un échange de cartes.`,
                 tab: 'social',
-                time: trade.createdAt
-                  ? new Date(trade.createdAt).toLocaleTimeString('fr-FR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : undefined,
+                timestamp: trade.createdAt || Date.now(),
+                time: formatNotifTime(trade.createdAt),
               });
             } else if (
               trade.fromCode === userCode &&
@@ -940,6 +1022,8 @@ export default function App() {
                 title: 'Échange accepté !',
                 message: `${trade.toUsername || 'Un joueur'} a accepté votre proposition d'échange.`,
                 tab: 'social',
+                timestamp: tradeTime,
+                time: formatNotifTime(tradeTime),
               });
             } else if (
               trade.fromCode === userCode &&
@@ -951,6 +1035,8 @@ export default function App() {
                 title: 'Échange refusé',
                 message: `${trade.toUsername || 'Un joueur'} a décliné votre offre d'échange.`,
                 tab: 'social',
+                timestamp: tradeTime,
+                time: formatNotifTime(tradeTime),
               });
             }
           });
@@ -961,6 +1047,8 @@ export default function App() {
         if (Array.isArray(listings)) {
           listings.forEach((listing) => {
             const cardTitle = listing.card?.title || 'Une carte';
+            const resolvedTime =
+              listing.resolvedAt || listing.createdAt || Date.now();
             // Vente de carte par le joueur
             if (
               listing.sellerCode === userCode &&
@@ -972,8 +1060,10 @@ export default function App() {
                 title: 'Carte vendue au marché !',
                 message: `Votre carte "${cardTitle}" a été vendue pour ${new Intl.NumberFormat(
                   'fr-FR'
-                ).format(listing.buyoutPrice || listing.currentBid)} ₩ !`,
+                ).format(listing.buyoutPrice || listing.currentBid || listing.finalPrice || 0)} ₩ !`,
                 tab: 'market',
+                timestamp: resolvedTime,
+                time: formatNotifTime(resolvedTime),
               });
             }
             // Surenchère subie par le joueur
@@ -981,8 +1071,11 @@ export default function App() {
               listing.status === 'active' &&
               Array.isArray(listing.bids) &&
               listing.bids.some((b) => b.bidderCode === userCode) &&
+              listing.highestBidderCode !== userCode &&
               listing.highestBidder !== userCode
             ) {
+              const outbidTime =
+                listing.lastBidAt || listing.createdAt || Date.now();
               notifs.push({
                 id: `market-outbid-${listing.id}-${listing.currentBid}`,
                 type: 'market_outbid',
@@ -991,12 +1084,17 @@ export default function App() {
                   listing.currentBid
                 )} ₩ a dépassé la vôtre sur "${cardTitle}".`,
                 tab: 'market',
+                timestamp: outbidTime,
+                time: formatNotifTime(outbidTime),
               });
             }
             // Enchère remportée par le joueur
             if (
-              listing.status === 'ended' &&
-              listing.highestBidder === userCode
+              (listing.status === 'ended' || listing.status === 'sold') &&
+              (listing.highestBidder === userCode ||
+                listing.highestBidderCode === userCode ||
+                listing.buyerCode === userCode) &&
+              listing.sellerCode !== userCode
             ) {
               notifs.push({
                 id: `market-won-${listing.id}`,
@@ -1004,13 +1102,34 @@ export default function App() {
                 title: 'Enchère remportée !',
                 message: `Félicitations, vous avez remporté l'enchère pour "${cardTitle}" !`,
                 tab: 'classeur',
+                timestamp: resolvedTime,
+                time: formatNotifTime(resolvedTime),
               });
             }
           });
         }
 
+        // Filtrage des notifications supprimées et expirées (TTL 48h)
+        const now = Date.now();
+        const validNotifs = notifs.filter((n) => {
+          if (dismissedNotifIds.includes(n.id)) {
+            return false;
+          }
+          if (
+            n.timestamp &&
+            n.type !== 'trade_incoming' &&
+            now - n.timestamp > NOTIF_MAX_AGE_MS
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        // Tri chronologique décroissant (les plus récentes en tête)
+        validNotifs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
         if (isMounted) {
-          setNotifications(notifs);
+          setNotifications(validNotifs.slice(0, 20));
         }
       } catch {
         // ignore
@@ -1029,6 +1148,7 @@ export default function App() {
     todayKey,
     freeBoostersCount,
     lastFreeBoostersResetTime,
+    dismissedNotifIds,
   ]);
 
   const handleMarkAllNotifsRead = () => {
@@ -1049,6 +1169,41 @@ export default function App() {
       const updated = [...prev, notifId];
       try {
         localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  const handleDismissNotification = (notifId) => {
+    if (!notifId) return;
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+    setDismissedNotifIds((prev) => {
+      if (prev.includes(notifId)) return prev;
+      const updated = [...prev.slice(-200), notifId];
+      try {
+        localStorage.setItem(
+          STORAGE_KEYS.DISMISSED_NOTIFS,
+          JSON.stringify(updated)
+        );
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  const handleClearAllNotifications = () => {
+    const allIds = notifications.map((n) => n.id);
+    setNotifications([]);
+    setDismissedNotifIds((prev) => {
+      const updated = Array.from(new Set([...prev, ...allIds])).slice(-200);
+      try {
+        localStorage.setItem(
+          STORAGE_KEYS.DISMISSED_NOTIFS,
+          JSON.stringify(updated)
+        );
       } catch {
         // ignore
       }
@@ -1358,6 +1513,8 @@ export default function App() {
         onMarkAllNotifsRead={handleMarkAllNotifsRead}
         onSelectNotification={handleSelectNotification}
         onMarkNotifRead={handleMarkNotifRead}
+        onDismissNotification={handleDismissNotification}
+        onClearAllNotifications={handleClearAllNotifications}
       />
 
       {/* mw-page-container : Conteneur officiel Vector 2022 */}

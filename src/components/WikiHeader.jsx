@@ -4,6 +4,9 @@ import {
   Search,
   Bell,
   CheckCheck,
+  Clock,
+  Trash2,
+  X,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 
@@ -30,6 +33,8 @@ export default function WikiHeader({
   onMarkAllNotifsRead,
   onSelectNotification,
   onMarkNotifRead,
+  onDismissNotification,
+  onClearAllNotifications,
 }) {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifDropdownRef = useRef(null);
@@ -64,7 +69,7 @@ export default function WikiHeader({
   };
 
   const unreadNotifs = notifications.filter(
-    (n) => !readNotificationIds.includes(n.id)
+    (n) => !readNotificationIds.includes(n.id) && !n.isAutoRead
   );
   const unreadCount = unreadNotifs.length;
 
@@ -203,16 +208,30 @@ export default function WikiHeader({
                         </span>
                       )}
                     </div>
-                    {unreadCount > 0 && onMarkAllNotifsRead && (
-                      <button
-                        type="button"
-                        onClick={onMarkAllNotifsRead}
-                        className="text-[11.5px] text-[#3366cc] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        <span>Tout marquer</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && onMarkAllNotifsRead && (
+                        <button
+                          type="button"
+                          onClick={onMarkAllNotifsRead}
+                          className="text-[11.5px] text-[#3366cc] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
+                          title="Marquer toutes les notifications comme lues"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          <span>Tout marquer</span>
+                        </button>
+                      )}
+                      {notifications.length > 0 && onClearAllNotifications && (
+                        <button
+                          type="button"
+                          onClick={onClearAllNotifications}
+                          className="text-[11.5px] text-[#72777d] hover:text-[#ba0000] hover:underline cursor-pointer font-medium inline-flex items-center gap-1"
+                          title="Effacer toutes les notifications"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Effacer</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="max-h-[360px] overflow-y-auto divide-y divide-[#eaecf0]">
@@ -222,7 +241,9 @@ export default function WikiHeader({
                       </div>
                     ) : (
                       notifications.map((notif) => {
-                        const isRead = readNotificationIds.includes(notif.id);
+                        const isRead =
+                          readNotificationIds.includes(notif.id) ||
+                          Boolean(notif.isAutoRead);
                         return (
                           <div
                             key={notif.id}
@@ -237,13 +258,13 @@ export default function WikiHeader({
                               }
                               setIsNotifOpen(false);
                             }}
-                            className={`p-3 cursor-pointer transition-colors ${
+                            className={`group relative p-3 cursor-pointer transition-colors ${
                               isRead
                                 ? 'bg-white hover:bg-[#f8f9fa]'
                                 : 'bg-[#eaf3ff]/40 hover:bg-[#eaf3ff]'
                             }`}
                           >
-                            <div className="w-full">
+                            <div className="w-full pr-5">
                               <div className="flex items-center justify-between gap-1">
                                 <span
                                   className={`text-[12.5px] truncate ${
@@ -262,11 +283,28 @@ export default function WikiHeader({
                                 {notif.message}
                               </p>
                               {notif.time && (
-                                <span className="text-[10px] text-[#72777d] mt-1 block">
-                                  {notif.time}
-                                </span>
+                                <div className="flex items-center gap-1 text-[10.5px] text-[#72777d] mt-1.5">
+                                  <Clock className="w-3 h-3 text-[#a2a9b1] shrink-0" />
+                                  <span>{notif.time}</span>
+                                </div>
                               )}
                             </div>
+
+                            {/* Bouton de suppression individuelle (✕) */}
+                            {onDismissNotification && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDismissNotification(notif.id);
+                                }}
+                                className="absolute top-2.5 right-2 w-5 h-5 flex items-center justify-center text-[#a2a9b1] hover:text-[#ba0000] hover:bg-[#eaecf0] rounded-[2px] transition-colors"
+                                title="Supprimer cette notification"
+                                aria-label="Supprimer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         );
                       })
