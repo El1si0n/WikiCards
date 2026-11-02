@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import WikiCard from './WikiCard';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
-import { calculatePlayerScore } from '../config/playerScore';
 import {
   fetchAllUsersDirectory,
   fetchUserAccountByCode,
@@ -172,19 +171,26 @@ export default function SocialHub({
 
     usersList.forEach((u) => {
       const isMe = u.code === userCode;
-      const data = isMe
-        ? {
-            ...u,
-            collection,
-            wikithunes,
-            stats,
-            uniqueCardsCount: collection.length,
-            legendaryCount: collection.filter((c) => c.rarity === 'L').length,
-            ultraRareCount: collection.filter((c) => c.rarity === 'UR').length,
-          }
-        : u;
+      const uStats = isMe ? stats || {} : u.stats || {};
+      const uColCount = isMe ? collection.length : u.uniqueCardsCount || 0;
+      const uLegCount = isMe
+        ? collection.filter((c) => c.rarity === 'L').length
+        : u.legendaryCount || 0;
+      const uUrCount = isMe
+        ? collection.filter((c) => c.rarity === 'UR').length
+        : u.ultraRareCount || 0;
+      const uMoney = isMe ? wikithunes : u.wikithunes || 0;
 
-      const { score } = calculatePlayerScore(data);
+      // Note composite : Légendaires (1000) + UR (300) + Collection (15) + Série record (80) + Gains casino (1/10) + Boosters (10) + Richesse
+      const score =
+        uLegCount * 1000 +
+        uUrCount * 300 +
+        uColCount * 15 +
+        (Number(uStats.recordStreak) || 0) * 80 +
+        Math.max(0, Math.floor((Number(uStats.netCasinoGains) || 0) / 10)) +
+        (Number(uStats.boostersOpened) || 0) * 10 +
+        Math.floor(uMoney / 50);
+
       if (score > maxScore) {
         maxScore = score;
         bestCode = u.code;
