@@ -24,35 +24,35 @@ export const UPGRADE_RULES = {
     sourceCode: 'C',
     targetCode: 'PC',
     chancePerCard: 25,
-    costPerPercent: 3,
+    costPerPercent: 1,
     maxChance: 95,
   },
   PC: {
     sourceCode: 'PC',
     targetCode: 'R',
     chancePerCard: 20,
-    costPerPercent: 8,
+    costPerPercent: 2,
     maxChance: 90,
   },
   R: {
     sourceCode: 'R',
     targetCode: 'SR',
-    chancePerCard: 15,
-    costPerPercent: 16,
+    chancePerCard: 14,
+    costPerPercent: 5,
     maxChance: 85,
   },
   SR: {
     sourceCode: 'SR',
     targetCode: 'UR',
-    chancePerCard: 11,
-    costPerPercent: 35,
+    chancePerCard: 12,
+    costPerPercent: 12,
     maxChance: 80,
   },
   UR: {
     sourceCode: 'UR',
     targetCode: 'L',
-    chancePerCard: 7,
-    costPerPercent: 75,
+    chancePerCard: 9,
+    costPerPercent: 30,
     maxChance: 75,
   },
 };
@@ -78,6 +78,7 @@ export default function WikiSino({
   onCardWon,
   existingCardIds,
   onToggleFavorite,
+  onUpdateStats,
 }) {
   // Jeu actif dans le WikiSino : 'upgrader' (Étape 9.1) | 'higher_lower' (Étape 9.2)
   const [activeGame, setActiveGame] = useState('upgrader');
@@ -388,9 +389,26 @@ export default function WikiSino({
       setSpinState('won');
       onCardWon(drawnCard);
       soundManager.playUpgradeWin(targetCode);
+      if (onUpdateStats) {
+        onUpdateStats({
+          upgradesSuccessCount: 1,
+          upgradesTotalCount: 1,
+        });
+      }
     } else {
       setSpinState('lost');
       soundManager.playUpgradeLoss();
+      if (onUpdateStats) {
+        const totalCardsLost = Object.values(consumedMap).reduce(
+          (s, qty) => s + (qty || 0),
+          0
+        );
+        onUpdateStats({
+          cardsLostInCasino: totalCardsLost,
+          casinoMoneyLost: spentMoney,
+          upgradesTotalCount: 1,
+        });
+      }
     }
   };
 
@@ -542,6 +560,7 @@ export default function WikiSino({
             wikithunes={wikithunes}
             onSpendWikithunes={onSpendWikithunes}
             onAddWikithunes={onAddWikithunes}
+            onUpdateStats={onUpdateStats}
           />
         ) : activeGame === 'double_or_nothing' ? (
           <DoubleOrNothingGame
@@ -550,6 +569,7 @@ export default function WikiSino({
             onConsumeCards={onConsumeCards}
             onCardWon={onCardWon}
             onToggleFavorite={onToggleFavorite}
+            onUpdateStats={onUpdateStats}
           />
         ) : (
           /* =====================================================================

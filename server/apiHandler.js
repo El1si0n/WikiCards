@@ -212,6 +212,7 @@ export async function handleApiRequest(req, res) {
                     typeof parsed.wikithunes === 'number'
                       ? parsed.wikithunes
                       : 0,
+                  stats: parsed.stats || {},
                   updatedAt: parsed.updatedAt || 0,
                 })
               } catch {

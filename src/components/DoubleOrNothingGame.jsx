@@ -40,6 +40,7 @@ export default function DoubleOrNothingGame({
   onConsumeCards,
   onCardWon,
   onToggleFavorite,
+  onUpdateStats,
 }) {
   const [selectedCardIds, setSelectedCardIds] = useState([]);
   const [spinState, setSpinState] = useState('idle'); // 'idle' | 'spinning' | 'won' | 'lost'
@@ -280,6 +281,9 @@ export default function DoubleOrNothingGame({
       } else {
         setSpinState('lost');
         soundManager.playUpgradeLoss();
+        if (onUpdateStats) {
+          onUpdateStats({ cardsLostInCasino: 1 });
+        }
       }
       return;
     }
@@ -346,6 +350,11 @@ export default function DoubleOrNothingGame({
           onCardWon(r.card);
           onCardWon(r.card);
         });
+
+      const lostCardsCount = initialResults.filter((r) => !r.isWin).length;
+      if (lostCardsCount > 0 && onUpdateStats) {
+        onUpdateStats({ cardsLostInCasino: lostCardsCount });
+      }
 
       if (hasWonAny) {
         setSpinState('won');

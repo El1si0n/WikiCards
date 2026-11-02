@@ -581,10 +581,25 @@ export default function App() {
       setWikithunes(serverAccount.wikithunes);
     }
     if (serverAccount.stats && typeof serverAccount.stats === 'object') {
-      setStats({
-        boostersOpened: Number(serverAccount.stats.boostersOpened || 0),
-        totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || 0),
-      });
+      setStats((prev) => ({
+        ...prev,
+        ...serverAccount.stats,
+        boostersOpened: Number(serverAccount.stats.boostersOpened || prev.boostersOpened || 0),
+        totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || prev.totalCardsDrawn || 0),
+        casinoMoneyLost: Number(serverAccount.stats.casinoMoneyLost || prev.casinoMoneyLost || 0),
+        cardsLostInCasino: Number(serverAccount.stats.cardsLostInCasino || prev.cardsLostInCasino || 0),
+        casinoMoneyWon: Number(serverAccount.stats.casinoMoneyWon || prev.casinoMoneyWon || 0),
+        upgradesSuccessCount: Number(serverAccount.stats.upgradesSuccessCount || prev.upgradesSuccessCount || 0),
+        upgradesTotalCount: Number(serverAccount.stats.upgradesTotalCount || prev.upgradesTotalCount || 0),
+        highestStreakHigherLower: Math.max(
+          Number(serverAccount.stats.highestStreakHigherLower || 0),
+          Number(prev.highestStreakHigherLower || 0)
+        ),
+        highestSingleWinCasino: Math.max(
+          Number(serverAccount.stats.highestSingleWinCasino || 0),
+          Number(prev.highestSingleWinCasino || 0)
+        ),
+      }));
     }
     if (serverAccount.lastDailyClaimDate) {
       setLastDailyClaimDate(serverAccount.lastDailyClaimDate);
@@ -1283,10 +1298,32 @@ export default function App() {
     });
 
     setStats((prev) => ({
+      ...prev,
       boostersOpened: (prev.boostersOpened || 0) + (fromBooster ? 1 : 0),
       totalCardsDrawn: (prev.totalCardsDrawn || 0) + newCards.length,
     }));
   };
+
+  const handleUpdateStats = useCallback((delta) => {
+    if (!delta || typeof delta !== 'object') return;
+    bumpLocalUpdatedAt();
+    setStats((prev) => {
+      const next = { ...prev };
+      for (const [key, val] of Object.entries(delta)) {
+        if (typeof val === 'number') {
+          if (
+            key === 'highestStreakHigherLower' ||
+            key === 'highestSingleWinCasino'
+          ) {
+            next[key] = Math.max(Number(next[key] || 0), val);
+          } else {
+            next[key] = Number(next[key] || 0) + val;
+          }
+        }
+      }
+      return next;
+    });
+  }, []);
 
   // Consomme un dictionnaire { [cardId]: quantity } d'exemplaires dans le classeur (pour l'Upgrader du WikiSino et le Quitte ou Double)
   const consumeCardsFromCollection = (quantitiesMap) => {
@@ -1919,6 +1956,7 @@ export default function App() {
                       }
                       existingCardIds={existingCardIds}
                       onToggleFavorite={toggleFavorite}
+                      onUpdateStats={handleUpdateStats}
                     />
                   </Suspense>
                 ) : activeTab === 'social' ? (

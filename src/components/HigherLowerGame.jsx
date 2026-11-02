@@ -44,6 +44,7 @@ export default function HigherLowerGame({
   wikithunes,
   onSpendWikithunes,
   onAddWikithunes,
+  onUpdateStats,
 }) {
   // 'idle' | 'loading' | 'playing' | 'won_round' | 'lost_round'
   const [gameState, setGameState] = useState('idle');
@@ -59,18 +60,30 @@ export default function HigherLowerGame({
   // Empêche les cartes de se répéter entre plusieurs parties successives
   const [sessionSeenTitles, setSessionSeenTitles] = useState([]);
 
+  // Si le solde diminue et que la mise sélectionnée dépasse le solde disponible, ajuster automatiquement vers une mise accessible
+  React.useEffect(() => {
+    if (gameState === 'idle' && betAmount > wikithunes && wikithunes > 0) {
+      const availablePresets = [500, 250, 100, 50].filter((p) => p <= wikithunes);
+      if (availablePresets.length > 0) {
+        setBetAmount(availablePresets[0]);
+      }
+    }
+  }, [wikithunes, betAmount, gameState]);
+
   const currentPot =
     streak > 0
       ? Math.round(activeBet * getMultiplierForStreak(streak))
       : activeBet;
 
+  const netGain = Math.max(0, currentPot - activeBet);
+
   // Démarre une nouvelle série en déduisant la mise de départ
   const handleStartGame = async () => {
-    const validBet = Math.min(wikithunes, Math.max(10, betAmount));
-    if (validBet <= 0 || wikithunes < validBet || gameState === 'loading') {
+    if (betAmount <= 0 || wikithunes < betAmount || gameState === 'loading') {
       soundManager.playErrorSound();
       return;
     }
+    const validBet = betAmount;
 
     onSpendWikithunes(validBet);
     setActiveBet(validBet);
@@ -129,6 +142,11 @@ export default function HigherLowerGame({
       setGameState('won_round');
       soundManager.playUpgradeWin(rightCard.rarity || 'R');
     } else {
+      if (onUpdateStats) {
+        onUpdateStats({
+          casinoMoneyLost: activeBet,
+        });
+      }
       setGameState('lost_round');
       soundManager.playUpgradeLoss();
     }
@@ -173,7 +191,15 @@ export default function HigherLowerGame({
   const handleCashOut = () => {
     if (streak <= 0) return;
     const payout = Math.round(activeBet * getMultiplierForStreak(streak));
+    const profit = Math.max(0, payout - activeBet);
     onAddWikithunes(payout);
+    if (onUpdateStats) {
+      onUpdateStats({
+        casinoMoneyWon: profit,
+        highestSingleWinCasino: profit,
+        highestStreakHigherLower: streak,
+      });
+    }
     soundManager.playCoinSound();
     setGameState('idle');
     setLeftCard(null);
@@ -249,12 +275,18 @@ export default function HigherLowerGame({
               <div className="flex items-center justify-center mb-1">
                 <Check className="w-11 h-11 text-[#177860] dark:text-[#34d399] stroke-[2.75]" />
               </div>
-              <div className="text-[34px] sm:text-[40px] font-extrabold text-[#177860] dark:text-[#34d399] mt-1 inline-flex items-center gap-2 leading-none">
+              <span className="text-[12px] font-bold text-[#177860] dark:text-[#34d399] uppercase tracking-wider">
+                Gain net réel
+              </span>
+              <div className="text-[34px] sm:text-[40px] font-extrabold text-[#177860] dark:text-[#34d399] mt-0.5 inline-flex items-center gap-2 leading-none">
                 <span>
-                  +{new Intl.NumberFormat('fr-FR').format(currentPot)}
+                  +{new Intl.NumberFormat('fr-FR').format(netGain)}
                 </span>
                 <WikithuneIcon className="w-7 h-7 text-[#177860] dark:text-[#34d399]" />
               </div>
+              <span className="text-[11.5px] text-[#54595d] dark:text-[#a2a9b1] mt-1.5">
+                Mise : {new Intl.NumberFormat('fr-FR').format(activeBet)} ₩ • Pot total : {new Intl.NumberFormat('fr-FR').format(currentPot)} ₩
+              </span>
             </div>
           ) : gameState === 'lost_round' ? (
             <div className="flex items-center justify-center">
@@ -262,15 +294,18 @@ export default function HigherLowerGame({
             </div>
           ) : gameState === 'playing' ? (
             <>
-              <span className="text-[13px] font-bold uppercase tracking-wider text-[#54595d]">
-                Gain actuel (×{getMultiplierForStreak(streak)})
+              <span className="text-[12.5px] font-bold uppercase tracking-wider text-[#54595d]">
+                Bénéfice net actuel (×{getMultiplierForStreak(streak)})
               </span>
-              <div className="text-[40px] font-extrabold text-[#202122] mt-1.5 inline-flex items-center gap-2 leading-none">
+              <div className="text-[38px] font-extrabold text-[#177860] dark:text-[#34d399] mt-1 inline-flex items-center gap-2 leading-none">
                 <span>
-                  {new Intl.NumberFormat('fr-FR').format(currentPot)}
+                  +{new Intl.NumberFormat('fr-FR').format(netGain)}
                 </span>
-                <WikithuneIcon className="w-7 h-7 text-[#3366cc]" />
+                <WikithuneIcon className="w-7 h-7 text-[#177860] dark:text-[#34d399]" />
               </div>
+              <span className="text-[11.5px] text-[#72777d] mt-1.5">
+                Mise : {new Intl.NumberFormat('fr-FR').format(activeBet)} ₩ • Pot encaissable : {new Intl.NumberFormat('fr-FR').format(currentPot)} ₩
+              </span>
             </>
           ) : (
             <>
@@ -320,14 +355,16 @@ export default function HigherLowerGame({
 
               <button
                 type="button"
-                disabled={gameState === 'loading' || wikithunes < 10}
+                disabled={gameState === 'loading' || wikithunes < betAmount}
                 onClick={handleStartGame}
                 className="wiki-casino-btn wiki-casino-btn--primary w-full"
               >
                 <span>
                   {gameState === 'loading'
                     ? 'Chargement des pages...'
-                    : `Lancer la série (${betAmount} ₩)`}
+                    : wikithunes < betAmount
+                      ? `Solde insuffisant (${new Intl.NumberFormat('fr-FR').format(wikithunes)} / ${betAmount} ₩)`
+                      : `Lancer la série (${new Intl.NumberFormat('fr-FR').format(betAmount)} ₩)`}
                 </span>
               </button>
             </>
@@ -339,7 +376,9 @@ export default function HigherLowerGame({
                   onClick={handleCashOut}
                   className="wiki-casino-btn wiki-casino-btn--success w-full"
                 >
-                  <span>Encaisser</span>
+                  <span>
+                    Encaisser (+{new Intl.NumberFormat('fr-FR').format(netGain)} ₩ net)
+                  </span>
                 </button>
               )}
 
@@ -370,7 +409,9 @@ export default function HigherLowerGame({
                 onClick={handleCashOut}
                 className="wiki-casino-btn wiki-casino-btn--success w-full"
               >
-                <span>Terminer et encaisser</span>
+                <span>
+                  Terminer et encaisser (+{new Intl.NumberFormat('fr-FR').format(netGain)} ₩ net)
+                </span>
               </button>
 
               <button

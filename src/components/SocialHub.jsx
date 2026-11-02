@@ -18,8 +18,10 @@ import {
   X,
   Search,
   BookOpen,
+  Crown,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
+import { calculatePlayerScore } from '../config/playerScore';
 
 const RARITY_ORDER = {
   L: 6,
@@ -146,10 +148,52 @@ export default function SocialHub({
     }
   };
 
-  // Filtrage de l'annuaire des joueurs
+  // Calcul du score de joueur et de la note pour chaque membre
+  const usersWithScores = useMemo(() => {
+    return usersList.map((u) => {
+      const isMe = u.code === userCode;
+      const scoreData = calculatePlayerScore(
+        isMe
+          ? {
+              collection,
+              stats,
+              wikithunes,
+              ...u,
+            }
+          : u
+      );
+      return {
+        ...u,
+        playerScore: scoreData.score,
+        rankGrade: scoreData.rankGrade,
+        rankLabel: scoreData.rankLabel,
+        rankColor: scoreData.rankColor,
+        badgeBg: scoreData.badgeBg,
+      };
+    });
+  }, [usersList, userCode, collection, stats, wikithunes]);
+
+  // Identification du joueur n°1 (Champion)
+  const topPlayerCode = useMemo(() => {
+    if (!usersWithScores || usersWithScores.length === 0) return null;
+    let max = -1;
+    let topCode = null;
+    usersWithScores.forEach((u) => {
+      if ((u.playerScore || 0) > max) {
+        max = u.playerScore;
+        topCode = u.code;
+      }
+    });
+    return topCode;
+  }, [usersWithScores]);
+
+  // Filtrage de l'annuaire des joueurs (triés par score décroissant par défaut)
   const filteredUsers = useMemo(() => {
     const q = userSearchQuery.trim().toLowerCase();
-    return usersList.filter((u) => {
+    const sorted = [...usersWithScores].sort(
+      (a, b) => (b.playerScore || 0) - (a.playerScore || 0)
+    );
+    return sorted.filter((u) => {
       if (!q) return true;
       return (
         String(u.username || '')
@@ -160,7 +204,7 @@ export default function SocialHub({
           .includes(q)
       );
     });
-  }, [usersList, userSearchQuery]);
+  }, [usersWithScores, userSearchQuery]);
 
   // Données du joueur inspecté
   const isSelectedPeerMe = selectedPeer?.code === userCode;
@@ -472,10 +516,16 @@ export default function SocialHub({
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {activePeerProfile?.username || selectedPeer.code}
                     </h3>
+                    {selectedPeer.code === topPlayerCode && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11.5px] font-black bg-[#f59f00] text-white rounded-[2px] shadow-xs">
+                        <Crown className="w-4 h-4 fill-white stroke-white" />
+                        <span>N°1 • Champion</span>
+                      </span>
+                    )}
                   </div>
                   <p className="text-[13.5px] text-[#54595d] mt-1 mb-0 leading-[1.5]">
                     {activePeerProfile?.bio ||
@@ -795,6 +845,11 @@ export default function SocialHub({
                     ? wikithunes
                     : u.wikithunes || 0;
 
+                  const isTopPlayer =
+                    Boolean(topPlayerCode) &&
+                    u.code === topPlayerCode &&
+                    (u.playerScore || 0) > 0;
+
                   return (
                     <div
                       key={u.code}
@@ -807,11 +862,25 @@ export default function SocialHub({
                           handleInspectPeer(u.code);
                         }
                       }}
-                      className="bg-[#f8f9fa] dark:bg-[#161a20] border border-[#c8ccd1] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff] hover:shadow-md rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-all cursor-pointer group select-none"
-                      title={isMe ? 'Voir mon profil public' : `Voir le profil de ${displayUsername}`}
+                      className={`rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-all cursor-pointer group select-none relative ${
+                        isTopPlayer
+                          ? 'bg-gradient-to-br from-[#fffdf5] via-[#fff9db] to-[#fff3bf] border-2 border-[#f59f00] shadow-md dark:from-[#261f0d] dark:via-[#332a11] dark:to-[#1a1405] dark:border-[#f59f00]'
+                          : 'bg-[#f8f9fa] dark:bg-[#161a20] border border-[#c8ccd1] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff] hover:shadow-md'
+                      }`}
+                      title={
+                        isMe
+                          ? 'Voir mon profil public'
+                          : `Voir le profil de ${displayUsername}`
+                      }
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-14 h-14 rounded-[2px] border border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c] p-0.5 shrink-0 overflow-hidden">
+                        <div
+                          className={`w-14 h-14 rounded-[2px] p-0.5 shrink-0 overflow-hidden relative ${
+                            isTopPlayer
+                              ? 'border-2 border-[#f59f00] bg-white dark:bg-[#1a202c] ring-2 ring-[#ffd43b]/50'
+                              : 'border border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c]'
+                          }`}
+                        >
                           <img
                             src={
                               displayAvatar ||
@@ -826,11 +895,33 @@ export default function SocialHub({
                             <span className="font-bold text-[15px] text-[#202122] dark:text-white group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] transition-colors truncate">
                               {displayUsername}
                             </span>
+                            {isTopPlayer && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-black bg-[#f59f00] text-white rounded-[2px] shadow-xs">
+                                <Crown className="w-3.5 h-3.5 fill-white stroke-white" />
+                                <span>Champion</span>
+                              </span>
+                            )}
                             {isMe && (
                               <span className="px-1.5 py-0.2 text-[10.5px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc] rounded-[2px]">
                                 Vous
                               </span>
                             )}
+                            <span
+                              className="px-1.5 py-0.2 text-[10.5px] font-bold rounded-[2px] border"
+                              style={{
+                                color: u.rankColor || '#72777d',
+                                borderColor: u.rankColor || '#c8ccd1',
+                                backgroundColor: isTopPlayer
+                                  ? 'rgba(255,255,255,0.7)'
+                                  : undefined,
+                              }}
+                            >
+                              Note {u.rankGrade || 'D'} •{' '}
+                              {new Intl.NumberFormat('fr-FR').format(
+                                u.playerScore || 0
+                              )}{' '}
+                              pts
+                            </span>
                           </div>
                           <p className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-1 line-clamp-2">
                             {displayBio ||

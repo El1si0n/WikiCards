@@ -880,7 +880,7 @@ export default function BoosterOpening({
                   <RotateCw
                     className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
                   />
-                  <span>Réouvrir un booster</span>
+                  <span>Réouvrir</span>
                 </button>
                 <button
                   type="button"
