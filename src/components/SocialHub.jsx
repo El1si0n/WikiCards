@@ -199,13 +199,18 @@ export default function SocialHub({
       const uUrCount = isMe
         ? collection.filter((c) => c.rarity === 'UR').length
         : u.ultraRareCount || 0;
+      const uSrCount = isMe
+        ? collection.filter((c) => c.rarity === 'SR').length
+        : u.superRareCount || 0;
       const uMoney = isMe ? wikithunes : u.wikithunes || 0;
 
       const score = calculatePlayerScore({
         collection: uCol,
+        uniqueCardsCount: uColCount,
         uniqueCount: uColCount,
         legendaryCount: uLegCount,
         ultraRareCount: uUrCount,
+        superRareCount: uSrCount,
         wikithunes: uMoney,
         stats: uStats,
       });
@@ -300,6 +305,9 @@ export default function SocialHub({
     const ultraRares = hasFullCollection
       ? peerCollection.filter((c) => c.rarity === 'UR').length
       : selectedPeer?.ultraRareCount || 0;
+    const superRares = hasFullCollection
+      ? peerCollection.filter((c) => c.rarity === 'SR').length
+      : selectedPeer?.superRareCount || 0;
     const gifs = hasFullCollection
       ? peerCollection.filter((c) =>
           Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
@@ -331,6 +339,7 @@ export default function SocialHub({
       totalCopies,
       legendaries,
       ultraRares,
+      superRares,
       gifs,
       totalVal,
       boostersOpened,
@@ -352,9 +361,17 @@ export default function SocialHub({
     const uStats = isMe ? stats || {} : selectedPeer?.stats || {};
     return calculatePlayerScore({
       collection: peerCollection,
-      uniqueCount: peerCollection.length,
+      uniqueCardsCount:
+        peerCollection.length > 0
+          ? peerCollection.length
+          : selectedPeer?.uniqueCardsCount || 0,
+      uniqueCount:
+        peerCollection.length > 0
+          ? peerCollection.length
+          : selectedPeer?.uniqueCardsCount || 0,
       legendaryCount: peerStats.legendaries,
       ultraRareCount: peerStats.ultraRares,
+      superRareCount: peerStats.superRares,
       wikithunes: peerStats.wikithunes,
       stats: uStats,
     });
@@ -619,7 +636,7 @@ export default function SocialHub({
                       </span>
                     )}
 
-                    {selectedPeerScore > 0 && (
+                    {typeof selectedPeerScore === 'number' && (
                       <span
                         className="text-[13px] font-medium text-[#72777d] dark:text-[#8b949e]"
                         title="Score d'accomplissement"

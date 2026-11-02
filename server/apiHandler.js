@@ -202,6 +202,7 @@ export async function handleApiRequest(req, res) {
                   ),
                   legendaryCount: col.filter((c) => c.rarity === 'L').length,
                   ultraRareCount: col.filter((c) => c.rarity === 'UR').length,
+                  superRareCount: col.filter((c) => c.rarity === 'SR').length,
                   gifCount: col.filter(
                     (c) =>
                       c.isFoil ||

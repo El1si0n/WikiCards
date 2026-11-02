@@ -81,6 +81,11 @@ export default function UserProfile({
     [collection]
   );
 
+  const superRareCount = useMemo(
+    () => collection.filter((c) => c.rarity === 'SR').length,
+    [collection]
+  );
+
   const gifCardsCount = useMemo(
     () =>
       collection.filter((c) =>
@@ -106,9 +111,11 @@ export default function UserProfile({
         stats,
         legendaryCount,
         ultraRareCount,
+        superRareCount,
+        uniqueCardsCount: collection.length,
         uniqueCount: collection.length,
       }),
-    [collection, wikithunes, stats, legendaryCount, ultraRareCount]
+    [collection, wikithunes, stats, legendaryCount, ultraRareCount, superRareCount]
   );
 
   // Cartes possédées ayant une illustration pour choisir sa photo de profil
@@ -306,7 +313,7 @@ export default function UserProfile({
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {profile.username}
                     </h3>
-                    {playerScore > 0 && (
+                    {typeof playerScore === 'number' && (
                       <span
                         className="text-[13px] font-medium text-[#72777d] dark:text-[#8b949e]"
                         title="Votre score d'accomplissement"
