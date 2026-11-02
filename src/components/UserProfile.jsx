@@ -399,7 +399,7 @@ export default function UserProfile({
             </div>
 
             {cardAvatars.length > 0 ? (
-              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-[190px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-[240px] overflow-y-auto pr-1">
                 {cardAvatars.map((item) => (
                   <button
                     key={item.id}

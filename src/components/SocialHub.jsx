@@ -260,9 +260,10 @@ export default function SocialHub({
       (s, c) => s + getCardRecycleValue(c) * (c.count || 1),
       0
     );
-    const boostersOpened = isSelectedPeerMe
-      ? stats?.boostersOpened || 0
-      : selectedPeer?.stats?.boostersOpened || 0;
+    const activeStats = isSelectedPeerMe
+      ? stats || {}
+      : selectedPeer?.stats || {};
+    const boostersOpened = activeStats.boostersOpened || 0;
     const currentWikithunes = isSelectedPeerMe
       ? typeof wikithunes === 'number'
         ? wikithunes
@@ -270,6 +271,10 @@ export default function SocialHub({
       : typeof selectedPeer?.wikithunes === 'number'
       ? selectedPeer.wikithunes
       : 0;
+    const lostMoneyCasino = Number(activeStats.lostMoneyCasino || 0);
+    const lostCards = Number(activeStats.lostCards || 0);
+    const netCasinoGains = Number(activeStats.netCasinoGains || 0);
+    const recordStreak = Number(activeStats.recordStreak || 0);
 
     return {
       totalCopies,
@@ -279,8 +284,35 @@ export default function SocialHub({
       totalVal,
       boostersOpened,
       wikithunes: currentWikithunes,
+      lostMoneyCasino,
+      lostCards,
+      netCasinoGains,
+      recordStreak,
     };
   }, [peerCollection, isSelectedPeerMe, stats, wikithunes, selectedPeer]);
+
+  const selectedPeerScore = useMemo(() => {
+    if (!selectedPeer?.code) return 0;
+    const ranked = rankedUsers.find((u) => u.code === selectedPeer.code);
+    if (ranked && typeof ranked.hiddenScore === 'number') {
+      return ranked.hiddenScore;
+    }
+    const isMe = selectedPeer.code === userCode;
+    const uStats = isMe ? stats || {} : selectedPeer?.stats || {};
+    const uColCount = peerCollection.length;
+    const uLegCount = peerStats.legendaries;
+    const uUrCount = peerStats.ultraRares;
+    const uMoney = peerStats.wikithunes;
+    return (
+      uLegCount * 1000 +
+      uUrCount * 300 +
+      uColCount * 15 +
+      (Number(uStats.recordStreak) || 0) * 80 +
+      Math.max(0, Math.floor((Number(uStats.netCasinoGains) || 0) / 10)) +
+      (Number(uStats.boostersOpened) || 0) * 10 +
+      Math.floor(uMoney / 50)
+    );
+  }, [selectedPeer, rankedUsers, userCode, stats, peerCollection, peerStats]);
 
   // Compteurs d'exemplaires sélectionnés pour l'échange
   const requestedCountsMap = useMemo(() => {
@@ -533,20 +565,29 @@ export default function SocialHub({
                     </h3>
                     {selectedPeer.code === topPlayerCode ? (
                       <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-xs"
+                        className="inline-flex items-center gap-1 text-[13px] font-bold text-[#b8860b] dark:text-[#ffea79]"
                         title="1er au classement des joueurs"
                       >
-                        <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
+                        <Crown className="w-4 h-4 text-[#d4a11d] fill-[#deb226]" />
                         <span>1er</span>
                       </span>
                     ) : selectedPeerRank ? (
                       <span
-                        className="px-2 py-0.5 text-[11px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
+                        className="text-[13px] font-semibold text-[#72777d] dark:text-[#8b949e]"
                         title={`Rang #${selectedPeerRank} au classement`}
                       >
                         #{selectedPeerRank}
                       </span>
                     ) : null}
+
+                    {selectedPeerScore > 0 && (
+                      <span
+                        className="text-[12.5px] font-medium text-[#72777d] dark:text-[#8b949e]"
+                        title="Score d'accomplissement"
+                      >
+                        • Score : <strong className="text-[#202122] dark:text-white font-bold">{new Intl.NumberFormat('fr-FR').format(selectedPeerScore)}</strong> pts
+                      </span>
+                    )}
                   </div>
                   <p className="text-[13.5px] text-[#54595d] mt-1 mb-0 leading-[1.5]">
                     {activePeerProfile?.bio ||
@@ -633,6 +674,64 @@ export default function SocialHub({
                   </span>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.gifs}
+                  </div>
+                </div>
+
+                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+                  <span
+                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+                    title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+                  >
+                    Argent perdu au jeu
+                  </span>
+                  <div className="text-[18px] font-extrabold text-[#ba0000] mt-1 inline-flex items-center gap-1">
+                    <span>
+                      {new Intl.NumberFormat('fr-FR').format(
+                        peerStats.lostMoneyCasino
+                      )}
+                    </span>
+                    <WikithuneIcon className="w-4 h-4 text-[#ba0000]" />
+                  </div>
+                </div>
+
+                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+                  <span
+                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+                    title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
+                  >
+                    Cartes perdues
+                  </span>
+                  <div className="text-[18px] font-extrabold text-[#ba0000] mt-1">
+                    {new Intl.NumberFormat('fr-FR').format(peerStats.lostCards)}
+                  </div>
+                </div>
+
+                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+                  <span
+                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+                    title="Total des bénéfices nets réels empochés au Plus ou Moins"
+                  >
+                    Gains casino (Gain net)
+                  </span>
+                  <div className="text-[18px] font-extrabold text-[#177860] mt-1 inline-flex items-center gap-1">
+                    <span>
+                      +{new Intl.NumberFormat('fr-FR').format(
+                        peerStats.netCasinoGains
+                      )}
+                    </span>
+                    <WikithuneIcon className="w-4 h-4 text-[#177860]" />
+                  </div>
+                </div>
+
+                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+                  <span
+                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+                    title="Record de victoires d'affilée au Plus ou Moins"
+                  >
+                    Série record
+                  </span>
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+                    {new Intl.NumberFormat('fr-FR').format(peerStats.recordStreak)}
                   </div>
                 </div>
               </div>
@@ -933,7 +1032,7 @@ export default function SocialHub({
                         <div className="shrink-0 pt-0.5">
                           {isTopPlayer ? (
                             <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-2xs"
+                              className="inline-flex items-center gap-1 text-[12px] font-bold text-[#b8860b] dark:text-[#ffea79]"
                               title="1er au classement des joueurs"
                             >
                               <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
@@ -941,7 +1040,7 @@ export default function SocialHub({
                             </span>
                           ) : u.rank ? (
                             <span
-                              className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium text-[#72777d] dark:text-[#8b949e] bg-[#eaecf0] dark:bg-[#21262d] border border-[#c8ccd1] dark:border-[#30363d] rounded-[2px]"
+                              className="inline-flex items-center text-[12px] font-semibold text-[#72777d] dark:text-[#8b949e]"
                               title={`Rang #${u.rank} au classement`}
                             >
                               #{u.rank}
