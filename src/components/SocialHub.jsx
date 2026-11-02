@@ -675,7 +675,7 @@ export default function SocialHub({
                   </span>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
-                      {new Intl.NumberFormat('fr-FR').format(
+                      -{new Intl.NumberFormat('fr-FR').format(
                         peerStats.lostMoneyCasino
                       )}
                     </span>
