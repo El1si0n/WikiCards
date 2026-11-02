@@ -107,36 +107,72 @@ export default function SocialHub({
   }, [userCode]);
 
   const handleInspectPeer = async (targetCode) => {
-    setIsLoadingPeer(true);
     setTradeFeedback(null);
     setIsProposingTrade(false);
     setRequestedCardIds([]);
     setOfferedCardIds([]);
-    try {
-      if (targetCode === userCode) {
-        setSelectedPeer({
-          code: userCode,
-          profile: userProfile,
-          collection: collection,
-          favorites: favorites,
-          wikithunes: wikithunes,
-          stats: stats,
-        });
-        if (collection.length > 0) {
-          setPeerRarityFilter(collection[0].rarity || 'C');
-          setMyRarityFilter(collection[0].rarity || 'C');
-        }
-        setIsLoadingPeer(false);
-        return;
+
+    if (targetCode === userCode) {
+      setSelectedPeer({
+        code: userCode,
+        profile: userProfile,
+        collection: collection,
+        favorites: favorites,
+        wikithunes: wikithunes,
+        stats: stats,
+      });
+      if (collection.length > 0) {
+        setPeerRarityFilter(collection[0].rarity || 'C');
+        setMyRarityFilter(collection[0].rarity || 'C');
       }
+      return;
+    }
+
+    // Affichage immédiat (0ms) à partir du cache de l'annuaire déjà en mémoire
+    const cachedUser = usersList.find((u) => u.code === targetCode);
+    if (cachedUser) {
+      setSelectedPeer({
+        code: cachedUser.code,
+        profile: {
+          username: cachedUser.username,
+          avatar: cachedUser.avatar,
+          bio: cachedUser.bio,
+          showcaseIds: cachedUser.showcaseIds || [],
+        },
+        collection: cachedUser.showcaseCards || [],
+        showcaseCards: cachedUser.showcaseCards || [],
+        uniqueCardsCount: cachedUser.uniqueCardsCount,
+        totalCardsCount: cachedUser.totalCardsCount,
+        legendaryCount: cachedUser.legendaryCount,
+        ultraRareCount: cachedUser.ultraRareCount,
+        gifCount: cachedUser.gifCount,
+        wikithunes: cachedUser.wikithunes,
+        stats: cachedUser.stats || {},
+      });
+    }
+
+    // Chargement asynchrone de la collection complète pour les échanges en arrière-plan
+    setIsLoadingPeer(true);
+    try {
       const fullAccount = await fetchUserAccountByCode(targetCode);
-      setSelectedPeer(fullAccount);
-      // Choisir par défaut une rareté présente chez le joueur
-      const peerCol = Array.isArray(fullAccount.collection)
-        ? fullAccount.collection
-        : [];
-      if (peerCol.length > 0) {
-        setPeerRarityFilter(peerCol[0].rarity || 'C');
+      if (fullAccount) {
+        setSelectedPeer((prev) => {
+          if (!prev || prev.code !== targetCode) return prev;
+          return {
+            ...prev,
+            ...fullAccount,
+            profile: {
+              ...(prev.profile || {}),
+              ...(fullAccount.profile || {}),
+            },
+          };
+        });
+        const peerCol = Array.isArray(fullAccount.collection)
+          ? fullAccount.collection
+          : [];
+        if (peerCol.length > 0) {
+          setPeerRarityFilter(peerCol[0].rarity || 'C');
+        }
       }
       if (collection.length > 0) {
         setMyRarityFilter(collection[0].rarity || 'C');
@@ -236,6 +272,12 @@ export default function SocialHub({
   }, [rankedUsers, selectedPeer]);
 
   const peerShowcaseCards = useMemo(() => {
+    if (
+      Array.isArray(selectedPeer?.showcaseCards) &&
+      selectedPeer.showcaseCards.length > 0
+    ) {
+      return [0, 1, 2, 3].map((idx) => selectedPeer.showcaseCards[idx] || null);
+    }
     const ids = Array.isArray(activePeerProfile?.showcaseIds)
       ? activePeerProfile.showcaseIds
       : [];
@@ -245,22 +287,30 @@ export default function SocialHub({
         ? peerCollection.find((c) => String(c.id) === String(id)) || null
         : null;
     });
-  }, [activePeerProfile, peerCollection]);
+  }, [selectedPeer, activePeerProfile, peerCollection]);
 
   const peerStats = useMemo(() => {
-    const totalCopies = peerCollection.reduce(
-      (s, c) => s + (c.count || 1),
-      0
-    );
-    const legendaries = peerCollection.filter((c) => c.rarity === 'L').length;
-    const ultraRares = peerCollection.filter((c) => c.rarity === 'UR').length;
-    const gifs = peerCollection.filter((c) =>
-      Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-    ).length;
-    const totalVal = peerCollection.reduce(
-      (s, c) => s + getCardRecycleValue(c) * (c.count || 1),
-      0
-    );
+    const hasFullCollection = peerCollection.length > 0;
+    const totalCopies = hasFullCollection
+      ? peerCollection.reduce((s, c) => s + (c.count || 1), 0)
+      : selectedPeer?.totalCardsCount || 0;
+    const legendaries = hasFullCollection
+      ? peerCollection.filter((c) => c.rarity === 'L').length
+      : selectedPeer?.legendaryCount || 0;
+    const ultraRares = hasFullCollection
+      ? peerCollection.filter((c) => c.rarity === 'UR').length
+      : selectedPeer?.ultraRareCount || 0;
+    const gifs = hasFullCollection
+      ? peerCollection.filter((c) =>
+          Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
+        ).length
+      : selectedPeer?.gifCount || 0;
+    const totalVal = hasFullCollection
+      ? peerCollection.reduce(
+          (s, c) => s + getCardRecycleValue(c) * (c.count || 1),
+          0
+        )
+      : 0;
     const activeStats = isSelectedPeerMe
       ? stats || {}
       : selectedPeer?.stats || {};
@@ -591,7 +641,9 @@ export default function SocialHub({
                     Articles uniques
                   </span>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-                    {peerCollection.length}
+                    {peerCollection.length > 0
+                      ? peerCollection.length
+                      : selectedPeer?.uniqueCardsCount || 0}
                   </div>
                 </div>
 
@@ -675,7 +727,7 @@ export default function SocialHub({
                   </span>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
-                      -{new Intl.NumberFormat('fr-FR').format(
+                      {new Intl.NumberFormat('fr-FR').format(
                         peerStats.lostMoneyCasino
                       )}
                     </span>

@@ -324,11 +324,7 @@ export default function WikiHeader({
                   ? 'bg-[#eaf3ff] border-[#3366cc] text-[#3366cc] font-bold'
                   : 'bg-[#f8f9fa] hover:bg-[#eaecf0] border-[#a2a9b1] text-[#202122]'
               }`}
-              title={
-                playerScore > 0
-                  ? `Ouvrir votre page utilisateur (${new Intl.NumberFormat('fr-FR').format(playerScore)} pts)`
-                  : 'Ouvrir votre page utilisateur et votre code unique'
-              }
+              title="Ouvrir votre page utilisateur et votre code unique"
             >
               <img
                 src={
@@ -341,11 +337,6 @@ export default function WikiHeader({
               <span className="hidden sm:inline max-w-[110px] truncate">
                 {userProfile?.username || 'Mon profil'}
               </span>
-              {playerScore > 0 && (
-                <span className="hidden md:inline text-[11.5px] font-semibold text-[#72777d] dark:text-[#8b949e]">
-                  {new Intl.NumberFormat('fr-FR').format(playerScore)} pts
-                </span>
-              )}
             </button>
           </nav>
         </div>

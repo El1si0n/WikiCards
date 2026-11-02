@@ -387,6 +387,7 @@ export default function App() {
 
   const handleUpdateStats = (deltas) => {
     if (!deltas || typeof deltas !== 'object') return;
+    bumpLocalUpdatedAt();
     setStats((prev) => {
       const next = { ...prev };
       if (typeof deltas.boostersOpened === 'number') {
@@ -1368,6 +1369,7 @@ export default function App() {
     });
 
     setStats((prev) => ({
+      ...prev,
       boostersOpened: (prev.boostersOpened || 0) + (fromBooster ? 1 : 0),
       totalCardsDrawn: (prev.totalCardsDrawn || 0) + newCards.length,
     }));
