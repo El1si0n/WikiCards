@@ -108,9 +108,13 @@ const server = http.createServer(async (req, res) => {
         'Content-Type',
         MIME_TYPES[ext] || 'application/octet-stream'
       );
-      // Cache-Control optimisé pour les assets hashés par Vite
+      // Cache-Control optimisé pour les assets hashés par Vite vs no-cache pour index.html
       if (reqPath.startsWith('/assets/')) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (ext === '.html') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
       }
       const stream = fs.createReadStream(filePath);
       stream.on('error', (streamErr) => {
@@ -141,6 +145,9 @@ const server = http.createServer(async (req, res) => {
     if (fs.existsSync(indexPath)) {
       if (!res.headersSent) {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         const stream = fs.createReadStream(indexPath);
         stream.on('error', (streamErr) => {
           console.error('[WikiCards Stream Error index.html]:', streamErr);
