@@ -112,10 +112,22 @@ export default function UserProfile({
         legendaryCount,
         ultraRareCount,
         superRareCount,
+        gifCount: gifCardsCount,
+        collectionValue: collectionTotalValue,
         uniqueCardsCount: collection.length,
-        uniqueCount: collection.length,
+        totalCardsCount: totalCardsCount,
       }),
-    [collection, wikithunes, stats, legendaryCount, ultraRareCount, superRareCount]
+    [
+      collection,
+      wikithunes,
+      stats,
+      legendaryCount,
+      ultraRareCount,
+      superRareCount,
+      gifCardsCount,
+      collectionTotalValue,
+      totalCardsCount,
+    ]
   );
 
   // Cartes possédées ayant une illustration pour choisir sa photo de profil

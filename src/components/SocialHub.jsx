@@ -193,6 +193,9 @@ export default function SocialHub({
       const uStats = isMe ? stats || {} : u.stats || {};
       const uCol = isMe ? collection : [];
       const uColCount = isMe ? collection.length : u.uniqueCardsCount || 0;
+      const uTotalCards = isMe
+        ? collection.reduce((s, c) => s + (c.count || 1), 0)
+        : u.totalCardsCount || uColCount;
       const uLegCount = isMe
         ? collection.filter((c) => c.rarity === 'L').length
         : u.legendaryCount || 0;
@@ -202,15 +205,29 @@ export default function SocialHub({
       const uSrCount = isMe
         ? collection.filter((c) => c.rarity === 'SR').length
         : u.superRareCount || 0;
+      const uGifCount = isMe
+        ? collection.filter((c) =>
+            Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
+          ).length
+        : u.gifCount || 0;
+      const uColVal = isMe
+        ? collection.reduce(
+            (s, c) => s + getCardRecycleValue(c) * (c.count || 1),
+            0
+          )
+        : u.collectionValue || 0;
       const uMoney = isMe ? wikithunes : u.wikithunes || 0;
 
       const score = calculatePlayerScore({
         collection: uCol,
         uniqueCardsCount: uColCount,
         uniqueCount: uColCount,
+        totalCardsCount: uTotalCards,
         legendaryCount: uLegCount,
         ultraRareCount: uUrCount,
         superRareCount: uSrCount,
+        gifCount: uGifCount,
+        collectionValue: uColVal,
         wikithunes: uMoney,
         stats: uStats,
       });
@@ -318,7 +335,7 @@ export default function SocialHub({
           (s, c) => s + getCardRecycleValue(c) * (c.count || 1),
           0
         )
-      : 0;
+      : selectedPeer?.collectionValue || 0;
     const activeStats = isSelectedPeerMe
       ? stats || {}
       : selectedPeer?.stats || {};
@@ -369,9 +386,12 @@ export default function SocialHub({
         peerCollection.length > 0
           ? peerCollection.length
           : selectedPeer?.uniqueCardsCount || 0,
+      totalCardsCount: peerStats.totalCopies,
       legendaryCount: peerStats.legendaries,
       ultraRareCount: peerStats.ultraRares,
       superRareCount: peerStats.superRares,
+      gifCount: peerStats.gifs,
+      collectionValue: peerStats.totalVal,
       wikithunes: peerStats.wikithunes,
       stats: uStats,
     });

@@ -206,9 +206,20 @@ export async function handleApiRequest(req, res) {
                   gifCount: col.filter(
                     (c) =>
                       c.isFoil ||
+                      c.isShiny ||
+                      c.isGif ||
                       (typeof c.image === 'string' &&
                         c.image.toLowerCase().includes('.gif'))
                   ).length,
+                  collectionValue: col.reduce(
+                    (s, c) => {
+                      const baseMap = { C: 10, PC: 35, R: 125, SR: 420, UR: 710, L: 2100 };
+                      const base = baseMap[c.rarity] || 10;
+                      const mult = c.isShiny ? 3 : 1;
+                      return s + base * mult * (c.count || 1);
+                    },
+                    0
+                  ),
                   wikithunes:
                     typeof parsed.wikithunes === 'number'
                       ? parsed.wikithunes
