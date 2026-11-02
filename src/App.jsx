@@ -62,6 +62,7 @@ import {
   getCardRecycleValue,
 } from './config/rarities';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
+import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
 import {
   Languages,
@@ -364,6 +365,7 @@ export default function App() {
           totalCardsDrawn: 0,
           lostMoneyCasino: 0,
           lostCards: 0,
+          wonCards: 0,
           netCasinoGains: 0,
           recordStreak: 0,
           ...parsed,
@@ -377,6 +379,7 @@ export default function App() {
       totalCardsDrawn: 0,
       lostMoneyCasino: 0,
       lostCards: 0,
+      wonCards: 0,
       netCasinoGains: 0,
       recordStreak: 0,
     };
@@ -397,6 +400,9 @@ export default function App() {
       }
       if (typeof deltas.lostCards === 'number') {
         next.lostCards = (next.lostCards || 0) + deltas.lostCards;
+      }
+      if (typeof deltas.wonCards === 'number') {
+        next.wonCards = (next.wonCards || 0) + deltas.wonCards;
       }
       if (typeof deltas.netCasinoGains === 'number') {
         next.netCasinoGains = (next.netCasinoGains || 0) + deltas.netCasinoGains;
@@ -423,6 +429,17 @@ export default function App() {
     }
     return [];
   });
+
+  // Score d'accomplissement du joueur calculé en direct
+  const playerScore = useMemo(
+    () =>
+      calculatePlayerScore({
+        collection,
+        wikithunes,
+        stats,
+      }),
+    [collection, wikithunes, stats]
+  );
 
   // Horodatage de la dernière modification locale du joueur (pour la synchro multi-appareils PC <-> Téléphone)
   const [localUpdatedAt, setLocalUpdatedAt] = useState(() =>
@@ -630,6 +647,7 @@ export default function App() {
         totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || 0),
         lostMoneyCasino: Number(serverAccount.stats.lostMoneyCasino || 0),
         lostCards: Number(serverAccount.stats.lostCards || 0),
+        wonCards: Number(serverAccount.stats.wonCards || 0),
         netCasinoGains: Number(serverAccount.stats.netCasinoGains || 0),
         recordStreak: Number(serverAccount.stats.recordStreak || 0),
         ...serverAccount.stats,
@@ -889,6 +907,7 @@ export default function App() {
         totalCardsDrawn: 0,
         lostMoneyCasino: 0,
         lostCards: 0,
+        wonCards: 0,
         netCasinoGains: 0,
         recordStreak: 0,
       }
@@ -971,6 +990,7 @@ export default function App() {
       totalCardsDrawn: 0,
       lostMoneyCasino: 0,
       lostCards: 0,
+      wonCards: 0,
       netCasinoGains: 0,
       recordStreak: 0,
     });
@@ -1571,6 +1591,7 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         wikithunes={wikithunes}
         userProfile={userProfile}
+        playerScore={playerScore}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
         notifications={notifications}

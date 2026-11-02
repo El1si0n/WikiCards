@@ -390,6 +390,7 @@ export default function WikiSino({
       setSpinState('won');
       onCardWon(drawnCard);
       soundManager.playUpgradeWin(targetCode);
+      onUpdateStats?.({ wonCards: 1 });
     } else {
       setSpinState('lost');
       soundManager.playUpgradeLoss();

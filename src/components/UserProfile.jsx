@@ -3,6 +3,7 @@ import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
+import { calculatePlayerScore } from '../config/playerScore';
 import { soundManager } from '../services/sound';
 import {
   KeyRound,
@@ -95,6 +96,19 @@ export default function UserProfile({
         0
       ),
     [collection]
+  );
+
+  const playerScore = useMemo(
+    () =>
+      calculatePlayerScore({
+        collection,
+        wikithunes,
+        stats,
+        legendaryCount,
+        ultraRareCount,
+        uniqueCount: collection.length,
+      }),
+    [collection, wikithunes, stats, legendaryCount, ultraRareCount]
   );
 
   // Cartes possédées ayant une illustration pour choisir sa photo de profil
@@ -288,10 +302,18 @@ export default function UserProfile({
                   className="group cursor-pointer rounded-[2px] -mx-1.5 px-1.5 py-1 hover:bg-[#f8f9fa] transition-colors"
                   title="Cliquez pour modifier votre nom ou votre description"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {profile.username}
                     </h3>
+                    {playerScore > 0 && (
+                      <span
+                        className="text-[13px] font-medium text-[#72777d] dark:text-[#8b949e]"
+                        title="Votre score d'accomplissement"
+                      >
+                        {new Intl.NumberFormat('fr-FR').format(playerScore)} pts
+                      </span>
+                    )}
                     <Pencil className="w-3.5 h-3.5 text-[#72777d] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <p className="text-[13.5px] text-[#54595d] mt-1 mb-0 leading-[1.5] max-w-[480px] sm:max-w-[520px] break-words">
@@ -513,13 +535,13 @@ export default function UserProfile({
             >
               Argent perdu au jeu
             </span>
-            <div className="text-[18px] font-extrabold text-[#ba0000] mt-1 inline-flex items-center gap-1">
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>
                 {new Intl.NumberFormat('fr-FR').format(
                   stats?.lostMoneyCasino || 0
                 )}
               </span>
-              <WikithuneIcon className="w-4 h-4 text-[#ba0000]" />
+              <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
           </div>
 
@@ -530,8 +552,20 @@ export default function UserProfile({
             >
               Cartes perdues
             </span>
-            <div className="text-[18px] font-extrabold text-[#ba0000] mt-1">
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {new Intl.NumberFormat('fr-FR').format(stats?.lostCards || 0)}
+            </div>
+          </div>
+
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
+            >
+              Cartes gagnées
+            </span>
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+              {new Intl.NumberFormat('fr-FR').format(stats?.wonCards || 0)}
             </div>
           </div>
 
@@ -542,25 +576,13 @@ export default function UserProfile({
             >
               Gains casino (Gain net)
             </span>
-            <div className="text-[18px] font-extrabold text-[#177860] mt-1 inline-flex items-center gap-1">
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>
-                +{new Intl.NumberFormat('fr-FR').format(
+                {new Intl.NumberFormat('fr-FR').format(
                   stats?.netCasinoGains || 0
                 )}
               </span>
-              <WikithuneIcon className="w-4 h-4 text-[#177860]" />
-            </div>
-          </div>
-
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Votre record de victoires d'affilée au Plus ou Moins"
-            >
-              Série record
-            </span>
-            <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-              {stats?.recordStreak || 0}
+              <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
           </div>
         </div>

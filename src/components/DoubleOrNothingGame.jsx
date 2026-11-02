@@ -246,6 +246,9 @@ export default function DoubleOrNothingGame({
     if (lostCount > 0) {
       onUpdateStats?.({ lostCards: lostCount });
     }
+    if (wonCount > 0) {
+      onUpdateStats?.({ wonCards: wonCount });
+    }
 
     setSpinSnapshot({
       cards: lockedCards,

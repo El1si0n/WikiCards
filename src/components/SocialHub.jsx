@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import WikiCard from './WikiCard';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
+import { calculatePlayerScore } from '../config/playerScore';
 import {
   fetchAllUsersDirectory,
   fetchUserAccountByCode,
@@ -154,6 +155,7 @@ export default function SocialHub({
     const scored = usersList.map((u) => {
       const isMe = u.code === userCode;
       const uStats = isMe ? stats || {} : u.stats || {};
+      const uCol = isMe ? collection : [];
       const uColCount = isMe ? collection.length : u.uniqueCardsCount || 0;
       const uLegCount = isMe
         ? collection.filter((c) => c.rarity === 'L').length
@@ -163,15 +165,14 @@ export default function SocialHub({
         : u.ultraRareCount || 0;
       const uMoney = isMe ? wikithunes : u.wikithunes || 0;
 
-      // Note composite d'accomplissement : Légendaires (1000) + UR (300) + Collection (15) + Série record (80) + Gains casino (1/10) + Boosters (10) + Richesse
-      const score =
-        uLegCount * 1000 +
-        uUrCount * 300 +
-        uColCount * 15 +
-        (Number(uStats.recordStreak) || 0) * 80 +
-        Math.max(0, Math.floor((Number(uStats.netCasinoGains) || 0) / 10)) +
-        (Number(uStats.boostersOpened) || 0) * 10 +
-        Math.floor(uMoney / 50);
+      const score = calculatePlayerScore({
+        collection: uCol,
+        uniqueCount: uColCount,
+        legendaryCount: uLegCount,
+        ultraRareCount: uUrCount,
+        wikithunes: uMoney,
+        stats: uStats,
+      });
 
       return {
         ...u,
@@ -273,8 +274,8 @@ export default function SocialHub({
       : 0;
     const lostMoneyCasino = Number(activeStats.lostMoneyCasino || 0);
     const lostCards = Number(activeStats.lostCards || 0);
+    const wonCards = Number(activeStats.wonCards || 0);
     const netCasinoGains = Number(activeStats.netCasinoGains || 0);
-    const recordStreak = Number(activeStats.recordStreak || 0);
 
     return {
       totalCopies,
@@ -286,8 +287,8 @@ export default function SocialHub({
       wikithunes: currentWikithunes,
       lostMoneyCasino,
       lostCards,
+      wonCards,
       netCasinoGains,
-      recordStreak,
     };
   }, [peerCollection, isSelectedPeerMe, stats, wikithunes, selectedPeer]);
 
@@ -299,19 +300,14 @@ export default function SocialHub({
     }
     const isMe = selectedPeer.code === userCode;
     const uStats = isMe ? stats || {} : selectedPeer?.stats || {};
-    const uColCount = peerCollection.length;
-    const uLegCount = peerStats.legendaries;
-    const uUrCount = peerStats.ultraRares;
-    const uMoney = peerStats.wikithunes;
-    return (
-      uLegCount * 1000 +
-      uUrCount * 300 +
-      uColCount * 15 +
-      (Number(uStats.recordStreak) || 0) * 80 +
-      Math.max(0, Math.floor((Number(uStats.netCasinoGains) || 0) / 10)) +
-      (Number(uStats.boostersOpened) || 0) * 10 +
-      Math.floor(uMoney / 50)
-    );
+    return calculatePlayerScore({
+      collection: peerCollection,
+      uniqueCount: peerCollection.length,
+      legendaryCount: peerStats.legendaries,
+      ultraRareCount: peerStats.ultraRares,
+      wikithunes: peerStats.wikithunes,
+      stats: uStats,
+    });
   }, [selectedPeer, rankedUsers, userCode, stats, peerCollection, peerStats]);
 
   // Compteurs d'exemplaires sélectionnés pour l'échange
@@ -563,7 +559,7 @@ export default function SocialHub({
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {activePeerProfile?.username || selectedPeer.code}
                     </h3>
-                    {selectedPeer.code === topPlayerCode ? (
+                    {selectedPeer.code === topPlayerCode && (
                       <span
                         className="inline-flex items-center gap-1 text-[13px] font-bold text-[#b8860b] dark:text-[#ffea79]"
                         title="1er au classement des joueurs"
@@ -571,21 +567,14 @@ export default function SocialHub({
                         <Crown className="w-4 h-4 text-[#d4a11d] fill-[#deb226]" />
                         <span>1er</span>
                       </span>
-                    ) : selectedPeerRank ? (
-                      <span
-                        className="text-[13px] font-semibold text-[#72777d] dark:text-[#8b949e]"
-                        title={`Rang #${selectedPeerRank} au classement`}
-                      >
-                        #{selectedPeerRank}
-                      </span>
-                    ) : null}
+                    )}
 
                     {selectedPeerScore > 0 && (
                       <span
-                        className="text-[12.5px] font-medium text-[#72777d] dark:text-[#8b949e]"
+                        className="text-[13px] font-medium text-[#72777d] dark:text-[#8b949e]"
                         title="Score d'accomplissement"
                       >
-                        • Score : <strong className="text-[#202122] dark:text-white font-bold">{new Intl.NumberFormat('fr-FR').format(selectedPeerScore)}</strong> pts
+                        {new Intl.NumberFormat('fr-FR').format(selectedPeerScore)} pts
                       </span>
                     )}
                   </div>
@@ -684,13 +673,13 @@ export default function SocialHub({
                   >
                     Argent perdu au jeu
                   </span>
-                  <div className="text-[18px] font-extrabold text-[#ba0000] mt-1 inline-flex items-center gap-1">
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(
                         peerStats.lostMoneyCasino
                       )}
                     </span>
-                    <WikithuneIcon className="w-4 h-4 text-[#ba0000]" />
+                    <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
                 </div>
 
@@ -701,8 +690,20 @@ export default function SocialHub({
                   >
                     Cartes perdues
                   </span>
-                  <div className="text-[18px] font-extrabold text-[#ba0000] mt-1">
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {new Intl.NumberFormat('fr-FR').format(peerStats.lostCards)}
+                  </div>
+                </div>
+
+                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+                  <span
+                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+                    title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
+                  >
+                    Cartes gagnées
+                  </span>
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+                    {new Intl.NumberFormat('fr-FR').format(peerStats.wonCards || 0)}
                   </div>
                 </div>
 
@@ -713,25 +714,13 @@ export default function SocialHub({
                   >
                     Gains casino (Gain net)
                   </span>
-                  <div className="text-[18px] font-extrabold text-[#177860] mt-1 inline-flex items-center gap-1">
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
-                      +{new Intl.NumberFormat('fr-FR').format(
+                      {new Intl.NumberFormat('fr-FR').format(
                         peerStats.netCasinoGains
                       )}
                     </span>
-                    <WikithuneIcon className="w-4 h-4 text-[#177860]" />
-                  </div>
-                </div>
-
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span
-                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-                    title="Record de victoires d'affilée au Plus ou Moins"
-                  >
-                    Série record
-                  </span>
-                  <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-                    {new Intl.NumberFormat('fr-FR').format(peerStats.recordStreak)}
+                    <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
                 </div>
               </div>
