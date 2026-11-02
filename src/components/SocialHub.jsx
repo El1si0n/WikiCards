@@ -21,7 +21,6 @@ import {
   Crown,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
-import { calculatePlayerScore } from '../config/playerScore';
 
 const RARITY_ORDER = {
   L: 6,
@@ -148,52 +147,10 @@ export default function SocialHub({
     }
   };
 
-  // Calcul du score de joueur et de la note pour chaque membre
-  const usersWithScores = useMemo(() => {
-    return usersList.map((u) => {
-      const isMe = u.code === userCode;
-      const scoreData = calculatePlayerScore(
-        isMe
-          ? {
-              collection,
-              stats,
-              wikithunes,
-              ...u,
-            }
-          : u
-      );
-      return {
-        ...u,
-        playerScore: scoreData.score,
-        rankGrade: scoreData.rankGrade,
-        rankLabel: scoreData.rankLabel,
-        rankColor: scoreData.rankColor,
-        badgeBg: scoreData.badgeBg,
-      };
-    });
-  }, [usersList, userCode, collection, stats, wikithunes]);
-
-  // Identification du joueur n°1 (Champion)
-  const topPlayerCode = useMemo(() => {
-    if (!usersWithScores || usersWithScores.length === 0) return null;
-    let max = -1;
-    let topCode = null;
-    usersWithScores.forEach((u) => {
-      if ((u.playerScore || 0) > max) {
-        max = u.playerScore;
-        topCode = u.code;
-      }
-    });
-    return topCode;
-  }, [usersWithScores]);
-
-  // Filtrage de l'annuaire des joueurs (triés par score décroissant par défaut)
+  // Filtrage de l'annuaire des joueurs
   const filteredUsers = useMemo(() => {
     const q = userSearchQuery.trim().toLowerCase();
-    const sorted = [...usersWithScores].sort(
-      (a, b) => (b.playerScore || 0) - (a.playerScore || 0)
-    );
-    return sorted.filter((u) => {
+    return usersList.filter((u) => {
       if (!q) return true;
       return (
         String(u.username || '')
@@ -204,7 +161,44 @@ export default function SocialHub({
           .includes(q)
       );
     });
-  }, [usersWithScores, userSearchQuery]);
+  }, [usersList, userSearchQuery]);
+
+  // Calcul d'une note d'accomplissement cachée pour identifier le meilleur joueur
+  const topPlayerCode = useMemo(() => {
+    if (!usersList || usersList.length === 0) return null;
+    let bestCode = null;
+    let maxScore = 0;
+
+    usersList.forEach((u) => {
+      const isMe = u.code === userCode;
+      const uStats = isMe ? stats || {} : u.stats || {};
+      const uColCount = isMe ? collection.length : u.uniqueCardsCount || 0;
+      const uLegCount = isMe
+        ? collection.filter((c) => c.rarity === 'L').length
+        : u.legendaryCount || 0;
+      const uUrCount = isMe
+        ? collection.filter((c) => c.rarity === 'UR').length
+        : u.ultraRareCount || 0;
+      const uMoney = isMe ? wikithunes : u.wikithunes || 0;
+
+      // Note composite : Légendaires (1000) + UR (300) + Collection (15) + Série record (80) + Gains casino (1/10) + Boosters (10) + Richesse
+      const score =
+        uLegCount * 1000 +
+        uUrCount * 300 +
+        uColCount * 15 +
+        (Number(uStats.recordStreak) || 0) * 80 +
+        Math.max(0, Math.floor((Number(uStats.netCasinoGains) || 0) / 10)) +
+        (Number(uStats.boostersOpened) || 0) * 10 +
+        Math.floor(uMoney / 50);
+
+      if (score > maxScore) {
+        maxScore = score;
+        bestCode = u.code;
+      }
+    });
+
+    return bestCode;
+  }, [usersList, userCode, stats, collection, wikithunes]);
 
   // Données du joueur inspecté
   const isSelectedPeerMe = selectedPeer?.code === userCode;
@@ -516,14 +510,17 @@ export default function SocialHub({
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {activePeerProfile?.username || selectedPeer.code}
                     </h3>
                     {selectedPeer.code === topPlayerCode && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11.5px] font-black bg-[#f59f00] text-white rounded-[2px] shadow-xs">
-                        <Crown className="w-4 h-4 fill-white stroke-white" />
-                        <span>N°1 • Champion</span>
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-extrabold bg-[#ffeaa0] text-[#735100] border border-[#d4a11d] rounded-[2px] shadow-xs"
+                        title="Meilleur joueur de la communauté WikiCards"
+                      >
+                        <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
+                        <span>Meilleur joueur</span>
                       </span>
                     )}
                   </div>
@@ -845,10 +842,7 @@ export default function SocialHub({
                     ? wikithunes
                     : u.wikithunes || 0;
 
-                  const isTopPlayer =
-                    Boolean(topPlayerCode) &&
-                    u.code === topPlayerCode &&
-                    (u.playerScore || 0) > 0;
+                  const isTopPlayer = Boolean(topPlayerCode && u.code === topPlayerCode);
 
                   return (
                     <div
@@ -862,23 +856,25 @@ export default function SocialHub({
                           handleInspectPeer(u.code);
                         }
                       }}
-                      className={`rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-all cursor-pointer group select-none relative ${
+                      className={`rounded-[2px] p-4 flex flex-col justify-between gap-3.5 transition-all cursor-pointer group select-none hover:shadow-md ${
                         isTopPlayer
-                          ? 'bg-gradient-to-br from-[#fffdf5] via-[#fff9db] to-[#fff3bf] border-2 border-[#f59f00] shadow-md dark:from-[#261f0d] dark:via-[#332a11] dark:to-[#1a1405] dark:border-[#f59f00]'
-                          : 'bg-[#f8f9fa] dark:bg-[#161a20] border border-[#c8ccd1] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff] hover:shadow-md'
+                          ? 'bg-gradient-to-b from-[#fffef5] to-[#fff8d6] dark:from-[#2e2610] dark:to-[#1c1808] border-2 border-[#d4a11d] dark:border-[#deb226] shadow-[0_2px_12px_rgba(212,161,29,0.25)]'
+                          : 'bg-[#f8f9fa] dark:bg-[#161a20] border border-[#c8ccd1] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff]'
                       }`}
                       title={
-                        isMe
-                          ? 'Voir mon profil public'
-                          : `Voir le profil de ${displayUsername}`
+                        isTopPlayer
+                          ? `👑 Meilleur joueur : ${displayUsername}`
+                          : isMe
+                            ? 'Voir mon profil public'
+                            : `Voir le profil de ${displayUsername}`
                       }
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`w-14 h-14 rounded-[2px] p-0.5 shrink-0 overflow-hidden relative ${
+                          className={`w-14 h-14 rounded-[2px] border p-0.5 shrink-0 overflow-hidden ${
                             isTopPlayer
-                              ? 'border-2 border-[#f59f00] bg-white dark:bg-[#1a202c] ring-2 ring-[#ffd43b]/50'
-                              : 'border border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c]'
+                              ? 'border-[#d4a11d] bg-[#fff9db] dark:bg-[#3d3210] shadow-[0_0_8px_rgba(212,161,29,0.4)]'
+                              : 'border-[#a2a9b1] dark:border-[#3a4454] bg-white dark:bg-[#1a202c]'
                           }`}
                         >
                           <img
@@ -896,9 +892,12 @@ export default function SocialHub({
                               {displayUsername}
                             </span>
                             {isTopPlayer && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-black bg-[#f59f00] text-white rounded-[2px] shadow-xs">
-                                <Crown className="w-3.5 h-3.5 fill-white stroke-white" />
-                                <span>Champion</span>
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-extrabold bg-[#ffeaa0] dark:bg-[#52410a] text-[#735100] dark:text-[#ffea79] border border-[#d4a11d] rounded-[2px] shadow-2xs"
+                                title="Meilleur joueur de la communauté WikiCards"
+                              >
+                                <Crown className="w-3.5 h-3.5 text-[#d4a11d] fill-[#deb226]" />
+                                <span>1er</span>
                               </span>
                             )}
                             {isMe && (
@@ -906,22 +905,6 @@ export default function SocialHub({
                                 Vous
                               </span>
                             )}
-                            <span
-                              className="px-1.5 py-0.2 text-[10.5px] font-bold rounded-[2px] border"
-                              style={{
-                                color: u.rankColor || '#72777d',
-                                borderColor: u.rankColor || '#c8ccd1',
-                                backgroundColor: isTopPlayer
-                                  ? 'rgba(255,255,255,0.7)'
-                                  : undefined,
-                              }}
-                            >
-                              Note {u.rankGrade || 'D'} •{' '}
-                              {new Intl.NumberFormat('fr-FR').format(
-                                u.playerScore || 0
-                              )}{' '}
-                              pts
-                            </span>
                           </div>
                           <p className="text-[12px] text-[#54595d] dark:text-[#a2a9b1] m-0 mt-1 line-clamp-2">
                             {displayBio ||

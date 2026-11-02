@@ -14,9 +14,7 @@ import {
   Camera,
   LogOut,
   Trash2,
-  Crown,
 } from 'lucide-react';
-import { calculatePlayerScore } from '../config/playerScore';
 
 const RARITY_ORDER = {
   L: 6,
@@ -253,14 +251,6 @@ export default function UserProfile({
     });
   }, [collection, selectedRarityFilter, selectedThemeFilter, favorites, sortBy]);
 
-  const playerScoreInfo = useMemo(() => {
-    return calculatePlayerScore({
-      collection,
-      stats,
-      wikithunes,
-    });
-  }, [collection, stats, wikithunes]);
-
   return (
     <div className="space-y-5">
       {/* =====================================================================
@@ -298,24 +288,10 @@ export default function UserProfile({
                   className="group cursor-pointer rounded-[2px] -mx-1.5 px-1.5 py-1 hover:bg-[#f8f9fa] transition-colors"
                   title="Cliquez pour modifier votre nom ou votre description"
                 >
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
                       {profile.username}
                     </h3>
-                    <div
-                      className="px-2 py-0.5 rounded-[2px] border inline-flex items-center gap-1 shadow-2xs"
-                      style={{
-                        backgroundColor: playerScoreInfo.badgeBg,
-                        borderColor: playerScoreInfo.rankColor,
-                        color: playerScoreInfo.rankColor,
-                      }}
-                      title={`Note de joueur : ${playerScoreInfo.rankGrade} (${new Intl.NumberFormat('fr-FR').format(playerScoreInfo.score)} points)`}
-                    >
-                      <Crown className="w-3.5 h-3.5 fill-current" />
-                      <span className="text-[11px] font-black uppercase tracking-wider">
-                        Note {playerScoreInfo.rankGrade} • {playerScoreInfo.rankLabel} ({new Intl.NumberFormat('fr-FR').format(playerScoreInfo.score)} pts)
-                      </span>
-                    </div>
                     <Pencil className="w-3.5 h-3.5 text-[#72777d] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <p className="text-[13.5px] text-[#54595d] mt-1 mb-0 leading-[1.5] max-w-[480px] sm:max-w-[520px] break-words">
@@ -529,90 +505,62 @@ export default function UserProfile({
               {gifCardsCount}
             </div>
           </div>
-        </div>
 
-        {/* Section Statistiques du WikiSino & du Labo */}
-        <div className="mt-4 pt-3.5 border-t border-[#eaecf0]">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="block text-[12px] font-bold text-[#202122] uppercase tracking-wider">
-              Statistiques du WikiSino & du Labo
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+            >
+              Argent perdu au jeu
             </span>
+            <div className="text-[18px] font-extrabold text-[#ba0000] mt-1 inline-flex items-center gap-1">
+              <span>
+                {new Intl.NumberFormat('fr-FR').format(
+                  stats?.lostMoneyCasino || 0
+                )}
+              </span>
+              <WikithuneIcon className="w-4 h-4 text-[#ba0000]" />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {/* 1. Argent perdu */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#bf3c2c] uppercase font-bold truncate">
-                Argent perdu
-              </span>
-              <div className="text-[16px] font-extrabold text-[#bf3c2c] mt-1 inline-flex items-center gap-1">
-                <span>
-                  -{new Intl.NumberFormat('fr-FR').format(stats?.casinoMoneyLost || 0)}
-                </span>
-                <WikithuneIcon className="w-3.5 h-3.5 text-[#bf3c2c]" />
-              </div>
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
+            >
+              Cartes perdues
+            </span>
+            <div className="text-[18px] font-extrabold text-[#ba0000] mt-1">
+              {new Intl.NumberFormat('fr-FR').format(stats?.lostCards || 0)}
             </div>
+          </div>
 
-            {/* 2. Cartes perdues */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#bf3c2c] uppercase font-bold truncate">
-                Cartes perdues
-              </span>
-              <div className="text-[16px] font-extrabold text-[#202122] mt-1">
-                {new Intl.NumberFormat('fr-FR').format(stats?.cardsLostInCasino || 0)}
-              </div>
-            </div>
-
-            {/* 3. Total gagné casino */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#177860] uppercase font-bold truncate">
-                Gains casino
-              </span>
-              <div className="text-[16px] font-extrabold text-[#177860] mt-1 inline-flex items-center gap-1">
-                <span>
-                  +{new Intl.NumberFormat('fr-FR').format(stats?.casinoMoneyWon || 0)}
-                </span>
-                <WikithuneIcon className="w-3.5 h-3.5 text-[#177860]" />
-              </div>
-            </div>
-
-            {/* 4. Upgrades réussies */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#54595d] uppercase font-bold truncate">
-                Upgrades réussies
-              </span>
-              <div className="text-[16px] font-extrabold text-[#202122] mt-1">
-                {stats?.upgradesSuccessCount || 0}
-                {Boolean(stats?.upgradesTotalCount) && (
-                  <span className="text-[11px] text-[#72777d] font-normal ml-1">
-                    ({Math.round(((stats.upgradesSuccessCount || 0) / stats.upgradesTotalCount) * 100)} %)
-                  </span>
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Total des bénéfices nets réels empochés au Plus ou Moins"
+            >
+              Gains casino (Gain net)
+            </span>
+            <div className="text-[18px] font-extrabold text-[#177860] mt-1 inline-flex items-center gap-1">
+              <span>
+                +{new Intl.NumberFormat('fr-FR').format(
+                  stats?.netCasinoGains || 0
                 )}
-              </div>
-            </div>
-
-            {/* 5. Série record Plus ou Moins */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#54595d] uppercase font-bold truncate">
-                Série record
               </span>
-              <div className="text-[16px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-                <span>{stats?.highestStreakHigherLower || 0}</span>
-                <span className="text-[11px] text-[#72777d] font-normal">vict.</span>
-              </div>
+              <WikithuneIcon className="w-4 h-4 text-[#177860]" />
             </div>
+          </div>
 
-            {/* 6. Plus gros gain en 1 pari */}
-            <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-2.5">
-              <span className="block text-[11px] text-[#54595d] uppercase font-bold truncate">
-                Plus gros gain
-              </span>
-              <div className="text-[16px] font-extrabold text-[#3366cc] mt-1 inline-flex items-center gap-1">
-                <span>
-                  +{new Intl.NumberFormat('fr-FR').format(stats?.highestSingleWinCasino || 0)}
-                </span>
-                <WikithuneIcon className="w-3.5 h-3.5 text-[#3366cc]" />
-              </div>
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Votre record de victoires d'affilée au Plus ou Moins"
+            >
+              Série record
+            </span>
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+              {stats?.recordStreak || 0}
             </div>
           </div>
         </div>

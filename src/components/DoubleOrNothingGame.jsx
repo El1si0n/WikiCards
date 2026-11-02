@@ -240,7 +240,12 @@ export default function DoubleOrNothingGame({
 
     const wonCount = initialResults.filter((r) => r.isWin).length;
     const totalCount = lockedCards.length;
+    const lostCount = totalCount - wonCount;
     const hasWonAny = wonCount > 0;
+
+    if (lostCount > 0) {
+      onUpdateStats?.({ lostCards: lostCount });
+    }
 
     setSpinSnapshot({
       cards: lockedCards,
@@ -281,9 +286,6 @@ export default function DoubleOrNothingGame({
       } else {
         setSpinState('lost');
         soundManager.playUpgradeLoss();
-        if (onUpdateStats) {
-          onUpdateStats({ cardsLostInCasino: 1 });
-        }
       }
       return;
     }
@@ -350,11 +352,6 @@ export default function DoubleOrNothingGame({
           onCardWon(r.card);
           onCardWon(r.card);
         });
-
-      const lostCardsCount = initialResults.filter((r) => !r.isWin).length;
-      if (lostCardsCount > 0 && onUpdateStats) {
-        onUpdateStats({ cardsLostInCasino: lostCardsCount });
-      }
 
       if (hasWonAny) {
         setSpinState('won');

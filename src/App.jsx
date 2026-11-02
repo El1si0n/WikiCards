@@ -357,12 +357,56 @@ export default function App() {
   const [stats, setStats] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.STATS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          boostersOpened: 0,
+          totalCardsDrawn: 0,
+          lostMoneyCasino: 0,
+          lostCards: 0,
+          netCasinoGains: 0,
+          recordStreak: 0,
+          ...parsed,
+        };
+      }
     } catch {
       // ignore
     }
-    return { boostersOpened: 0, totalCardsDrawn: 0 };
+    return {
+      boostersOpened: 0,
+      totalCardsDrawn: 0,
+      lostMoneyCasino: 0,
+      lostCards: 0,
+      netCasinoGains: 0,
+      recordStreak: 0,
+    };
   });
+
+  const handleUpdateStats = (deltas) => {
+    if (!deltas || typeof deltas !== 'object') return;
+    setStats((prev) => {
+      const next = { ...prev };
+      if (typeof deltas.boostersOpened === 'number') {
+        next.boostersOpened = (next.boostersOpened || 0) + deltas.boostersOpened;
+      }
+      if (typeof deltas.totalCardsDrawn === 'number') {
+        next.totalCardsDrawn = (next.totalCardsDrawn || 0) + deltas.totalCardsDrawn;
+      }
+      if (typeof deltas.lostMoneyCasino === 'number') {
+        next.lostMoneyCasino = (next.lostMoneyCasino || 0) + deltas.lostMoneyCasino;
+      }
+      if (typeof deltas.lostCards === 'number') {
+        next.lostCards = (next.lostCards || 0) + deltas.lostCards;
+      }
+      if (typeof deltas.netCasinoGains === 'number') {
+        next.netCasinoGains = (next.netCasinoGains || 0) + deltas.netCasinoGains;
+      }
+      if (typeof deltas.recordStreak === 'number') {
+        next.recordStreak = Math.max(next.recordStreak || 0, deltas.recordStreak);
+      }
+      return next;
+    });
+  };
 
   // Cartes présentes dans le classeur
   const [collection, setCollection] = useState(() => {
@@ -581,25 +625,15 @@ export default function App() {
       setWikithunes(serverAccount.wikithunes);
     }
     if (serverAccount.stats && typeof serverAccount.stats === 'object') {
-      setStats((prev) => ({
-        ...prev,
+      setStats({
+        boostersOpened: Number(serverAccount.stats.boostersOpened || 0),
+        totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || 0),
+        lostMoneyCasino: Number(serverAccount.stats.lostMoneyCasino || 0),
+        lostCards: Number(serverAccount.stats.lostCards || 0),
+        netCasinoGains: Number(serverAccount.stats.netCasinoGains || 0),
+        recordStreak: Number(serverAccount.stats.recordStreak || 0),
         ...serverAccount.stats,
-        boostersOpened: Number(serverAccount.stats.boostersOpened || prev.boostersOpened || 0),
-        totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || prev.totalCardsDrawn || 0),
-        casinoMoneyLost: Number(serverAccount.stats.casinoMoneyLost || prev.casinoMoneyLost || 0),
-        cardsLostInCasino: Number(serverAccount.stats.cardsLostInCasino || prev.cardsLostInCasino || 0),
-        casinoMoneyWon: Number(serverAccount.stats.casinoMoneyWon || prev.casinoMoneyWon || 0),
-        upgradesSuccessCount: Number(serverAccount.stats.upgradesSuccessCount || prev.upgradesSuccessCount || 0),
-        upgradesTotalCount: Number(serverAccount.stats.upgradesTotalCount || prev.upgradesTotalCount || 0),
-        highestStreakHigherLower: Math.max(
-          Number(serverAccount.stats.highestStreakHigherLower || 0),
-          Number(prev.highestStreakHigherLower || 0)
-        ),
-        highestSingleWinCasino: Math.max(
-          Number(serverAccount.stats.highestSingleWinCasino || 0),
-          Number(prev.highestSingleWinCasino || 0)
-        ),
-      }));
+      });
     }
     if (serverAccount.lastDailyClaimDate) {
       setLastDailyClaimDate(serverAccount.lastDailyClaimDate);
@@ -849,7 +883,16 @@ export default function App() {
         ? account.wikithunes
         : INITIAL_WIKITHUNES
     );
-    setStats(account.stats || { boostersOpened: 0, totalCardsDrawn: 0 });
+    setStats(
+      account.stats || {
+        boostersOpened: 0,
+        totalCardsDrawn: 0,
+        lostMoneyCasino: 0,
+        lostCards: 0,
+        netCasinoGains: 0,
+        recordStreak: 0,
+      }
+    );
     if (account.lastDailyClaimDate) {
       setLastDailyClaimDate(account.lastDailyClaimDate);
       try {
@@ -923,7 +966,14 @@ export default function App() {
     setCollection([]);
     setFavorites([]);
     setWikithunes(INITIAL_WIKITHUNES);
-    setStats({ boostersOpened: 0, totalCardsDrawn: 0 });
+    setStats({
+      boostersOpened: 0,
+      totalCardsDrawn: 0,
+      lostMoneyCasino: 0,
+      lostCards: 0,
+      netCasinoGains: 0,
+      recordStreak: 0,
+    });
     setLastDailyClaimDate('');
     setFreeBoostersCount(MAX_FREE_BOOSTERS);
     setLastFreeBoostersResetTime(Date.now());
@@ -1298,32 +1348,10 @@ export default function App() {
     });
 
     setStats((prev) => ({
-      ...prev,
       boostersOpened: (prev.boostersOpened || 0) + (fromBooster ? 1 : 0),
       totalCardsDrawn: (prev.totalCardsDrawn || 0) + newCards.length,
     }));
   };
-
-  const handleUpdateStats = useCallback((delta) => {
-    if (!delta || typeof delta !== 'object') return;
-    bumpLocalUpdatedAt();
-    setStats((prev) => {
-      const next = { ...prev };
-      for (const [key, val] of Object.entries(delta)) {
-        if (typeof val === 'number') {
-          if (
-            key === 'highestStreakHigherLower' ||
-            key === 'highestSingleWinCasino'
-          ) {
-            next[key] = Math.max(Number(next[key] || 0), val);
-          } else {
-            next[key] = Number(next[key] || 0) + val;
-          }
-        }
-      }
-      return next;
-    });
-  }, []);
 
   // Consomme un dictionnaire { [cardId]: quantity } d'exemplaires dans le classeur (pour l'Upgrader du WikiSino et le Quitte ou Double)
   const consumeCardsFromCollection = (quantitiesMap) => {
@@ -1956,6 +1984,7 @@ export default function App() {
                       }
                       existingCardIds={existingCardIds}
                       onToggleFavorite={toggleFavorite}
+                      stats={stats}
                       onUpdateStats={handleUpdateStats}
                     />
                   </Suspense>

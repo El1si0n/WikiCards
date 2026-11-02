@@ -38,21 +38,21 @@ export const UPGRADE_RULES = {
     sourceCode: 'R',
     targetCode: 'SR',
     chancePerCard: 14,
-    costPerPercent: 5,
+    costPerPercent: 10,
     maxChance: 85,
   },
   SR: {
     sourceCode: 'SR',
     targetCode: 'UR',
     chancePerCard: 12,
-    costPerPercent: 12,
+    costPerPercent: 38,
     maxChance: 80,
   },
   UR: {
     sourceCode: 'UR',
     targetCode: 'L',
     chancePerCard: 9,
-    costPerPercent: 30,
+    costPerPercent: 85,
     maxChance: 75,
   },
 };
@@ -78,6 +78,7 @@ export default function WikiSino({
   onCardWon,
   existingCardIds,
   onToggleFavorite,
+  stats,
   onUpdateStats,
 }) {
   // Jeu actif dans le WikiSino : 'upgrader' (Étape 9.1) | 'higher_lower' (Étape 9.2)
@@ -389,26 +390,13 @@ export default function WikiSino({
       setSpinState('won');
       onCardWon(drawnCard);
       soundManager.playUpgradeWin(targetCode);
-      if (onUpdateStats) {
-        onUpdateStats({
-          upgradesSuccessCount: 1,
-          upgradesTotalCount: 1,
-        });
-      }
     } else {
       setSpinState('lost');
       soundManager.playUpgradeLoss();
-      if (onUpdateStats) {
-        const totalCardsLost = Object.values(consumedMap).reduce(
-          (s, qty) => s + (qty || 0),
-          0
-        );
-        onUpdateStats({
-          cardsLostInCasino: totalCardsLost,
-          casinoMoneyLost: spentMoney,
-          upgradesTotalCount: 1,
-        });
-      }
+      onUpdateStats?.({
+        lostCards: lockedCards.length,
+        lostMoneyCasino: spentMoney || 0,
+      });
     }
   };
 
@@ -560,6 +548,7 @@ export default function WikiSino({
             wikithunes={wikithunes}
             onSpendWikithunes={onSpendWikithunes}
             onAddWikithunes={onAddWikithunes}
+            stats={stats}
             onUpdateStats={onUpdateStats}
           />
         ) : activeGame === 'double_or_nothing' ? (
