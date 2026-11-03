@@ -22,7 +22,6 @@ import {
   Crown,
   ExternalLink,
   TrendingUp,
-  Flame,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
@@ -933,17 +932,8 @@ export default function SocialHub({
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="text-[18px] font-extrabold mt-1 inline-flex items-center gap-1">
-                    <span
-                      className={
-                        (peerStats.casinoBilan || 0) > 0
-                          ? "text-[#00875a]"
-                          : (peerStats.casinoBilan || 0) < 0
-                          ? "text-[#de350b]"
-                          : "text-[#202122]"
-                      }
-                    >
-                      {(peerStats.casinoBilan || 0) > 0 ? "+" : ""}
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
+                    <span>
                       {new Intl.NumberFormat("fr-FR").format(
                         peerStats.casinoBilan || 0
                       )}
@@ -967,12 +957,10 @@ export default function SocialHub({
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1.5">
-                    <span>{peerStats.recordStreak || 0}</span>
-                    <span className="text-[12px] font-semibold text-[#54595d]">
-                      {(peerStats.recordStreak || 0) > 1 ? "victoires" : "victoire"}
-                    </span>
-                    <Flame className="w-3.5 h-3.5 text-[#e06915]" />
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+                    {new Intl.NumberFormat("fr-FR").format(
+                      peerStats.recordStreak || 0
+                    )}
                   </div>
                 </button>
 

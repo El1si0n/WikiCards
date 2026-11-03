@@ -202,14 +202,33 @@ export default function StatsHistoryModal({
   const paddingTop = 20;
   const paddingBottom = 26;
 
-  const { pathD, areaD, plottedPoints } = useMemo(() => {
+  const { pathD, areaD, plottedPoints, zeroY } = useMemo(() => {
     if (!points || points.length === 0) {
-      return { pathD: '', areaD: '', plottedPoints: [] };
+      return { pathD: '', areaD: '', plottedPoints: [], zeroY: null };
     }
 
     const values = points.map((p) => p.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+    let minVal = Math.min(...values);
+    let maxVal = Math.max(...values);
+
+    if (metricId === 'netCasinoBilan') {
+      const dataMin = minVal;
+      const dataMax = maxVal;
+      minVal = Math.min(0, dataMin);
+      maxVal = Math.max(0, dataMax);
+
+      if (minVal === 0 && maxVal === 0) {
+        minVal = -50;
+        maxVal = 50;
+      } else if (minVal === 0) {
+        // Marge en bas pour décoller le repère 0 ₩ du bord inférieur
+        minVal = -Math.max(20, maxVal * 0.12);
+      } else if (maxVal === 0) {
+        // Marge en haut pour décoller le repère 0 ₩ du bord supérieur
+        maxVal = Math.max(20, Math.abs(minVal) * 0.12);
+      }
+    }
+
     const range = maxVal - minVal || 1;
 
     const innerWidth = chartWidth - paddingX * 2;
@@ -222,12 +241,16 @@ export default function StatsHistoryModal({
       return { x, y, ...p };
     });
 
+    const normalizedZeroY = (0 - minVal) / range;
+    const zeroY = paddingTop + (1 - normalizedZeroY) * innerHeight;
+
     if (coords.length === 1) {
       const p = coords[0];
       return {
         pathD: `M ${paddingX} ${p.y} L ${chartWidth - paddingX} ${p.y}`,
         areaD: '',
         plottedPoints: coords,
+        zeroY,
       };
     }
 
@@ -248,8 +271,8 @@ export default function StatsHistoryModal({
     const firstX = coords[0].x;
     const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
 
-    return { pathD: d, areaD: area, plottedPoints: coords };
-  }, [points]);
+    return { pathD: d, areaD: area, plottedPoints: coords, zeroY };
+  }, [points, metricId]);
 
   // Gestion du scrubbing interactif à la souris ou au doigt
   const handlePointerMove = (e) => {
@@ -343,17 +366,7 @@ export default function StatsHistoryModal({
         {/* Section Valeur Live & Performances (Trade Republic Scrubbing) */}
         <div className="px-5 sm:px-7 pt-5 pb-2">
           <div className="flex flex-wrap items-baseline gap-2.5">
-            <span
-              className={`text-[36px] sm:text-[44px] font-black tracking-tight leading-none font-mono ${
-                metricId === 'netCasinoBilan'
-                  ? activePoint.value > 0
-                    ? 'text-[#00875a] dark:text-[#3fb950]'
-                    : activePoint.value < 0
-                    ? 'text-[#de350b] dark:text-[#f85149]'
-                    : 'text-[#101418] dark:text-white'
-                  : 'text-[#101418] dark:text-white'
-              }`}
-            >
+            <span className="text-[36px] sm:text-[44px] font-black tracking-tight leading-none font-mono text-[#101418] dark:text-white">
               {metricId === 'netCasinoBilan' && activePoint.value > 0 ? '+' : ''}
               {new Intl.NumberFormat('fr-FR').format(activePoint.value)}
             </span>
@@ -442,16 +455,18 @@ export default function StatsHistoryModal({
               className="text-[#eaecf0] dark:text-[#282f3a]"
               strokeWidth="1"
             />
-            <line
-              x1={paddingX}
-              y1={chartHeight / 2}
-              x2={chartWidth - paddingX}
-              y2={chartHeight / 2}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-              className="text-[#eaecf0] dark:text-[#282f3a]"
-              strokeWidth="1"
-            />
+            {metricId !== 'netCasinoBilan' && (
+              <line
+                x1={paddingX}
+                y1={chartHeight / 2}
+                x2={chartWidth - paddingX}
+                y2={chartHeight / 2}
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-[#eaecf0] dark:text-[#282f3a]"
+                strokeWidth="1"
+              />
+            )}
             <line
               x1={paddingX}
               y1={chartHeight - paddingBottom}
@@ -461,6 +476,39 @@ export default function StatsHistoryModal({
               className="text-[#eaecf0] dark:text-[#282f3a]"
               strokeWidth="1"
             />
+
+            {/* Repère 0 pour le Bilan Casino (Net) */}
+            {metricId === 'netCasinoBilan' && typeof zeroY === 'number' && (
+              <g className="zero-repere pointer-events-none">
+                <line
+                  x1={paddingX}
+                  y1={zeroY}
+                  x2={chartWidth - paddingX}
+                  y2={zeroY}
+                  stroke="#72777d"
+                  strokeWidth="1.5"
+                  strokeDasharray="5 3"
+                  className="opacity-70 dark:opacity-60"
+                />
+                <rect
+                  x={paddingX + 6}
+                  y={zeroY - 9}
+                  width="42"
+                  height="18"
+                  rx="3"
+                  className="fill-white dark:fill-[#181d24] stroke stroke-[#c8ccd1] dark:stroke-[#444c56]"
+                  strokeWidth="1"
+                />
+                <text
+                  x={paddingX + 27}
+                  y={zeroY + 3.5}
+                  textAnchor="middle"
+                  className="fill-[#54595d] dark:fill-[#8b949e] text-[10.5px] font-bold font-mono select-none"
+                >
+                  0 ₩
+                </text>
+              </g>
+            )}
 
             {/* Zone remplie en dégradé */}
             {areaD && (
