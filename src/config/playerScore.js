@@ -46,7 +46,14 @@ export function calculatePlayerScore(playerData = {}) {
     playerData.collectionValue ??
       playerData.collectionTotalValue ??
       playerData.totalVal ??
-      0
+      (Array.isArray(playerData.collection)
+        ? playerData.collection.reduce((sum, c) => {
+            const baseMap = { C: 10, PC: 35, R: 125, SR: 420, UR: 710, L: 2100 };
+            const base = baseMap[c.rarity] || 10;
+            const mult = c.isShiny ? 3 : 1;
+            return sum + base * mult * (c.count || 1);
+          }, 0)
+        : 0)
   );
 
   // 5. Progression : Boosters ouverts

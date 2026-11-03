@@ -115,7 +115,7 @@ export default function UserProfile({
         gifCount: gifCardsCount,
         collectionValue: collectionTotalValue,
         uniqueCardsCount: collection.length,
-        totalCardsCount: totalCardsCount,
+        totalCardsCount: totalCopiesCount,
       }),
     [
       collection,
@@ -126,7 +126,7 @@ export default function UserProfile({
       superRareCount,
       gifCardsCount,
       collectionTotalValue,
-      totalCardsCount,
+      totalCopiesCount,
     ]
   );
 
