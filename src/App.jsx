@@ -12,31 +12,6 @@ import BoosterOpening from './components/BoosterOpening';
 import WikithuneIcon from './components/WikithuneIcon';
 import AuthGateway from './components/AuthGateway';
 import confetti from 'canvas-confetti';
-
-const WikiSino = lazy(() => import('./components/WikiSino'));
-const UserProfile = lazy(() => import('./components/UserProfile'));
-const SocialHub = lazy(() => import('./components/SocialHub'));
-const AuctionMarket = lazy(() => import('./components/AuctionMarket'));
-
-function TabLoadingFallback() {
-  return (
-    <div className="accueil_2017_cadre p-12 text-center flex flex-col items-center justify-center gap-3">
-      <div className="w-8 h-8 border-3 border-[#3366cc] border-t-transparent rounded-full animate-spin" />
-      <span className="text-[13.5px] text-[#54595d] font-medium">
-        Chargement du module en cours...
-      </span>
-    </div>
-  );
-}
-
-function getTodayDateKey() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 import {
   getStoredUserCode,
   clearStoredUserCode,
@@ -81,6 +56,30 @@ import {
   Sun,
   Gift,
 } from 'lucide-react';
+
+const WikiSino = lazy(() => import('./components/WikiSino'));
+const UserProfile = lazy(() => import('./components/UserProfile'));
+const SocialHub = lazy(() => import('./components/SocialHub'));
+const AuctionMarket = lazy(() => import('./components/AuctionMarket'));
+
+function TabLoadingFallback() {
+  return (
+    <div className="accueil_2017_cadre p-12 text-center flex flex-col items-center justify-center gap-3">
+      <div className="w-8 h-8 border-3 border-[#3366cc] border-t-transparent rounded-full animate-spin" />
+      <span className="text-[13.5px] text-[#54595d] font-medium">
+        Chargement du module en cours...
+      </span>
+    </div>
+  );
+}
+
+function getTodayDateKey() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 const STORAGE_KEYS = {
   COLLECTION: 'wikicards_collection_v1',
@@ -311,16 +310,21 @@ export default function App() {
     const nextWikithunes = wikithunes + DAILY_REWARD_AMOUNT;
     setWikithunes(nextWikithunes);
     // Instantané immédiat pour tracer la hausse de +550 ₩ dans le graphique Trade Republic
-    recordStatsSnapshot({
-      wikithunes: nextWikithunes,
-      collectionValue: collection.reduce(
-        (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
-        0
-      ),
-      uniqueCardsCount: collection.length,
-      totalCardsCount: collection.reduce((sum, c) => sum + (c.count || 1), 0),
-      stats,
-    });
+    try {
+      const safeCol = Array.isArray(collection) ? collection : [];
+      recordStatsSnapshot({
+        wikithunes: nextWikithunes,
+        collectionValue: safeCol.reduce(
+          (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
+          0
+        ),
+        uniqueCardsCount: safeCol.length,
+        totalCardsCount: safeCol.reduce((sum, c) => sum + (c?.count || 1), 0),
+        stats: stats || {},
+      });
+    } catch (snapErr) {
+      console.warn('[WikiCards Snapshot Daily Reward Error]:', snapErr);
+    }
     if (userCode) {
       syncUserAccountToServer(userCode, {
         profile: userProfile,
@@ -596,16 +600,21 @@ export default function App() {
     }
     // Enregistre automatiquement un instantané horodaté pour le graphique Trade Republic
     if (typeof wikithunes === 'number') {
-      recordStatsSnapshot({
-        wikithunes,
-        collectionValue: collection.reduce(
-          (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
-          0
-        ),
-        uniqueCardsCount: collection.length,
-        totalCardsCount: collection.reduce((sum, c) => sum + (c.count || 1), 0),
-        stats,
-      });
+      try {
+        const safeCol = Array.isArray(collection) ? collection : [];
+        recordStatsSnapshot({
+          wikithunes,
+          collectionValue: safeCol.reduce(
+            (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
+            0
+          ),
+          uniqueCardsCount: safeCol.length,
+          totalCardsCount: safeCol.reduce((sum, c) => sum + (c?.count || 1), 0),
+          stats: stats || {},
+        });
+      } catch (snapErr) {
+        console.warn('[WikiCards stats snapshot error]:', snapErr);
+      }
     }
   }, [wikithunes, collection, stats]);
 

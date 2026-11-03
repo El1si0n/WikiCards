@@ -10,7 +10,9 @@ export function getSavedStatsSnapshots() {
     const raw = localStorage.getItem(LOCAL_SNAPSHOTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((s) => s && typeof s.timestamp === 'number')
+      : [];
   } catch {
     return [];
   }
@@ -78,11 +80,13 @@ export function generateMetricTimeSeries(metricId, {
   period = 'TOUT',
   isLocalUser = false,
 }) {
+  const safeCollection = Array.isArray(collection) ? collection.filter(Boolean) : [];
+  const safeStats = stats || {};
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
 
   // Trouve la date de la première carte obtenue (moment où le joueur a commencé à jouer)
-  const minCardTs = collection.reduce(
+  const minCardTs = safeCollection.reduce(
     (min, c) => Math.min(min, Number(c?.obtainedAt || now)),
     now
   );
@@ -127,32 +131,32 @@ export function generateMetricTimeSeries(metricId, {
       case 'collectionValue':
         return typeof collectionValue === 'number'
           ? collectionValue
-          : collection.reduce(
-              (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
+          : safeCollection.reduce(
+              (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
               0
             );
       case 'uniqueCardsCount':
-        return collection.length;
+        return safeCollection.length;
       case 'totalCardsCount':
-        return collection.reduce((sum, c) => sum + (c.count || 1), 0);
+        return safeCollection.reduce((sum, c) => sum + (c?.count || 1), 0);
       case 'boostersOpened':
-        return Number(stats?.boostersOpened || 0);
+        return Number(safeStats?.boostersOpened || 0);
       case 'legendaryCount':
-        return collection.filter((c) => c.rarity === 'L').length;
+        return safeCollection.filter((c) => c?.rarity === 'L').length;
       case 'ultraRareCount':
-        return collection.filter((c) => c.rarity === 'UR').length;
+        return safeCollection.filter((c) => c?.rarity === 'UR').length;
       case 'gifCount':
-        return collection.filter((c) =>
-          Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
+        return safeCollection.filter((c) =>
+          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
         ).length;
       case 'lostMoneyCasino':
-        return Number(stats?.lostMoneyCasino || 0);
+        return Number(safeStats?.lostMoneyCasino || 0);
       case 'netCasinoGains':
-        return Number(stats?.netCasinoGains || 0);
+        return Number(safeStats?.netCasinoGains || 0);
       case 'lostCards':
-        return Number(stats?.lostCards || 0);
+        return Number(safeStats?.lostCards || 0);
       case 'wonCards':
-        return Number(stats?.wonCards || 0);
+        return Number(safeStats?.wonCards || 0);
       default:
         return 0;
     }
@@ -220,6 +224,7 @@ export function generateMetricTimeSeries(metricId, {
         let closestSnap = null;
         let minDiff = Infinity;
         for (const s of savedSnapshots) {
+          if (!s || typeof s.timestamp !== 'number') continue;
           const diff = Math.abs(s.timestamp - t);
           if (diff <= timeStep && diff < minDiff) {
             minDiff = diff;
@@ -254,9 +259,9 @@ export function generateMetricTimeSeries(metricId, {
             simulatedVal = currentVal;
           } else {
             // Reconstitution proportionnelle au rythme d'ouverture des boosters et cartes
-            const cardsAtT = collection.filter((c) => Number(c.obtainedAt || 0) <= t);
-            const totalColCount = collection.length || 1;
-            const cardProgress = collection.length > 0
+            const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+            const totalColCount = safeCollection.length || 1;
+            const cardProgress = safeCollection.length > 0
               ? cardsAtT.length / totalColCount
               : ratio;
 
@@ -268,14 +273,14 @@ export function generateMetricTimeSeries(metricId, {
         } else {
           // Fenêtre plus courte (ex: 1J alors que le compte est plus ancien) :
           // Le solde au début de la fenêtre reflète les liquidités récentes
-          const cardsInWindow = collection.filter(
-            (c) => Number(c.obtainedAt || 0) >= startTime && Number(c.obtainedAt || 0) <= now
+          const cardsInWindow = safeCollection.filter(
+            (c) => Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= now
           ).length;
           const estimatedCostInWindow = Math.round((cardsInWindow / 5) * 200);
           const startBal = Math.max(0, currentVal + estimatedCostInWindow);
 
-          const cardsSinceStart = collection.filter(
-            (c) => Number(c.obtainedAt || 0) >= startTime && Number(c.obtainedAt || 0) <= t
+          const cardsSinceStart = safeCollection.filter(
+            (c) => Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= t
           ).length;
           const windowRatio = cardsInWindow > 0 ? cardsSinceStart / cardsInWindow : ratio;
           const baseEst = startBal + (currentVal - startBal) * windowRatio;
@@ -293,9 +298,9 @@ export function generateMetricTimeSeries(metricId, {
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
-          const cardsAtT = collection.filter((c) => Number(c.obtainedAt || 0) <= t);
-          const totalColCount = collection.length || 1;
-          const cardProgress = collection.length > 0
+          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const totalColCount = safeCollection.length || 1;
+          const cardProgress = safeCollection.length > 0
             ? cardsAtT.length / totalColCount
             : Math.pow(ratio, 1.3);
           simulatedVal = Math.round(currentVal * cardProgress);
@@ -309,6 +314,7 @@ export function generateMetricTimeSeries(metricId, {
         let closestSnap = null;
         let minDiff = Infinity;
         for (const s of savedSnapshots) {
+          if (!s || typeof s.timestamp !== 'number') continue;
           const diff = Math.abs(s.timestamp - t);
           if (diff <= timeStep && diff < minDiff) {
             minDiff = diff;
