@@ -192,6 +192,8 @@ export async function handleApiRequest(req, res) {
                   avatar:
                     parsed.profile?.avatar ||
                     'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
+                  avatarTitle: parsed.profile?.avatarTitle || '',
+                  avatarUrl: parsed.profile?.avatarUrl || '',
                   bio: parsed.profile?.bio || '',
                   showcaseIds,
                   showcaseCards,

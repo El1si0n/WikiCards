@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
+import StatsHistoryModal from './StatsHistoryModal';
+import { recordStatsSnapshot } from '../utils/statsHistory';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -15,6 +17,8 @@ import {
   Camera,
   LogOut,
   Trash2,
+  TrendingUp,
+  ExternalLink,
 } from 'lucide-react';
 
 const RARITY_ORDER = {
@@ -54,6 +58,9 @@ export default function UserProfile({
   const [selectedRarityFilter, setSelectedRarityFilter] = useState('ALL');
   const [selectedThemeFilter, setSelectedThemeFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('rarity_desc');
+
+  // Modal d'historique graphique style Trade Republic pour les statistiques
+  const [historyModalMetric, setHistoryModalMetric] = useState(null);
 
   const showcaseIds = useMemo(() => {
     const raw = Array.isArray(profile.showcaseIds) ? profile.showcaseIds : [];
@@ -130,6 +137,29 @@ export default function UserProfile({
     ]
   );
 
+  // Enregistre périodiquement un instantané des statistiques pour tracer la courbe Trade Republic
+  useEffect(() => {
+    recordStatsSnapshot({
+      wikithunes,
+      collectionValue: collectionTotalValue,
+      uniqueCardsCount: collection.length,
+      totalCardsCount: totalCopiesCount,
+      legendaryCount,
+      ultraRareCount,
+      gifCount: gifCardsCount,
+      stats,
+    });
+  }, [
+    wikithunes,
+    collectionTotalValue,
+    collection.length,
+    totalCopiesCount,
+    legendaryCount,
+    ultraRareCount,
+    gifCardsCount,
+    stats,
+  ]);
+
   // Cartes possédées ayant une illustration pour choisir sa photo de profil
   const cardAvatars = useMemo(() => {
     const withImage = collection.filter((c) => Boolean(c.image));
@@ -144,6 +174,7 @@ export default function UserProfile({
         title: c.title,
         rarity: c.rarity,
         url: c.image,
+        pageUrl: c.url,
       }));
   }, [collection]);
 
@@ -164,14 +195,50 @@ export default function UserProfile({
     setIsEditingIdentity(false);
   };
 
-  const handleSelectCardAvatar = (imageUrl) => {
+  const handleSelectCardAvatar = (item) => {
+    if (!item) return;
     onUpdateProfile({
       ...profile,
-      avatar: imageUrl,
+      avatar: item.url,
+      avatarTitle: item.title,
+      avatarUrl:
+        item.pageUrl ||
+        `https://fr.wikipedia.org/wiki/${encodeURIComponent(
+          item.title.replace(/ /g, '_')
+        )}`,
     });
     soundManager.playCardSlide();
     setIsPickingAvatar(false);
   };
+
+  const myAvatarWiki = useMemo(() => {
+    const av = profile.avatar;
+    if (!av || av.includes('icons/wikipedia.png')) {
+      return { url: 'https://fr.wikipedia.org/', title: 'Wikipédia' };
+    }
+    if (profile.avatarUrl) {
+      return {
+        url: profile.avatarUrl,
+        title: profile.avatarTitle || 'Article Wikipédia',
+      };
+    }
+    const card = collection.find(
+      (c) =>
+        c.image === av ||
+        (c.image && av && c.image.split('?')[0] === av.split('?')[0])
+    );
+    if (card) {
+      return {
+        url:
+          card.url ||
+          `https://fr.wikipedia.org/wiki/${encodeURIComponent(
+            card.title.replace(/ /g, '_')
+          )}`,
+        title: card.title,
+      };
+    }
+    return { url: 'https://fr.wikipedia.org/', title: 'Wikipédia' };
+  }, [profile.avatar, profile.avatarUrl, profile.avatarTitle, collection]);
 
   const handleAssignCardToShowcase = (card) => {
     if (activeShowcaseSlot === null || !card) return;
@@ -294,25 +361,40 @@ export default function UserProfile({
         <div className="flex flex-col md:flex-row items-start justify-between gap-4 pb-4 border-b border-[#eaecf0]">
           {/* Côté Gauche : Photo de profil cliquable + Pseudo & Bio éditables */}
           <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-            {/* Cliquer sur la photo de profil ouvre le sélecteur d'image parmi ses cartes */}
-            <button
-              type="button"
-              onClick={() => setIsPickingAvatar((prev) => !prev)}
-              className="group relative w-[76px] h-[76px] sm:w-[82px] sm:h-[82px] rounded-[2px] border border-[#a2a9b1] hover:border-[#3366cc] bg-[#f8f9fa] p-1 shrink-0 flex items-center justify-center overflow-hidden cursor-pointer transition-colors"
-              title="Cliquez pour choisir une image parmi vos cartes"
-            >
-              <img
-                src={
-                  profile.avatar ||
-                  'https://fr.wikipedia.org/static/images/icons/wikipedia.png'
-                }
-                alt={profile.username}
-                className="w-full h-full object-cover rounded-[1px]"
-              />
-              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                <Camera className="w-5 h-5" />
-              </div>
-            </button>
+            {/* Photo de profil cliquable (change l'avatar) + bouton externe pour visiter l'article Wikipédia */}
+            <div className="relative group/avatar shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsPickingAvatar((prev) => !prev)}
+                className="group relative w-[76px] h-[76px] sm:w-[82px] sm:h-[82px] rounded-[2px] border border-[#a2a9b1] hover:border-[#3366cc] bg-[#f8f9fa] p-1 flex items-center justify-center overflow-hidden cursor-pointer transition-colors"
+                title="Cliquez pour choisir une image parmi vos cartes"
+              >
+                <img
+                  src={
+                    profile.avatar ||
+                    'https://fr.wikipedia.org/static/images/icons/wikipedia.png'
+                  }
+                  alt={profile.username}
+                  className="w-full h-full object-cover rounded-[1px]"
+                />
+                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <Camera className="w-5 h-5" />
+                </div>
+              </button>
+
+              {myAvatarWiki.url && myAvatarWiki.title !== 'Wikipédia' && (
+                <a
+                  href={myAvatarWiki.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-[#181d24] border border-[#a2a9b1] hover:border-[#3366cc] flex items-center justify-center text-[#3366cc] hover:scale-110 shadow-xs transition-all z-10"
+                  title={`Ouvrir l'article Wikipédia « ${myAvatarWiki.title} » dans un nouvel onglet`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
 
             <div className="flex-1 min-w-0">
               {!isEditingIdentity ? (
@@ -445,7 +527,7 @@ export default function UserProfile({
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => handleSelectCardAvatar(item.url)}
+                    onClick={() => handleSelectCardAvatar(item)}
                     className={`aspect-square rounded-[2px] border overflow-hidden bg-white cursor-pointer transition-all ${
                       profile.avatar === item.url
                         ? 'border-[#3366cc] ring-2 ring-[#3366cc]'
@@ -469,91 +551,163 @@ export default function UserProfile({
           </div>
         )}
 
-        {/* Tableau récapitulatif des 8 statistiques du joueur (pleine largeur, 2 lignes de 4) */}
+        {/* Tableau récapitulatif des 12 statistiques du joueur avec graphiques Trade Republic au clic */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Articles uniques
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('uniqueCardsCount')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Articles uniques
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {collection.length}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Total de cartes
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('totalCardsCount')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Total de cartes
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {totalCopiesCount}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Solde actuel
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('wikithunes')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Solde actuel
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>{new Intl.NumberFormat('fr-FR').format(wikithunes)}</span>
               <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Valeur du classeur
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('collectionValue')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Valeur du classeur
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>
                 {new Intl.NumberFormat('fr-FR').format(collectionTotalValue)}
               </span>
               <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Boosters ouverts
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('boostersOpened')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Boosters ouverts
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {stats?.boostersOpened || 0}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Légendaires (L)
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('legendaryCount')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Légendaires (L)
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {legendaryCount}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Ultra Rares (UR)
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('ultraRareCount')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Ultra Rares (UR)
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {ultraRareCount}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-              Cartes GIF (Métal)
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('gifCount')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                Cartes GIF (Métal)
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {gifCardsCount}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
-            >
-              Argent perdu au jeu
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('lostMoneyCasino')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+              >
+                Argent perdu au jeu
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>
                 {new Intl.NumberFormat('fr-FR').format(
@@ -562,15 +716,23 @@ export default function UserProfile({
               </span>
               <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Total des bénéfices nets réels empochés au Plus ou Moins"
-            >
-              Gains casino (Gain net)
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('netCasinoGains')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                title="Total des bénéfices nets réels empochés au Plus ou Moins"
+              >
+                Gains casino (Gain net)
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
               <span>
                 {new Intl.NumberFormat('fr-FR').format(
@@ -579,31 +741,47 @@ export default function UserProfile({
               </span>
               <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
-            >
-              Cartes perdues
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('lostCards')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
+              >
+                Cartes perdues
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {new Intl.NumberFormat('fr-FR').format(stats?.lostCards || 0)}
             </div>
-          </div>
+          </button>
 
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
-            >
-              Cartes gagnées
-            </span>
+          <button
+            type="button"
+            onClick={() => setHistoryModalMetric('wonCards')}
+            className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
+              >
+                Cartes gagnées
+              </span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {new Intl.NumberFormat('fr-FR').format(stats?.wonCards || 0)}
             </div>
-          </div>
+          </button>
         </div>
       </section>
 
@@ -914,6 +1092,20 @@ export default function UserProfile({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal interactif Trade Republic pour l'historique de chaque stat */}
+      {historyModalMetric && (
+        <StatsHistoryModal
+          isOpen={Boolean(historyModalMetric)}
+          onClose={() => setHistoryModalMetric(null)}
+          metricId={historyModalMetric}
+          collection={collection}
+          stats={stats}
+          wikithunes={wikithunes}
+          collectionValue={collectionTotalValue}
+          playerName={profile.username || 'Mon profil'}
+        />
       )}
     </div>
   );

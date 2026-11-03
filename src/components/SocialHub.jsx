@@ -20,8 +20,11 @@ import {
   Search,
   BookOpen,
   Crown,
+  ExternalLink,
+  TrendingUp,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
+import StatsHistoryModal from './StatsHistoryModal';
 
 const RARITY_ORDER = {
   L: 6,
@@ -61,6 +64,9 @@ export default function SocialHub({
   const [myRarityFilter, setMyRarityFilter] = useState('C');
   const [tradeFeedback, setTradeFeedback] = useState(null);
   const [isSubmittingTrade, setIsSubmittingTrade] = useState(false);
+
+  // Modal d'historique Trade Republic
+  const [historyModalMetric, setHistoryModalMetric] = useState(null);
 
   // Liste des échanges reçus / envoyés
   const [trades, setTrades] = useState([]);
@@ -322,6 +328,67 @@ export default function SocialHub({
         : null;
     });
   }, [selectedPeer, activePeerProfile, peerCollection]);
+
+  // Résolution du lien Wikipédia vers l'article correspondant à la photo de profil du joueur visité
+  const peerAvatarWiki = useMemo(() => {
+    const av = activePeerProfile?.avatar;
+    if (!av || av.includes('icons/wikipedia.png')) {
+      return { url: 'https://fr.wikipedia.org/', title: 'Wikipédia' };
+    }
+    // Si l'URL et le titre Wikipédia sont explicitement stockés dans le profil
+    if (activePeerProfile?.avatarUrl) {
+      return {
+        url: activePeerProfile.avatarUrl,
+        title: activePeerProfile.avatarTitle || 'Article Wikipédia',
+      };
+    }
+    // Recherche de la carte dans la collection du joueur inspecté
+    const cardInPeer = peerCollection.find(
+      (c) =>
+        c.image === av ||
+        (c.image && av && c.image.split('?')[0] === av.split('?')[0])
+    );
+    if (cardInPeer) {
+      return {
+        url:
+          cardInPeer.url ||
+          `https://fr.wikipedia.org/wiki/${encodeURIComponent(
+            cardInPeer.title.replace(/ /g, '_')
+          )}`,
+        title: cardInPeer.title,
+      };
+    }
+    // Recherche dans notre propre collection (au cas où la carte provienne d'un ensemble commun)
+    const cardInMyCol = collection.find(
+      (c) =>
+        c.image === av ||
+        (c.image && av && c.image.split('?')[0] === av.split('?')[0])
+    );
+    if (cardInMyCol) {
+      return {
+        url:
+          cardInMyCol.url ||
+          `https://fr.wikipedia.org/wiki/${encodeURIComponent(
+            cardInMyCol.title.replace(/ /g, '_')
+          )}`,
+        title: cardInMyCol.title,
+      };
+    }
+    // Décodage du nom de fichier Wikimedia Commons
+    try {
+      const match = av.match(/\/([^\/?#]+)\.(jpg|jpeg|png|gif|svg|webp)/i);
+      if (match && match[1]) {
+        const decoded = decodeURIComponent(match[1]).replace(/_/g, ' ');
+        return {
+          url: `https://fr.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(
+            decoded
+          )}`,
+          title: decoded,
+        };
+      }
+    } catch {}
+    return { url: 'https://fr.wikipedia.org/', title: 'Wikipédia' };
+  }, [activePeerProfile, peerCollection, collection]);
 
   const peerStats = useMemo(() => {
     const hasFullCollection = peerCollection.length > 0;
@@ -646,16 +713,28 @@ export default function SocialHub({
             {/* Identité & 8 statistiques du joueur visité */}
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-[#eaecf0]">
-                <div className="w-[80px] h-[80px] rounded-[2px] border border-[#a2a9b1] bg-[#f8f9fa] p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                <a
+                  href={peerAvatarWiki.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative w-[80px] h-[80px] rounded-[2px] border border-[#a2a9b1] hover:border-[#3366cc] bg-[#f8f9fa] p-1 shrink-0 flex items-center justify-center overflow-hidden cursor-pointer transition-all shadow-xs"
+                  title={`Ouvrir l'article Wikipédia « ${peerAvatarWiki.title} » dans un nouvel onglet`}
+                >
                   <img
                     src={
                       activePeerProfile?.avatar ||
                       'https://fr.wikipedia.org/static/images/icons/wikipedia.png'
                     }
-                    alt=""
-                    className="w-full h-full object-cover rounded-[1px]"
+                    alt={peerAvatarWiki.title}
+                    className="w-full h-full object-cover rounded-[1px] transition-transform duration-200 group-hover:scale-105"
                   />
-                </div>
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1 text-center">
+                    <ExternalLink className="w-4 h-4 mb-0.5 text-white" />
+                    <span className="text-[10px] font-bold leading-tight line-clamp-1 max-w-[70px] text-white">
+                      Wikipédia
+                    </span>
+                  </div>
+                </a>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h3 className="wiki-serif text-[22px] font-normal text-[#101418] m-0 leading-tight">
@@ -688,30 +767,54 @@ export default function SocialHub({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Articles uniques
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('uniqueCardsCount')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Articles uniques
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerCollection.length > 0
                       ? peerCollection.length
                       : selectedPeer?.uniqueCardsCount || 0}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Total de cartes
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('totalCardsCount')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Total de cartes
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.totalCopies}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Solde actuel
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('wikithunes')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Solde actuel
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(
@@ -720,63 +823,111 @@ export default function SocialHub({
                     </span>
                     <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Valeur du classeur
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('collectionValue')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Valeur du classeur
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(peerStats.totalVal)}
                     </span>
                     <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Boosters ouverts
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('boostersOpened')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Boosters ouverts
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.boostersOpened}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Légendaires (L)
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('legendaryCount')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Légendaires (L)
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.legendaries}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Ultra Rares (UR)
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('ultraRareCount')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Ultra Rares (UR)
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.ultraRares}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span className="block text-[11.5px] text-[#54595d] uppercase font-bold">
-                    Cartes GIF (Métal)
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('gifCount')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
+                      Cartes GIF (Métal)
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {peerStats.gifs}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span
-                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-                    title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
-                  >
-                    Argent perdu au jeu
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('lostMoneyCasino')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                      title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+                    >
+                      Argent perdu au jeu
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(
@@ -785,15 +936,23 @@ export default function SocialHub({
                     </span>
                     <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span
-                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-                    title="Total des bénéfices nets réels empochés au Plus ou Moins"
-                  >
-                    Gains casino (Gain net)
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('netCasinoGains')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                      title="Total des bénéfices nets réels empochés au Plus ou Moins"
+                    >
+                      Gains casino (Gain net)
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(
@@ -802,31 +961,47 @@ export default function SocialHub({
                     </span>
                     <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span
-                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-                    title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
-                  >
-                    Cartes perdues
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('lostCards')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                      title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
+                    >
+                      Cartes perdues
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {new Intl.NumberFormat('fr-FR').format(peerStats.lostCards)}
                   </div>
-                </div>
+                </button>
 
-                <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-                  <span
-                    className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-                    title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
-                  >
-                    Cartes gagnées
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryModalMetric('wonCards')}
+                  className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+                      title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
+                    >
+                      Cartes gagnées
+                    </span>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
                     {new Intl.NumberFormat('fr-FR').format(peerStats.wonCards || 0)}
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -1372,6 +1547,22 @@ export default function SocialHub({
           </div>
         )}
       </section>
+
+      {/* Modal interactif Trade Republic pour l'historique des stats du joueur visité */}
+      {historyModalMetric && (
+        <StatsHistoryModal
+          isOpen={Boolean(historyModalMetric)}
+          onClose={() => setHistoryModalMetric(null)}
+          metricId={historyModalMetric}
+          collection={peerCollection}
+          stats={isSelectedPeerMe ? stats : selectedPeer?.stats || {}}
+          wikithunes={peerStats.wikithunes}
+          collectionValue={peerStats.totalVal}
+          playerName={
+            activePeerProfile?.username || selectedPeer?.code || 'Joueur'
+          }
+        />
+      )}
     </div>
   );
 }
