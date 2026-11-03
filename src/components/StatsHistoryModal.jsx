@@ -5,6 +5,7 @@ import {
   TrendingDown,
   Calendar,
   Layers,
+  BookOpen,
   Coins,
   Package,
   Crown,
@@ -79,6 +80,20 @@ const METRIC_DEFINITIONS = {
     description: 'Solde net cumulé du jeu Plus ou Moins (Gains nets empochés − Mises perdues).',
     icon: Coins,
   },
+  netCardsBilan: {
+    title: 'Bilan Cartes (Net)',
+    unit: ' cartes',
+    isCurrency: false,
+    description: 'Bilan net des cartes au jeu (Cartes gagnées lors des upgrades et quitte ou double − Cartes perdues).',
+    icon: Layers,
+  },
+  totalCardsDrawn: {
+    title: 'Cartes tirées au total',
+    unit: ' cartes',
+    isCurrency: false,
+    description: 'Cumul total de toutes les cartes piochées dans l’histoire du compte (Volume exploré).',
+    icon: BookOpen,
+  },
   recordStreak: {
     title: 'Série record',
     unit: ' victoires',
@@ -134,7 +149,7 @@ export default function StatsHistoryModal({
   playerName = 'Mocobanks',
   isLocalUser = false,
 }) {
-  const [selectedPeriod, setSelectedPeriod] = useState('TOUT');
+  const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
 
@@ -202,30 +217,22 @@ export default function StatsHistoryModal({
   const paddingTop = 20;
   const paddingBottom = 26;
 
-  const { pathD, areaD, plottedPoints, zeroY } = useMemo(() => {
+  const { pathD, areaD, plottedPoints } = useMemo(() => {
     if (!points || points.length === 0) {
-      return { pathD: '', areaD: '', plottedPoints: [], zeroY: null };
+      return { pathD: '', areaD: '', plottedPoints: [] };
     }
 
     const values = points.map((p) => p.value);
     let minVal = Math.min(...values);
     let maxVal = Math.max(...values);
 
-    if (metricId === 'netCasinoBilan') {
-      const dataMin = minVal;
-      const dataMax = maxVal;
-      minVal = Math.min(0, dataMin);
-      maxVal = Math.max(0, dataMax);
-
-      if (minVal === 0 && maxVal === 0) {
-        minVal = -50;
-        maxVal = 50;
-      } else if (minVal === 0) {
-        // Marge en bas pour décoller le repère 0 ₩ du bord inférieur
-        minVal = -Math.max(20, maxVal * 0.12);
-      } else if (maxVal === 0) {
-        // Marge en haut pour décoller le repère 0 ₩ du bord supérieur
-        maxVal = Math.max(20, Math.abs(minVal) * 0.12);
+    // Pour les bilans nets, la ligne d'abscisse du bas est 0 si toutes les valeurs sont >= 0
+    if (metricId === 'netCasinoBilan' || metricId === 'netCardsBilan') {
+      if (minVal >= 0) {
+        minVal = 0;
+      }
+      if (maxVal <= 0) {
+        maxVal = 0;
       }
     }
 
@@ -241,16 +248,12 @@ export default function StatsHistoryModal({
       return { x, y, ...p };
     });
 
-    const normalizedZeroY = (0 - minVal) / range;
-    const zeroY = paddingTop + (1 - normalizedZeroY) * innerHeight;
-
     if (coords.length === 1) {
       const p = coords[0];
       return {
         pathD: `M ${paddingX} ${p.y} L ${chartWidth - paddingX} ${p.y}`,
         areaD: '',
         plottedPoints: coords,
-        zeroY,
       };
     }
 
@@ -271,7 +274,7 @@ export default function StatsHistoryModal({
     const firstX = coords[0].x;
     const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
 
-    return { pathD: d, areaD: area, plottedPoints: coords, zeroY };
+    return { pathD: d, areaD: area, plottedPoints: coords };
   }, [points, metricId]);
 
   // Gestion du scrubbing interactif à la souris ou au doigt
@@ -366,8 +369,7 @@ export default function StatsHistoryModal({
         {/* Section Valeur Live & Performances (Trade Republic Scrubbing) */}
         <div className="px-5 sm:px-7 pt-5 pb-2">
           <div className="flex flex-wrap items-baseline gap-2.5">
-            <span className="text-[36px] sm:text-[44px] font-black tracking-tight leading-none font-mono text-[#101418] dark:text-white">
-              {metricId === 'netCasinoBilan' && activePoint.value > 0 ? '+' : ''}
+            <span className="text-[36px] sm:text-[44px] font-black tracking-tight leading-none text-[#101418] dark:text-white">
               {new Intl.NumberFormat('fr-FR').format(activePoint.value)}
             </span>
             {def.isCurrency && (
@@ -444,7 +446,7 @@ export default function StatsHistoryModal({
               </linearGradient>
             </defs>
 
-            {/* Lignes de repère horizontales discrètes */}
+            {/* Lignes de repère horizontales discrètes (pointillés uniformes 4 4) */}
             <line
               x1={paddingX}
               y1={paddingTop}
@@ -455,60 +457,26 @@ export default function StatsHistoryModal({
               className="text-[#eaecf0] dark:text-[#282f3a]"
               strokeWidth="1"
             />
-            {metricId !== 'netCasinoBilan' && (
-              <line
-                x1={paddingX}
-                y1={chartHeight / 2}
-                x2={chartWidth - paddingX}
-                y2={chartHeight / 2}
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-[#eaecf0] dark:text-[#282f3a]"
-                strokeWidth="1"
-              />
-            )}
+            <line
+              x1={paddingX}
+              y1={chartHeight / 2}
+              x2={chartWidth - paddingX}
+              y2={chartHeight / 2}
+              stroke="currentColor"
+              strokeDasharray="4 4"
+              className="text-[#eaecf0] dark:text-[#282f3a]"
+              strokeWidth="1"
+            />
             <line
               x1={paddingX}
               y1={chartHeight - paddingBottom}
               x2={chartWidth - paddingX}
               y2={chartHeight - paddingBottom}
               stroke="currentColor"
+              strokeDasharray="4 4"
               className="text-[#eaecf0] dark:text-[#282f3a]"
               strokeWidth="1"
             />
-
-            {/* Repère 0 pour le Bilan Casino (Net) */}
-            {metricId === 'netCasinoBilan' && typeof zeroY === 'number' && (
-              <g className="zero-repere pointer-events-none">
-                <line
-                  x1={paddingX}
-                  y1={zeroY}
-                  x2={chartWidth - paddingX}
-                  y2={zeroY}
-                  stroke="#72777d"
-                  strokeWidth="1.5"
-                  strokeDasharray="5 3"
-                  className="opacity-70 dark:opacity-60"
-                />
-                <rect
-                  x={paddingX + 6}
-                  y={zeroY - 9}
-                  width="42"
-                  height="18"
-                  rx="3"
-                  className="fill-white dark:fill-[#181d24] stroke stroke-[#c8ccd1] dark:stroke-[#444c56]"
-                  strokeWidth="1"
-                />
-                <text
-                  x={paddingX + 27}
-                  y={zeroY + 3.5}
-                  textAnchor="middle"
-                  className="fill-[#54595d] dark:fill-[#8b949e] text-[10.5px] font-bold font-mono select-none"
-                >
-                  0 ₩
-                </text>
-              </g>
-            )}
 
             {/* Zone remplie en dégradé */}
             {areaD && (

@@ -432,6 +432,12 @@ export default function SocialHub({
     const netCasinoGains = Number(activeStats.netCasinoGains || 0);
     const recordStreak = Number(activeStats.recordStreak || 0);
     const casinoBilan = netCasinoGains - lostMoneyCasino;
+    const netCardsBilan = wonCards - lostCards;
+    const totalCardsDrawn = Math.max(
+      Number(activeStats.totalCardsDrawn || 0),
+      Number(activeStats.boostersOpened || 0) * 5,
+      totalCopies
+    );
 
     return {
       totalCopies,
@@ -448,6 +454,8 @@ export default function SocialHub({
       netCasinoGains,
       recordStreak,
       casinoBilan,
+      netCardsBilan,
+      totalCardsDrawn,
     };
   }, [peerCollection, isSelectedPeerMe, stats, wikithunes, selectedPeer]);
 
@@ -966,41 +974,41 @@ export default function SocialHub({
 
                 <button
                   type="button"
-                  onClick={() => setHistoryModalMetric('lostCards')}
+                  onClick={() => setHistoryModalMetric('netCardsBilan')}
                   className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
-                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                  title="Cliquer pour afficher la courbe d'évolution Trade Republic (Cartes gagnées − Cartes perdues)"
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                      title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
+                      title="Bilan net des cartes au jeu (Cartes gagnées lors des upgrades et quitte ou double − Cartes perdues)"
                     >
-                      Cartes perdues
+                      Bilan Cartes (Net)
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-                    {new Intl.NumberFormat('fr-FR').format(peerStats.lostCards)}
+                    {new Intl.NumberFormat('fr-FR').format(peerStats.netCardsBilan || 0)}
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setHistoryModalMetric('wonCards')}
+                  onClick={() => setHistoryModalMetric('totalCardsDrawn')}
                   className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
                   title="Cliquer pour afficher le graphique d'évolution Trade Republic"
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                      title="Nombre total de cartes gagnées lors des upgrades et de quitte ou double"
+                      title="Cumul total de toutes les cartes piochées dans l'histoire du compte (Volume exploré)"
                     >
-                      Cartes gagnées
+                      Cartes tirées au total
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-                    {new Intl.NumberFormat('fr-FR').format(peerStats.wonCards || 0)}
+                    {new Intl.NumberFormat('fr-FR').format(peerStats.totalCardsDrawn || 0)}
                   </div>
                 </button>
               </div>

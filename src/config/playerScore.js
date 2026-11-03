@@ -80,6 +80,11 @@ export function calculatePlayerScore(playerData = {}) {
   // 5. Progression : Boosters ouverts
   const stats = playerData.stats || {};
   const boostersOpened = Number(stats.boostersOpened || 0);
+  const totalCardsDrawn = Math.max(
+    Number(playerData.totalCardsDrawn ?? stats.totalCardsDrawn ?? 0),
+    boostersOpened * 5,
+    totalCards
+  );
 
   // 6. Points de Rareté (~4x par palier supérieur)
   let rarityPoints = 0;
@@ -160,8 +165,9 @@ export function calculatePlayerScore(playerData = {}) {
         Math.floor(wikithunes / 50) +
         Math.floor(collectionValue / 100) +
 
-        // Activité & fidélité
+        // Activité & fidélité (Volume exploré Proposition 4)
         boostersOpened * 10 +
+        Math.floor(totalCardsDrawn * 1) +
 
         // Exploits & prouesses au jeu (bilans nets réels uniquement)
         netWonCards * 15 +
