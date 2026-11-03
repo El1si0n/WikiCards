@@ -198,16 +198,16 @@ export default function WikiCard({
   const isProtectedInRecycleMode =
     isRecycleMode && isFavorite && duplicateCount <= 1;
 
-  // Taille de police 100 % uniforme sur toutes les cartes
-  const maxChars = trade ? 70 : mini ? 130 : compact ? 315 : 365;
+  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile
+  const maxChars = trade ? 70 : mini ? 130 : compact ? 220 : 365;
   const fullText = formatCompleteExtract(card.extract, maxChars);
   const descriptionTypography = trade
     ? 'text-[9.5px] leading-[1.25] line-clamp-2'
     : mini
-    ? 'text-[10.8px] leading-[1.3]'
+    ? 'text-[10.8px] leading-[1.3] line-clamp-4'
     : compact
-    ? 'text-[12.5px] leading-[1.38]'
-    : 'text-[13.5px] leading-[1.42]';
+    ? 'text-[11.5px] sm:text-[12.5px] leading-[1.32] sm:leading-[1.38] line-clamp-4 sm:line-clamp-6'
+    : 'text-[13.5px] leading-[1.42] line-clamp-6';
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -545,7 +545,7 @@ export default function WikiCard({
                 mini
                   ? 'px-2.5 pt-2 pb-2'
                   : compact
-                  ? 'px-3.5 pt-3 pb-2.5'
+                  ? 'px-3 sm:px-3.5 pt-2.5 sm:pt-3 pb-2 sm:pb-2.5'
                   : 'px-4 pt-3.5 pb-3'
               } overflow-hidden`}
             >
@@ -602,7 +602,7 @@ export default function WikiCard({
               )}
 
               {/* Contenu textuel */}
-              <div className="relative z-10 flex-1 flex flex-col min-h-0">
+              <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden">
                 <h3
                   className={`font-extrabold ${
                     trade
@@ -610,7 +610,7 @@ export default function WikiCard({
                       : mini
                       ? 'text-[13.5px] mb-1'
                       : compact
-                      ? 'text-[17.5px] mb-1.5'
+                      ? 'text-[14px] sm:text-[17.5px] mb-1 sm:mb-1.5'
                       : 'text-[19.5px] mb-1.5'
                   } leading-[1.18] tracking-[-0.01em] line-clamp-2`}
                   style={{
@@ -633,8 +633,12 @@ export default function WikiCard({
 
               {/* 3. PIED DE CARTE : VUES WIKIPÉDIA + LIEN DIRECT */}
               <div
-                className={`relative z-10 ${
-                  trade ? 'pt-1 mt-0.5' : mini ? 'pt-1.5 mt-1' : 'pt-2 mt-1.5'
+                className={`relative z-10 shrink-0 ${
+                  trade
+                    ? 'pt-1 mt-0.5'
+                    : mini
+                    ? 'pt-1.5 mt-1'
+                    : 'pt-1.5 sm:pt-2 mt-1 sm:mt-1.5'
                 } flex items-center justify-between gap-1 border-t`}
                 style={{
                   borderColor: isShiny
@@ -643,13 +647,13 @@ export default function WikiCard({
                 }}
               >
                 <div
-                  className={`flex items-center gap-1 font-bold ${
+                  className={`flex items-center gap-1 font-bold shrink-0 ${
                     trade
                       ? 'text-[9px]'
                       : mini
                       ? 'text-[10.5px]'
                       : compact
-                      ? 'text-[12px]'
+                      ? 'text-[10.5px] sm:text-[12px]'
                       : 'text-[13px]'
                   }`}
                   style={{ color: isShiny ? '#0f172a' : tier.textColor }}
@@ -669,13 +673,13 @@ export default function WikiCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className={`inline-flex items-center gap-1 ${
+                  className={`inline-flex items-center gap-1 shrink-0 ${
                     trade
                       ? 'px-1 py-0.2 text-[8.5px]'
                       : mini
                       ? 'px-1.5 py-0.5 text-[9.5px]'
                       : compact
-                      ? 'px-2 py-0.5 text-[11px]'
+                      ? 'px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px]'
                       : 'px-2.5 py-1 text-[12px]'
                   } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
                   style={{
@@ -687,8 +691,18 @@ export default function WikiCard({
                       isShiny ? 'rgba(15, 23, 42, 0.24)' : tier.dividerColor
                     }`,
                   }}
+                  title="Consulter l'article officiel sur Wikipédia (nouvel onglet)"
                 >
-                  <span>{trade || mini ? 'Wikipédia' : 'Lire sur Wikipédia'}</span>
+                  {compact ? (
+                    <>
+                      <span className="hidden sm:inline">Lire sur </span>
+                      <span>Wikipédia</span>
+                    </>
+                  ) : trade || mini ? (
+                    <span>Wikipédia</span>
+                  ) : (
+                    <span>Lire sur Wikipédia</span>
+                  )}
                   <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                 </a>
               </div>

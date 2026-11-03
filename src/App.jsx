@@ -1681,12 +1681,12 @@ export default function App() {
             {/* vector-page-toolbar : Onglets 14px + Ombre inférieure #c8ccd1 (exactement comme load.php) */}
             <div className="vector-page-toolbar mb-[16px] relative z-20">
               <div className="vector-page-toolbar-container flex items-center justify-between min-h-[35px] relative">
-                {/* left-navigation : Onglets défilables horizontalement sur mobile */}
-                <div id="left-navigation" className="flex items-center gap-[10px] sm:gap-[16px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 max-w-full min-w-0">
+                {/* left-navigation : Onglets défilables horizontalement sur mobile sans troncature */}
+                <div id="left-navigation" className="flex items-center gap-[12px] sm:gap-[16px] overflow-x-auto whitespace-nowrap scrollbar-none pb-1 sm:pb-0 flex-1 min-w-0 pr-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('booster')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'booster' ? 'selected' : ''
                     }`}
                   >
@@ -1695,7 +1695,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('classeur')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'classeur' ? 'selected' : ''
                     }`}
                   >
@@ -1704,7 +1704,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('wikisino')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'wikisino' ? 'selected' : ''
                     }`}
                   >
@@ -1713,7 +1713,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('social')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'social' ? 'selected' : ''
                     }`}
                   >
@@ -1722,7 +1722,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('market')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'market' ? 'selected' : ''
                     }`}
                   >
@@ -1731,7 +1731,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('profile')}
-                    className={`vector-tab-link ${
+                    className={`vector-tab-link shrink-0 ${
                       activeTab === 'profile' ? 'selected' : ''
                     }`}
                   >
@@ -2144,12 +2144,12 @@ export default function App() {
 
                     {/* Barre de filtres par rareté + Filtre par Thème (Étape 8) + Sélecteur de tri */}
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-                      {/* Filtres par rareté (sans le bouton GIF séparé, conservé uniquement dans Trier par) */}
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Filtres par rareté défilables horizontalement sur mobile */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none pb-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
                         <button
                           type="button"
                           onClick={() => setSelectedRarityFilter('ALL')}
-                          className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
+                          className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
                             selectedRarityFilter === 'ALL'
                               ? 'bg-[#202122] text-white border-[#202122] font-semibold'
                               : 'bg-[#f8f9fa] text-[#202122] border-[#a2a9b1] hover:bg-white'
@@ -2167,7 +2167,7 @@ export default function App() {
                               key={tier.code}
                               type="button"
                               onClick={() => setSelectedRarityFilter(tier.code)}
-                              className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                              className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                                 selectedRarityFilter === tier.code
                                   ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                                   : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
@@ -2175,7 +2175,7 @@ export default function App() {
                               title={`${tier.name} (${tier.thresholdLabel} • Recyclage : +${new Intl.NumberFormat('fr-FR').format(tier.recycleValue)} ₩)`}
                             >
                               <span
-                                className="inline-block w-2.5 h-2.5 rounded-full"
+                                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: tier.borderColor }}
                               />
                               <span>
@@ -2187,11 +2187,11 @@ export default function App() {
                       </div>
 
                       {/* Filtre par Thème (Étape 8) + Sélecteur de Tri */}
-                      <div className="flex flex-wrap items-center gap-3 text-[12.5px] shrink-0">
-                        <div className="flex items-center gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2.5 sm:gap-3 text-[12.5px] w-full lg:w-auto">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                           <label
                             htmlFor="classeur-theme"
-                            className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                            className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
                           >
                             <BookOpen className="w-3.5 h-3.5" />
                             <span>Thème :</span>
@@ -2202,7 +2202,7 @@ export default function App() {
                             onChange={(e) =>
                               setSelectedThemeFilter(e.target.value)
                             }
-                            className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                            className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
                           >
                             <option value="ALL">
                               Tous les thèmes ({collection.length})
@@ -2215,19 +2215,19 @@ export default function App() {
                           </select>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                           <label
                             htmlFor="classeur-sort"
-                            className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                            className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
                           >
                             <ArrowUpDown className="w-3.5 h-3.5" />
-                            <span>Trier par :</span>
+                            <span>Trier :</span>
                           </label>
                           <select
                             id="classeur-sort"
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                            className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
                           >
                             <option value="rarity_desc">
                               Rareté (plus rare d'abord)
@@ -2249,51 +2249,51 @@ export default function App() {
                               Doublons (exemplaires)
                             </option>
                           </select>
-                        </div>
 
-                        {/* Bouton de recyclage à droite du sélecteur de tri avec le même espacement gap-3 */}
-                        {!isRecycleMode ? (
-                          <button
-                            type="button"
-                            disabled={collection.length === 0}
-                            onClick={handleToggleRecycleMode}
-                            className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] w-[28px] h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center cursor-pointer disabled:opacity-50 transition-colors shrink-0"
-                            title="Recycler des cartes"
-                            aria-label="Recycler des cartes"
-                          >
-                            <Recycle className="w-3.5 h-3.5 text-white" />
-                          </button>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 h-[28px]">
+                          {/* Bouton de recyclage à droite du sélecteur de tri */}
+                          {!isRecycleMode ? (
                             <button
                               type="button"
-                              disabled={totalSelectedRecycleCount === 0}
-                              onClick={handleConfirmRecycleSelection}
-                              className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] px-2.5 h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
-                              title={
-                                totalSelectedRecycleCount > 0
-                                  ? `Recycler pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikifeet`
-                                  : 'Sélectionnez des cartes à recycler'
-                              }
-                            >
-                              <span>
-                                +{new Intl.NumberFormat('fr-FR').format(
-                                  selectedRecycleGain
-                                )}
-                              </span>
-                              <WikithuneIcon className="w-3.5 h-3.5 text-white" />
-                            </button>
-                            <button
-                              type="button"
+                              disabled={collection.length === 0}
                               onClick={handleToggleRecycleMode}
-                              className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] w-[28px] h-[28px] text-[12.5px] text-[#202122] inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
-                              title="Annuler le recyclage"
-                              aria-label="Annuler le recyclage"
+                              className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] w-[32px] sm:w-[28px] h-[32px] sm:h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center cursor-pointer disabled:opacity-50 transition-colors shrink-0"
+                              title="Recycler des cartes"
+                              aria-label="Recycler des cartes"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <Recycle className="w-3.5 h-3.5 text-white" />
                             </button>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 h-[32px] sm:h-[28px] shrink-0">
+                              <button
+                                type="button"
+                                disabled={totalSelectedRecycleCount === 0}
+                                onClick={handleConfirmRecycleSelection}
+                                className="bg-[#006b24] hover:bg-[#00802b] disabled:bg-[#c8ccd1] border border-[#00571d] disabled:border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] font-bold text-white inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
+                                title={
+                                  totalSelectedRecycleCount > 0
+                                    ? `Recycler pour +${new Intl.NumberFormat('fr-FR').format(selectedRecycleGain)} Wikifeet`
+                                    : 'Sélectionnez des cartes à recycler'
+                                }
+                              >
+                                <span>
+                                  +{new Intl.NumberFormat('fr-FR').format(
+                                    selectedRecycleGain
+                                  )}
+                                </span>
+                                <WikithuneIcon className="w-3.5 h-3.5 text-white" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleToggleRecycleMode}
+                                className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] w-[32px] sm:w-[28px] h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] inline-flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                                title="Annuler le recyclage"
+                                aria-label="Annuler le recyclage"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 

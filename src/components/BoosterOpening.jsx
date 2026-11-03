@@ -856,39 +856,45 @@ export default function BoosterOpening({
             </div>
 
             {/* Pied d'action sobre sous le résumé */}
-            <div className="mt-6 pt-4 border-t border-[#eaecf0] flex flex-wrap items-center justify-between gap-3">
-              <span className="text-[13px] text-[#54595d]">
+            <div className="mt-6 pt-4 border-t border-[#eaecf0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <span className="text-[13px] text-[#54595d] text-center sm:text-left">
                 Ces 5 cartes ont été ajoutées à votre classeur.
               </span>
 
-              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={onGoToClasseur}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
-                >
-                  <BookOpen className="w-4 h-4 text-[#3366cc]" />
-                  <span>Voir mon classeur</span>
-                </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                {/* Sur mobile : bouton vert Réouvrir en pleine largeur en haut */}
                 <button
                   type="button"
                   onClick={handleReopenBooster}
                   disabled={isFetching}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs"
+                  className="order-1 sm:order-2 inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs w-full sm:w-auto"
                   title="Ouvrir immédiatement un nouveau booster"
                 >
                   <RotateCw
                     className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
                   />
-                  <span>Réouvrir</span>
+                  <span>Réouvrir un booster</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleResetToNewPack}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
-                >
-                  <span>Terminer</span>
-                </button>
+
+                {/* Sur mobile : Classeur et Terminer côte à côte sur la ligne du bas */}
+                <div className="order-2 sm:order-1 grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={onGoToClasseur}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-[#3366cc] shrink-0" />
+                    <span className="truncate">Classeur</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetToNewPack}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
+                  >
+                    <span>Terminer</span>
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

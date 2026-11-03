@@ -577,7 +577,7 @@ export default function WikiSino({
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center justify-center min-h-[452px]">
+              <div className="flex-1 flex items-center justify-center min-h-[120px] sm:min-h-[452px]">
                 {displayedSelectedCards.length > 0 ? (
                   <div className="relative w-full flex items-center justify-center">
                     {displayedSelectedCards.length === 1 ? (
@@ -633,8 +633,8 @@ export default function WikiSino({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-                    <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+                  <div className="w-full max-w-[272px] h-[120px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+                    <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                       Cliquez sur une ou plusieurs cartes dans le classeur
                       ci-dessous pour les placer dans l'Upgrader.
                     </p>
@@ -1082,7 +1082,7 @@ export default function WikiSino({
 
           {/* Barre de filtres par rareté (1 seule rareté à la fois, sans Légendaire L) + Filtre par Thème + Sélecteur de tri */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none pb-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
               {upgradeableRarityTiers.map((tier) => {
                 const count = upgradeableCollection.filter(
                   (c) => c.rarity === tier.code
@@ -1092,14 +1092,14 @@ export default function WikiSino({
                     key={tier.code}
                     type="button"
                     onClick={() => setSelectedRarityFilter(tier.code)}
-                    className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                    className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                       selectedRarityFilter === tier.code
                         ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                         : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
                     }`}
                   >
                     <span
-                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: tier.borderColor }}
                     />
                     <span>
@@ -1110,11 +1110,11 @@ export default function WikiSino({
               })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-[12.5px] shrink-0">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2.5 sm:gap-3 text-[12.5px] w-full lg:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <label
                   htmlFor="wikisino-classeur-theme"
-                  className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                  className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   <span>Thème :</span>
@@ -1123,7 +1123,7 @@ export default function WikiSino({
                   id="wikisino-classeur-theme"
                   value={selectedThemeFilter}
                   onChange={(e) => setSelectedThemeFilter(e.target.value)}
-                  className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                  className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
                 >
                   <option value="ALL">
                     Tous les thèmes ({upgradeableCollection.length})
@@ -1136,31 +1136,31 @@ export default function WikiSino({
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <label
                   htmlFor="wikisino-classeur-sort"
-                  className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                  className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
                 >
                   <ArrowUpDown className="w-3.5 h-3.5" />
-                  <span>Trier par :</span>
+                  <span>Trier :</span>
                 </label>
                 <select
                   id="wikisino-classeur-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                  className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
                 >
                   <option value="rarity_desc">
-                    Rareté (plus rare d'abord)
+                    Rareté (plus rare)
                   </option>
-                  <option value="gif_first">Cartes GIF (Métal) d'abord</option>
-                  <option value="views_desc">Vues (plus vues d'abord)</option>
-                  <option value="views_asc">Vues (moins vues d'abord)</option>
+                  <option value="gif_first">Cartes GIF Métal d'abord</option>
+                  <option value="views_desc">Vues (plus vues)</option>
+                  <option value="views_asc">Vues (moins vues)</option>
                   <option value="recent">Obtenues récemment</option>
                   <option value="alpha_asc">
-                    Ordre alphabétique (A → Z)
+                    Alphabétique (A → Z)
                   </option>
-                  <option value="count_desc">Doublons (exemplaires)</option>
+                  <option value="count_desc">Doublons</option>
                 </select>
               </div>
             </div>

@@ -220,21 +220,25 @@ export default function HigherLowerGame({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
       {/* COLONNE GAUCHE (4 col) : Carte de référence */}
-      <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
+      <div
+        className={`${
+          gameState === 'idle' ? 'order-2' : 'order-1'
+        } lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4`}
+      >
         <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
           <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
             Carte de référence
           </span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px]">
+        <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
           {leftCard ? (
             <div className="w-full max-w-[272px]">
               <WikiCard card={leftCard} compact={true} />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-              <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+            <div className="w-full max-w-[272px] h-[110px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+              <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                 Choisissez votre mise au centre et lancez une série pour
                 afficher la première page Wikipédia.
               </p>
@@ -243,8 +247,12 @@ export default function HigherLowerGame({
         </div>
       </div>
 
-      {/* COLONNE CENTRALE (4 col) : Tableau de bord simple et lisible */}
-      <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
+      {/* COLONNE CENTRALE (4 col) : Tableau de bord (en haut sur mobile au repos, au milieu en jeu) */}
+      <div
+        className={`${
+          gameState === 'idle' ? 'order-1' : 'order-2'
+        } lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4`}
+      >
         <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
           <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
             Plus ou Moins de vues
@@ -431,14 +439,14 @@ export default function HigherLowerGame({
       </div>
 
       {/* COLONNE DROITE (4 col) : Page à deviner */}
-      <div className="order-2 lg:order-3 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
+      <div className="order-3 lg:order-3 lg:col-span-4 flex flex-col justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-3 sm:p-4">
         <div className="flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-3">
           <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] uppercase tracking-wider">
             Page à deviner
           </span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px]">
+        <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
           {rightCard ? (
             <div className="w-full max-w-[272px]">
               <WikiCard
@@ -448,11 +456,11 @@ export default function HigherLowerGame({
               />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-2">
-                <HelpCircle className="w-6 h-6" />
+            <div className="w-full max-w-[272px] h-[110px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+              <div className="w-7 h-7 sm:w-12 sm:h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-1 sm:mb-2">
+                <HelpCircle className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <p className="text-[13px] text-[#54595d] m-0 leading-[1.5]">
+              <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.4] sm:leading-[1.5]">
                 La page adverse s'affichera ici avec son nombre de vues masqué.
               </p>
             </div>

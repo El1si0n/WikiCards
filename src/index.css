@@ -61,6 +61,7 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
@@ -103,6 +104,8 @@
   background: transparent;
   border: 0;
   font-size: 0.875rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .vector-tab-link::after {

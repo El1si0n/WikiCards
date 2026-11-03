@@ -541,7 +541,7 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE CENTRALE (4 col) : Jauge 50/50 ou Roues individuelles */}
-        <div className="order-3 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
+        <div className="order-2 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
@@ -1310,7 +1310,8 @@ export default function DoubleOrNothingGame({
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Filtres par rareté défilables horizontalement sur mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none pb-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
             {eligibleRarityTiers.map((tier) => {
               const count = eligibleCollection.filter(
                 (c) => c.rarity === tier.code
@@ -1320,14 +1321,14 @@ export default function DoubleOrNothingGame({
                   key={tier.code}
                   type="button"
                   onClick={() => setSelectedRarityFilter(tier.code)}
-                  className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                  className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                     selectedRarityFilter === tier.code
                       ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                       : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
                   }`}
                 >
                   <span
-                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: tier.borderColor }}
                   />
                   <span>
@@ -1338,11 +1339,11 @@ export default function DoubleOrNothingGame({
             })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-[12.5px] shrink-0">
-            <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2.5 sm:gap-3 text-[12.5px] w-full lg:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label
                 htmlFor="double-classeur-theme"
-                className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
               >
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Thème :</span>
@@ -1351,7 +1352,7 @@ export default function DoubleOrNothingGame({
                 id="double-classeur-theme"
                 value={selectedThemeFilter}
                 onChange={(e) => setSelectedThemeFilter(e.target.value)}
-                className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
               >
                 <option value="ALL">
                   Tous les thèmes ({eligibleCollection.length})
@@ -1364,31 +1365,31 @@ export default function DoubleOrNothingGame({
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label
                 htmlFor="double-classeur-sort"
-                className="inline-flex items-center gap-1 text-[#54595d] font-medium"
+                className="inline-flex items-center gap-1 text-[#54595d] font-medium shrink-0"
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                <span>Trier par :</span>
+                <span>Trier :</span>
               </label>
               <select
                 id="double-classeur-sort"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 py-1 text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer"
+                className="flex-1 sm:flex-initial bg-[#f8f9fa] hover:bg-white border border-[#a2a9b1] rounded-[2px] px-2.5 h-[32px] sm:h-[28px] text-[12.5px] text-[#202122] focus:outline-none focus:border-[#3366cc] cursor-pointer min-w-0"
               >
                 <option value="rarity_desc">
-                  Rareté (plus rare d'abord)
+                  Rareté (plus rare)
                 </option>
-                <option value="gif_first">Cartes GIF (Métal) d'abord</option>
-                <option value="views_desc">Vues (plus vues d'abord)</option>
-                <option value="views_asc">Vues (moins vues d'abord)</option>
+                <option value="gif_first">Cartes GIF Métal d'abord</option>
+                <option value="views_desc">Vues (plus vues)</option>
+                <option value="views_asc">Vues (moins vues)</option>
                 <option value="recent">Obtenues récemment</option>
                 <option value="alpha_asc">
-                  Ordre alphabétique (A → Z)
+                  Alphabétique (A → Z)
                 </option>
-                <option value="count_desc">Doublons (exemplaires)</option>
+                <option value="count_desc">Doublons</option>
               </select>
             </div>
           </div>
