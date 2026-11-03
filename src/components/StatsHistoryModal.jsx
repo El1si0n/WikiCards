@@ -472,19 +472,37 @@ export default function StatsHistoryModal({
                   className="opacity-75"
                 />
 
-                {/* Point brillant sur la courbe */}
-                <circle
-                  cx={activeCoord.x}
-                  cy={activeCoord.y}
-                  r="7"
-                  className="fill-[#3366cc]/25 animate-ping"
-                />
+                {/* Halo pulsant natif SVG strictement centré sur (cx, cy) sans bug de transform CSS */}
                 <circle
                   cx={activeCoord.x}
                   cy={activeCoord.y}
                   r="5"
+                  fill="#3366cc"
+                  opacity="0.35"
+                  pointerEvents="none"
+                >
+                  <animate
+                    attributeName="r"
+                    values="5;9.5;5"
+                    dur="1.8s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.4;0.06;0.4"
+                    dur="1.8s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+
+                {/* Point central net sur la courbe */}
+                <circle
+                  cx={activeCoord.x}
+                  cy={activeCoord.y}
+                  r="4.5"
                   className="fill-white dark:fill-[#181d24] stroke-[#3366cc]"
                   strokeWidth="2.5"
+                  pointerEvents="none"
                 />
               </>
             )}
