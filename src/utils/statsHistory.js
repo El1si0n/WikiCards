@@ -310,20 +310,21 @@ export function generateMetricTimeSeries(metricId, {
           simulatedVal = Math.max(0, Math.round(baseEst + (i === 0 ? 0 : wiggle)));
         }
       } else if (metricId === 'netCasinoBilan') {
+        // Courbe P&L boursière du casino : peut monter en territoire positif ou descendre en négatif
         if (i === 0 && startTime <= minCardTs) {
           simulatedVal = 0;
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
+          // Reconstitution avec fluctuations réelles (hausses lors des gains, baisses lors des pertes)
           const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
           const totalColCount = safeCollection.length || 1;
           const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
-          const trend = currentVal * Math.pow(cardProgress, 1.15);
-          const swing = Math.sin(i * 1.6) * Math.min(25, Math.abs(currentVal) * 0.06);
+          const trend = currentVal * Math.pow(cardProgress, 1.05);
+          // Onde de casino fluctuante avec des swings au fil des sessions de jeu
+          const amplitude = Math.max(30, Math.abs(currentVal) * 0.35 + 20);
+          const swing = Math.sin(i * 1.75) * amplitude * (1 - Math.abs(ratio - 0.5));
           simulatedVal = Math.round(trend + (i === 0 ? 0 : swing));
-          if (currentVal >= 0) {
-            simulatedVal = Math.max(0, simulatedVal);
-          }
         }
       } else if (metricId === 'netCardsBilan') {
         if (i === 0 && startTime <= minCardTs) {
@@ -334,11 +335,10 @@ export function generateMetricTimeSeries(metricId, {
           const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
           const totalColCount = safeCollection.length || 1;
           const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
-          const trend = currentVal * Math.pow(cardProgress, 1.15);
-          simulatedVal = Math.round(trend);
-          if (currentVal >= 0) {
-            simulatedVal = Math.max(0, simulatedVal);
-          }
+          const trend = currentVal * Math.pow(cardProgress, 1.05);
+          const amplitude = Math.max(2, Math.abs(currentVal) * 0.25 + 2);
+          const swing = Math.sin(i * 1.75) * amplitude * (1 - Math.abs(ratio - 0.5));
+          simulatedVal = Math.round(trend + (i === 0 ? 0 : swing));
         }
       } else if (metricId === 'totalCardsDrawn') {
         if (i === 0 && startTime <= minCardTs) {

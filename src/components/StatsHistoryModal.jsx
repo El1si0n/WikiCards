@@ -217,25 +217,14 @@ export default function StatsHistoryModal({
   const paddingTop = 20;
   const paddingBottom = 26;
 
-  const { pathD, areaD, plottedPoints } = useMemo(() => {
+  const { pathD, areaD, plottedPoints, zeroY, hasNegative } = useMemo(() => {
     if (!points || points.length === 0) {
-      return { pathD: '', areaD: '', plottedPoints: [] };
+      return { pathD: '', areaD: '', plottedPoints: [], zeroY: null, hasNegative: false };
     }
 
     const values = points.map((p) => p.value);
-    let minVal = Math.min(...values);
-    let maxVal = Math.max(...values);
-
-    // Pour les bilans nets, la ligne d'abscisse du bas est 0 si toutes les valeurs sont >= 0
-    if (metricId === 'netCasinoBilan' || metricId === 'netCardsBilan') {
-      if (minVal >= 0) {
-        minVal = 0;
-      }
-      if (maxVal <= 0) {
-        maxVal = 0;
-      }
-    }
-
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
     const range = maxVal - minVal || 1;
 
     const innerWidth = chartWidth - paddingX * 2;
@@ -248,12 +237,18 @@ export default function StatsHistoryModal({
       return { x, y, ...p };
     });
 
+    const hasNegative = minVal < 0 && maxVal > 0;
+    const normalizedZeroY = (0 - minVal) / range;
+    const zeroY = paddingTop + (1 - normalizedZeroY) * innerHeight;
+
     if (coords.length === 1) {
       const p = coords[0];
       return {
         pathD: `M ${paddingX} ${p.y} L ${chartWidth - paddingX} ${p.y}`,
         areaD: '',
         plottedPoints: coords,
+        zeroY,
+        hasNegative,
       };
     }
 
@@ -274,8 +269,8 @@ export default function StatsHistoryModal({
     const firstX = coords[0].x;
     const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
 
-    return { pathD: d, areaD: area, plottedPoints: coords };
-  }, [points, metricId]);
+    return { pathD: d, areaD: area, plottedPoints: coords, zeroY, hasNegative };
+  }, [points]);
 
   // Gestion du scrubbing interactif à la souris ou au doigt
   const handlePointerMove = (e) => {
@@ -446,37 +441,78 @@ export default function StatsHistoryModal({
               </linearGradient>
             </defs>
 
-            {/* Lignes de repère horizontales discrètes (pointillés uniformes 4 4) */}
-            <line
-              x1={paddingX}
-              y1={paddingTop}
-              x2={chartWidth - paddingX}
-              y2={paddingTop}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-              className="text-[#eaecf0] dark:text-[#282f3a]"
-              strokeWidth="1"
-            />
-            <line
-              x1={paddingX}
-              y1={chartHeight / 2}
-              x2={chartWidth - paddingX}
-              y2={chartHeight / 2}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-              className="text-[#eaecf0] dark:text-[#282f3a]"
-              strokeWidth="1"
-            />
-            <line
-              x1={paddingX}
-              y1={chartHeight - paddingBottom}
-              x2={chartWidth - paddingX}
-              y2={chartHeight - paddingBottom}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-              className="text-[#eaecf0] dark:text-[#282f3a]"
-              strokeWidth="1"
-            />
+            {/* Lignes de repère horizontales */}
+            {hasNegative ? (
+              <>
+                {/* Ligne Max (haut) : pointillés */}
+                <line
+                  x1={paddingX}
+                  y1={paddingTop}
+                  x2={chartWidth - paddingX}
+                  y2={paddingTop}
+                  stroke="currentColor"
+                  strokeDasharray="4 4"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+                {/* Ligne 0 (seuil d'équilibre) : ligne d'abscisse pleine et continue */}
+                <line
+                  x1={paddingX}
+                  y1={zeroY}
+                  x2={chartWidth - paddingX}
+                  y2={zeroY}
+                  stroke="currentColor"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+                {/* Ligne Min (bas) : même ligne en pointillés que pour la valeur max */}
+                <line
+                  x1={paddingX}
+                  y1={chartHeight - paddingBottom}
+                  x2={chartWidth - paddingX}
+                  y2={chartHeight - paddingBottom}
+                  stroke="currentColor"
+                  strokeDasharray="4 4"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+              </>
+            ) : (
+              <>
+                {/* Ligne Max (haut) : pointillés */}
+                <line
+                  x1={paddingX}
+                  y1={paddingTop}
+                  x2={chartWidth - paddingX}
+                  y2={paddingTop}
+                  stroke="currentColor"
+                  strokeDasharray="4 4"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+                {/* Ligne Milieu : pointillés */}
+                <line
+                  x1={paddingX}
+                  y1={chartHeight / 2}
+                  x2={chartWidth - paddingX}
+                  y2={chartHeight / 2}
+                  stroke="currentColor"
+                  strokeDasharray="4 4"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+                {/* Ligne Abscisse (bas) : ligne pleine et continue */}
+                <line
+                  x1={paddingX}
+                  y1={chartHeight - paddingBottom}
+                  x2={chartWidth - paddingX}
+                  y2={chartHeight - paddingBottom}
+                  stroke="currentColor"
+                  className="text-[#eaecf0] dark:text-[#282f3a]"
+                  strokeWidth="1"
+                />
+              </>
+            )}
 
             {/* Zone remplie en dégradé */}
             {areaD && (
