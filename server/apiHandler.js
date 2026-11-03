@@ -200,9 +200,24 @@ export async function handleApiRequest(req, res) {
                     (s, c) => s + (c.count || 1),
                     0
                   ),
-                  legendaryCount: col.filter((c) => c.rarity === 'L').length,
-                  ultraRareCount: col.filter((c) => c.rarity === 'UR').length,
-                  superRareCount: col.filter((c) => c.rarity === 'SR').length,
+                  legendaryCount: col
+                    .filter((c) => c.rarity === 'L')
+                    .reduce((s, c) => s + (c.count || 1), 0),
+                  ultraRareCount: col
+                    .filter((c) => c.rarity === 'UR')
+                    .reduce((s, c) => s + (c.count || 1), 0),
+                  superRareCount: col
+                    .filter((c) => c.rarity === 'SR')
+                    .reduce((s, c) => s + (c.count || 1), 0),
+                  rareCount: col
+                    .filter((c) => c.rarity === 'R')
+                    .reduce((s, c) => s + (c.count || 1), 0),
+                  uncommonCount: col
+                    .filter((c) => c.rarity === 'PC')
+                    .reduce((s, c) => s + (c.count || 1), 0),
+                  commonCount: col
+                    .filter((c) => c.rarity === 'C')
+                    .reduce((s, c) => s + (c.count || 1), 0),
                   gifCount: col.filter(
                     (c) =>
                       c.isFoil ||

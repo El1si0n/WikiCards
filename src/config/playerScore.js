@@ -1,8 +1,30 @@
 /**
+ * Configuration des points par rareté (Échelle ~4x par palier supérieur) :
+ *
+ * 1 Commune (C) = 5 pts
+ * 1 Peu Commune (PC) = 20 pts (4.0x)  -> vaut exactement 4 Communes
+ * 1 Rare (R) = 80 pts (4.0x)         -> vaut exactement 4 Peu Communes
+ * 1 Super Rare (SR) = 300 pts (3.75x) -> vaut ~3.75 Rares
+ * 1 Ultra Rare (UR) = 1 100 pts (3.67x) -> vaut ~3.67 Super Rares
+ * 1 Légendaire (L) = 4 000 pts (3.64x)  -> vaut ~3.64 Ultra Rares
+ *
+ * Cette échelle rend l'upgrade (N -> N+1) véritablement rentable et valorisant :
+ * fusionner 4 cartes d'un rang inférieur conserve ou améliore immédiatement le score de rareté !
+ */
+export const RARITY_SCORE_WEIGHTS = {
+  C: 5,
+  PC: 20,
+  R: 80,
+  SR: 300,
+  UR: 1100,
+  L: 4000,
+};
+
+/**
  * Calcule le score d'accomplissement (en points) d'un joueur
  * à partir des 12 statistiques visibles sur son profil :
  *
- * 1. Articles uniques
+ * 1. Articles uniques (diversité Wikipédia)
  * 2. Total de cartes (exemplaires physiques)
  * 3. Solde actuel (Wikithunes)
  * 4. Valeur du classeur (valeur marchande / recyclage)
@@ -17,9 +39,7 @@
  *
  * Règle d'or anti-triche & anti-exploit :
  * - Le Quitte ou Double et les Upgrades se basent sur le BILAN NET DE CARTES (Gagnées - Perdues).
- *   Si vous doublez 4 cartes et perdez 4 cartes, le bilan est neutre (4 - 4 = 0) et le score ne bouge pas.
  * - Le Casino Plus ou Moins se base sur le BILAN FINANCIER NET (Gains casino - Argent perdu).
- *   Jouer à perte en boucle ne permet plus de farmer des points artificiels.
  */
 export function calculatePlayerScore(playerData = {}) {
   // 1. Articles uniques
@@ -60,23 +80,30 @@ export function calculatePlayerScore(playerData = {}) {
   const stats = playerData.stats || {};
   const boostersOpened = Number(stats.boostersOpened || 0);
 
-  // 6. Rareté Légendaire (L)
-  const legendaries = Number(
-    playerData.legendaryCount ??
-      playerData.legendaries ??
-      (Array.isArray(playerData.collection)
-        ? playerData.collection.filter((c) => c.rarity === 'L').length
-        : 0)
-  );
-
-  // 7. Rareté Ultra Rare (UR)
-  const ultraRares = Number(
-    playerData.ultraRareCount ??
-      playerData.ultraRares ??
-      (Array.isArray(playerData.collection)
-        ? playerData.collection.filter((c) => c.rarity === 'UR').length
-        : 0)
-  );
+  // 6. Points de Rareté (~4x par palier supérieur)
+  let rarityPoints = 0;
+  if (Array.isArray(playerData.collection) && playerData.collection.length > 0) {
+    rarityPoints = playerData.collection.reduce((sum, c) => {
+      const code = c?.rarity || 'C';
+      const weight = RARITY_SCORE_WEIGHTS[code] || RARITY_SCORE_WEIGHTS.C;
+      const copies = Number(c?.count || 1);
+      return sum + weight * copies;
+    }, 0);
+  } else {
+    const lCount = Number(playerData.legendaryCount || 0);
+    const urCount = Number(playerData.ultraRareCount || 0);
+    const srCount = Number(playerData.superRareCount || 0);
+    const rCount = Number(playerData.rareCount || 0);
+    const pcCount = Number(playerData.uncommonCount || 0);
+    const cCount = Number(playerData.commonCount || 0);
+    rarityPoints =
+      lCount * RARITY_SCORE_WEIGHTS.L +
+      urCount * RARITY_SCORE_WEIGHTS.UR +
+      srCount * RARITY_SCORE_WEIGHTS.SR +
+      rCount * RARITY_SCORE_WEIGHTS.R +
+      pcCount * RARITY_SCORE_WEIGHTS.PC +
+      cCount * RARITY_SCORE_WEIGHTS.C;
+  }
 
   // 8. Cartes GIF / Métal (holographiques ou animées)
   const gifCards = Number(
@@ -108,18 +135,21 @@ export function calculatePlayerScore(playerData = {}) {
   // Bilan financier net du jeu (anti-exploit : ne récompense que les bénéfices nets réels)
   const netCasinoMoney = Math.max(0, netCasinoGains - lostMoneyCasino);
 
-  // Formule harmonisée et équilibrée intégrant l'ensemble des 12 statistiques :
+  // Formule harmonisée et équilibrée :
   const score = Math.max(
     0,
     Math.round(
-      // Raretés majeures & prestige visuel
-      legendaries * 1000 +
-        ultraRares * 300 +
+      // Raretés (échelle exponentielle ~4x)
+      rarityPoints +
+
+        // Cartes GIF / Métal (prestige esthétique)
         gifCards * 50 +
 
-        // Collection & volume du classeur
-        unique * 15 +
-        totalCards * 2 +
+        // Diversité de l'encyclopédie (articles uniques)
+        unique * 10 +
+
+        // Volume d'exemplaires dans le classeur
+        totalCards * 1 +
 
         // Économie & patrimoine
         Math.floor(wikithunes / 50) +

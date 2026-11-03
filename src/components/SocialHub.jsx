@@ -203,8 +203,17 @@ export default function SocialHub({
         ? collection.filter((c) => c.rarity === 'UR').length
         : u.ultraRareCount || 0;
       const uSrCount = isMe
-        ? collection.filter((c) => c.rarity === 'SR').length
+        ? collection.filter((c) => c.rarity === 'SR').reduce((s, c) => s + (c.count || 1), 0)
         : u.superRareCount || 0;
+      const uRCount = isMe
+        ? collection.filter((c) => c.rarity === 'R').reduce((s, c) => s + (c.count || 1), 0)
+        : u.rareCount || 0;
+      const uPcCount = isMe
+        ? collection.filter((c) => c.rarity === 'PC').reduce((s, c) => s + (c.count || 1), 0)
+        : u.uncommonCount || 0;
+      const uCCount = isMe
+        ? collection.filter((c) => c.rarity === 'C').reduce((s, c) => s + (c.count || 1), 0)
+        : u.commonCount || 0;
       const uGifCount = isMe
         ? collection.filter((c) =>
             Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
@@ -226,6 +235,9 @@ export default function SocialHub({
         legendaryCount: uLegCount,
         ultraRareCount: uUrCount,
         superRareCount: uSrCount,
+        rareCount: uRCount,
+        uncommonCount: uPcCount,
+        commonCount: uCCount,
         gifCount: uGifCount,
         collectionValue: uColVal,
         wikithunes: uMoney,
@@ -390,6 +402,9 @@ export default function SocialHub({
       legendaryCount: peerStats.legendaries,
       ultraRareCount: peerStats.ultraRares,
       superRareCount: peerStats.superRares,
+      rareCount: selectedPeer?.rareCount || 0,
+      uncommonCount: selectedPeer?.uncommonCount || 0,
+      commonCount: selectedPeer?.commonCount || 0,
       gifCount: peerStats.gifs,
       collectionValue: peerStats.totalVal,
       wikithunes: peerStats.wikithunes,
