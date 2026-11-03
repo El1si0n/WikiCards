@@ -1,4 +1,4 @@
-import { getCardRecycleValue } from '../config/rarities';
+import { getCardRecycleValue, INITIAL_WIKITHUNES } from '../config/rarities';
 
 const LOCAL_SNAPSHOTS_STORAGE_KEY = 'wikicards_stats_timeline_v1';
 
@@ -76,9 +76,17 @@ export function generateMetricTimeSeries(metricId, {
   wikithunes = 0,
   collectionValue = null,
   period = 'TOUT',
+  isLocalUser = false,
 }) {
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
+
+  // Trouve la date de la première carte obtenue (moment où le joueur a commencé à jouer)
+  const minCardTs = collection.reduce(
+    (min, c) => Math.min(min, Number(c?.obtainedAt || now)),
+    now
+  );
+  const accountAgeMs = Math.max(dayMs, now - minCardTs);
 
   let windowMs = dayMs * 30; // 1M par défaut
   let sampleCount = 30;
@@ -89,34 +97,33 @@ export function generateMetricTimeSeries(metricId, {
       sampleCount = 24; // 1 point par heure
       break;
     case '1S':
-      windowMs = dayMs * 7;
-      sampleCount = 28; // 4 points par jour
+      // Si le compte a moins de 7 jours, on commence au début du compte
+      windowMs = Math.min(dayMs * 7, accountAgeMs + 15 * 60 * 1000);
+      sampleCount = 28;
       break;
     case '1M':
-      windowMs = dayMs * 30;
-      sampleCount = 30; // 1 point par jour
+      // Si le compte a moins de 30 jours, on commence au début du compte
+      windowMs = Math.min(dayMs * 30, accountAgeMs + 15 * 60 * 1000);
+      sampleCount = 30;
       break;
     case 'TOUT':
     default:
-      // Trouve la date de la première carte obtenue
-      const minCardTs = collection.reduce(
-        (min, c) => Math.min(min, Number(c?.obtainedAt || now)),
-        now
-      );
-      const span = Math.max(dayMs * 2, now - minCardTs);
-      windowMs = span;
+      // Période complète : commence 15 minutes avant le tout premier booster
+      // pour capturer l'état initial exact à la création (3 000 ₩ et 0 cartes)
+      windowMs = accountAgeMs + 15 * 60 * 1000;
       sampleCount = 35;
       break;
   }
 
   const startTime = now - windowMs;
   const timeStep = windowMs / (sampleCount - 1);
+  const savedSnapshots = isLocalUser ? getSavedStatsSnapshots() : [];
 
   // Calcule la valeur finale actuelle de la métrique
   const calcCurrentValue = () => {
     switch (metricId) {
       case 'wikithunes':
-        return wikithunes;
+        return typeof wikithunes === 'number' ? wikithunes : 0;
       case 'collectionValue':
         return typeof collectionValue === 'number'
           ? collectionValue
@@ -129,7 +136,7 @@ export function generateMetricTimeSeries(metricId, {
       case 'totalCardsCount':
         return collection.reduce((sum, c) => sum + (c.count || 1), 0);
       case 'boostersOpened':
-        return Number(stats.boostersOpened || 0);
+        return Number(stats?.boostersOpened || 0);
       case 'legendaryCount':
         return collection.filter((c) => c.rarity === 'L').length;
       case 'ultraRareCount':
@@ -139,13 +146,13 @@ export function generateMetricTimeSeries(metricId, {
           Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
         ).length;
       case 'lostMoneyCasino':
-        return Number(stats.lostMoneyCasino || 0);
+        return Number(stats?.lostMoneyCasino || 0);
       case 'netCasinoGains':
-        return Number(stats.netCasinoGains || 0);
+        return Number(stats?.netCasinoGains || 0);
       case 'lostCards':
-        return Number(stats.lostCards || 0);
+        return Number(stats?.lostCards || 0);
       case 'wonCards':
-        return Number(stats.wonCards || 0);
+        return Number(stats?.wonCards || 0);
       default:
         return 0;
     }
@@ -202,10 +209,20 @@ export function generateMetricTimeSeries(metricId, {
       }
 
       // Si aucune carte n'était enregistrée avec un horodatage ancien mais qu'on a un classeur actuel,
-      // on applique une courbe de croissance naturelle jusqu'à la valeur actuelle
+      // on applique une courbe de croissance naturelle jusqu'à la valeur actuelle (sauf au point initial t0 = 0)
       if (val === 0 && currentVal > 0 && i > 0 && collection.length > 0) {
         const progressRatio = Math.pow(i / (sampleCount - 1), 1.4);
         val = Math.round(currentVal * progressRatio);
+      }
+
+      // Si un instantané réel a été sauvegardé pour cette métrique
+      if (savedSnapshots.length > 0 && i > 0 && i < sampleCount - 1) {
+        const snap = savedSnapshots.find(
+          (s) => Math.abs(s.timestamp - t) <= timeStep * 0.75
+        );
+        if (snap && typeof snap[metricId] === 'number') {
+          val = snap[metricId];
+        }
       }
 
       points.push({
@@ -214,22 +231,81 @@ export function generateMetricTimeSeries(metricId, {
       });
     } else {
       // Pour les métriques de statistiques (solde, boosters, casino) :
-      // Progression cumulative ou simulation Trade Republic fluide
       const ratio = i / (sampleCount - 1);
       let simulatedVal = 0;
 
       if (metricId === 'wikithunes') {
-        // Solde avec variations réelles
-        const base = Math.max(300, Math.round(currentVal * 0.4));
-        const progress = (currentVal - base) * Math.pow(ratio, 1.2);
-        const wiggle = Math.sin(i * 1.8) * (currentVal * 0.04);
-        simulatedVal = Math.max(0, Math.round(base + progress + (i === sampleCount - 1 ? 0 : wiggle)));
-      } else if (['boostersOpened', 'wonCards', 'lostCards', 'lostMoneyCasino', 'netCasinoGains'].includes(metricId)) {
-        // Métriques cumulatives : montent de façon progressive
-        const growth = Math.pow(ratio, 1.35);
-        simulatedVal = Math.round(currentVal * growth);
+        // En période "TOUT" ou si la fenêtre englobe la création du compte :
+        // Le joueur a débuté avec EXACTEMENT 3 000 ₩ (INITIAL_WIKITHUNES).
+        const isAccountStartInWindow = startTime <= minCardTs;
+
+        if (isAccountStartInWindow) {
+          const initialBal = INITIAL_WIKITHUNES; // 3000 ₩
+
+          if (i === 0) {
+            simulatedVal = initialBal;
+          } else if (i === sampleCount - 1) {
+            simulatedVal = currentVal;
+          } else {
+            // Reconstitution proportionnelle au rythme d'ouverture des boosters et cartes
+            const cardsAtT = collection.filter((c) => Number(c.obtainedAt || 0) <= t);
+            const totalColCount = collection.length || 1;
+            const cardProgress = collection.length > 0
+              ? cardsAtT.length / totalColCount
+              : ratio;
+
+            // Décroissance naturelle de 3 000 ₩ vers le solde actuel au fur et à mesure des achats
+            const baseEst = initialBal + (currentVal - initialBal) * Math.pow(cardProgress, 0.9);
+            const wiggle = Math.sin(i * 1.8) * Math.min(45, Math.abs(currentVal - initialBal) * 0.035);
+            simulatedVal = Math.max(0, Math.round(baseEst + wiggle));
+          }
+        } else {
+          // Fenêtre plus courte (ex: 1J alors que le compte est plus ancien) :
+          // Le solde au début de la fenêtre reflète les liquidités récentes
+          const cardsInWindow = collection.filter(
+            (c) => Number(c.obtainedAt || 0) >= startTime && Number(c.obtainedAt || 0) <= now
+          ).length;
+          const estimatedCostInWindow = Math.round((cardsInWindow / 5) * 200);
+          const startBal = Math.max(0, currentVal + estimatedCostInWindow);
+
+          const cardsSinceStart = collection.filter(
+            (c) => Number(c.obtainedAt || 0) >= startTime && Number(c.obtainedAt || 0) <= t
+          ).length;
+          const windowRatio = cardsInWindow > 0 ? cardsSinceStart / cardsInWindow : ratio;
+          const baseEst = startBal + (currentVal - startBal) * windowRatio;
+          const wiggle = Math.sin(i * 1.6) * Math.min(20, Math.abs(currentVal - startBal) * 0.02);
+          simulatedVal = Math.max(0, Math.round(baseEst + (i === 0 ? 0 : wiggle)));
+        }
+      } else if (
+        ['boostersOpened', 'wonCards', 'lostCards', 'lostMoneyCasino', 'netCasinoGains'].includes(
+          metricId
+        )
+      ) {
+        // Métriques cumulatives : démarrent à 0 à la création du compte et montent avec l'activité
+        if (i === 0 && startTime <= minCardTs) {
+          simulatedVal = 0;
+        } else if (i === sampleCount - 1) {
+          simulatedVal = currentVal;
+        } else {
+          const cardsAtT = collection.filter((c) => Number(c.obtainedAt || 0) <= t);
+          const totalColCount = collection.length || 1;
+          const cardProgress = collection.length > 0
+            ? cardsAtT.length / totalColCount
+            : Math.pow(ratio, 1.3);
+          simulatedVal = Math.round(currentVal * cardProgress);
+        }
       } else {
         simulatedVal = Math.round(currentVal * ratio);
+      }
+
+      // Si un instantané réel a été sauvegardé
+      if (savedSnapshots.length > 0 && i > 0 && i < sampleCount - 1) {
+        const snap = savedSnapshots.find(
+          (s) => Math.abs(s.timestamp - t) <= timeStep * 0.75
+        );
+        if (snap && typeof snap[metricId] === 'number') {
+          simulatedVal = snap[metricId];
+        }
       }
 
       points.push({

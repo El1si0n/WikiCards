@@ -118,6 +118,7 @@ export default function StatsHistoryModal({
   wikithunes = 0,
   collectionValue = null,
   playerName = 'Mocobanks',
+  isLocalUser = false,
 }) {
   const [selectedPeriod, setSelectedPeriod] = useState('TOUT');
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -134,8 +135,17 @@ export default function StatsHistoryModal({
       wikithunes,
       collectionValue,
       period: selectedPeriod,
+      isLocalUser,
     });
-  }, [metricId, collection, stats, wikithunes, collectionValue, selectedPeriod]);
+  }, [
+    metricId,
+    collection,
+    stats,
+    wikithunes,
+    collectionValue,
+    selectedPeriod,
+    isLocalUser,
+  ]);
 
   // Valeurs remarquables (ATH, ATL, départ, fin)
   const statsOverview = useMemo(() => {

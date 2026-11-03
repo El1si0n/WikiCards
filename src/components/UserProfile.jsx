@@ -1105,6 +1105,7 @@ export default function UserProfile({
           wikithunes={wikithunes}
           collectionValue={collectionTotalValue}
           playerName={profile.username || 'Mon profil'}
+          isLocalUser={true}
         />
       )}
     </div>

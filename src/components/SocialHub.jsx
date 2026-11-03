@@ -1561,6 +1561,7 @@ export default function SocialHub({
           playerName={
             activePeerProfile?.username || selectedPeer?.code || 'Joueur'
           }
+          isLocalUser={isSelectedPeerMe}
         />
       )}
     </div>
