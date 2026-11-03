@@ -8,6 +8,8 @@ export default function WikithuneIcon({ className = 'w-4 h-4', style }) {
   return (
     <svg
       viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`inline-block shrink-0 select-none ${className}`}

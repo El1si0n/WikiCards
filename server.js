@@ -104,6 +104,7 @@ const server = http.createServer(async (req, res) => {
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       if (res.headersSent) return;
       const ext = path.extname(filePath).toLowerCase();
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader(
         'Content-Type',
         MIME_TYPES[ext] || 'application/octet-stream'
@@ -144,6 +145,7 @@ const server = http.createServer(async (req, res) => {
     const indexPath = path.join(DIST_DIR, 'index.html');
     if (fs.existsSync(indexPath)) {
       if (!res.headersSent) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
