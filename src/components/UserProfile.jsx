@@ -567,6 +567,23 @@ export default function UserProfile({
           <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
             <span
               className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
+              title="Total des bénéfices nets réels empochés au Plus ou Moins"
+            >
+              Gains casino (Gain net)
+            </span>
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
+              <span>
+                {new Intl.NumberFormat('fr-FR').format(
+                  stats?.netCasinoGains || 0
+                )}
+              </span>
+              <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
+            </div>
+          </div>
+
+          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
+            <span
+              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
               title="Nombre total de cartes détruites lors des échecs d'upgrade et de quitte ou double"
             >
               Cartes perdues
@@ -585,23 +602,6 @@ export default function UserProfile({
             </span>
             <div className="text-[18px] font-extrabold text-[#202122] mt-1">
               {new Intl.NumberFormat('fr-FR').format(stats?.wonCards || 0)}
-            </div>
-          </div>
-
-          <div className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] p-3">
-            <span
-              className="block text-[11.5px] text-[#54595d] uppercase font-bold truncate"
-              title="Total des bénéfices nets réels empochés au Plus ou Moins"
-            >
-              Gains casino (Gain net)
-            </span>
-            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-              <span>
-                {new Intl.NumberFormat('fr-FR').format(
-                  stats?.netCasinoGains || 0
-                )}
-              </span>
-              <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
           </div>
         </div>
