@@ -312,6 +312,11 @@ export default function App() {
     // Instantané immédiat pour tracer la hausse de +550 ₩ dans le graphique Trade Republic
     try {
       const safeCol = Array.isArray(collection) ? collection : [];
+      const legendaryCount = safeCol.filter((c) => c?.rarity === 'L').length;
+      const ultraRareCount = safeCol.filter((c) => c?.rarity === 'UR').length;
+      const gifCount = safeCol.filter((c) =>
+        Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
+      ).length;
       recordStatsSnapshot({
         wikithunes: nextWikithunes,
         collectionValue: safeCol.reduce(
@@ -320,6 +325,10 @@ export default function App() {
         ),
         uniqueCardsCount: safeCol.length,
         totalCardsCount: safeCol.reduce((sum, c) => sum + (c?.count || 1), 0),
+        legendaryCount,
+        ultraRareCount,
+        gifCount,
+        collection: safeCol,
         stats: stats || {},
       });
     } catch (snapErr) {
@@ -602,6 +611,11 @@ export default function App() {
     if (typeof wikithunes === 'number') {
       try {
         const safeCol = Array.isArray(collection) ? collection : [];
+        const legendaryCount = safeCol.filter((c) => c?.rarity === 'L').length;
+        const ultraRareCount = safeCol.filter((c) => c?.rarity === 'UR').length;
+        const gifCount = safeCol.filter((c) =>
+          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
+        ).length;
         recordStatsSnapshot({
           wikithunes,
           collectionValue: safeCol.reduce(
@@ -610,6 +624,10 @@ export default function App() {
           ),
           uniqueCardsCount: safeCol.length,
           totalCardsCount: safeCol.reduce((sum, c) => sum + (c?.count || 1), 0),
+          legendaryCount,
+          ultraRareCount,
+          gifCount,
+          collection: safeCol,
           stats: stats || {},
         });
       } catch (snapErr) {

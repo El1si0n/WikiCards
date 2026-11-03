@@ -10,9 +10,61 @@ export function getSavedStatsSnapshots() {
     const raw = localStorage.getItem(LOCAL_SNAPSHOTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((s) => s && typeof s.timestamp === 'number')
-      : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // Filtre les éléments valides et trie par chronologie croissante
+    const valid = parsed.filter((s) => s && typeof s.timestamp === 'number');
+    valid.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Auto-réparation des anomalies et creux aberrants dans l'historique local
+    let maxLeg = 0;
+    let maxUR = 0;
+    let maxGif = 0;
+    let maxBoosters = 0;
+    let maxStreak = 0;
+    let maxDraws = 0;
+    let maxWon = 0;
+    let maxLost = 0;
+
+    for (const s of valid) {
+      // Réparation des creux à 0 sur raretés et gifs dus aux anciens snapshots incomplets
+      if (typeof s.legendaryCount === 'number') {
+        if (s.legendaryCount === 0 && maxLeg > 0) s.legendaryCount = maxLeg;
+        else maxLeg = Math.max(maxLeg, s.legendaryCount);
+      }
+      if (typeof s.ultraRareCount === 'number') {
+        if (s.ultraRareCount === 0 && maxUR > 0) s.ultraRareCount = maxUR;
+        else maxUR = Math.max(maxUR, s.ultraRareCount);
+      }
+      if (typeof s.gifCount === 'number') {
+        if (s.gifCount === 0 && maxGif > 0) s.gifCount = maxGif;
+        else maxGif = Math.max(maxGif, s.gifCount);
+      }
+
+      // Réparation des compteurs cumulatifs (ne régressent jamais dans le temps)
+      if (typeof s.boostersOpened === 'number') {
+        if (s.boostersOpened < maxBoosters) s.boostersOpened = maxBoosters;
+        else maxBoosters = s.boostersOpened;
+      }
+      if (typeof s.recordStreak === 'number') {
+        if (s.recordStreak < maxStreak) s.recordStreak = maxStreak;
+        else maxStreak = s.recordStreak;
+      }
+      if (typeof s.totalCardsDrawn === 'number') {
+        if (s.totalCardsDrawn < maxDraws) s.totalCardsDrawn = maxDraws;
+        else maxDraws = s.totalCardsDrawn;
+      }
+      if (typeof s.wonCards === 'number') {
+        if (s.wonCards < maxWon) s.wonCards = maxWon;
+        else maxWon = s.wonCards;
+      }
+      if (typeof s.lostCards === 'number') {
+        if (s.lostCards < maxLost) s.lostCards = maxLost;
+        else maxLost = s.lostCards;
+      }
+    }
+
+    return valid;
   } catch {
     return [];
   }
@@ -25,15 +77,70 @@ export function recordStatsSnapshot(data = {}) {
   try {
     const snapshots = getSavedStatsSnapshots();
     const now = Date.now();
+    const last = snapshots[snapshots.length - 1];
+
+    const safeCol = Array.isArray(data.collection) ? data.collection : [];
+    const legendaryCount = typeof data.legendaryCount === 'number'
+      ? data.legendaryCount
+      : safeCol.length > 0
+      ? safeCol.filter((c) => c?.rarity === 'L').length
+      : last?.legendaryCount || 0;
+    const ultraRareCount = typeof data.ultraRareCount === 'number'
+      ? data.ultraRareCount
+      : safeCol.length > 0
+      ? safeCol.filter((c) => c?.rarity === 'UR').length
+      : last?.ultraRareCount || 0;
+    const gifCount = typeof data.gifCount === 'number'
+      ? data.gifCount
+      : safeCol.length > 0
+      ? safeCol.filter((c) =>
+          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
+        ).length
+      : last?.gifCount || 0;
+
+    // Protection de monotonie contre les désynchronisations temporaires
+    const boostersOpened = Math.max(
+      last?.boostersOpened || 0,
+      Number(data.stats?.boostersOpened || 0)
+    );
+    const recordStreak = Math.max(
+      last?.recordStreak || 0,
+      Number(data.stats?.recordStreak || 0)
+    );
+    const lostMoneyCasino = Math.max(
+      last?.lostMoneyCasino || 0,
+      Number(data.stats?.lostMoneyCasino || 0)
+    );
+    const netCasinoGains = Math.max(
+      last?.netCasinoGains || 0,
+      Number(data.stats?.netCasinoGains || 0)
+    );
+    const lostCards = Math.max(
+      last?.lostCards || 0,
+      Number(data.stats?.lostCards || 0)
+    );
+    const wonCards = Math.max(
+      last?.wonCards || 0,
+      Number(data.stats?.wonCards || 0)
+    );
+    const totalCardsDrawn = Math.max(
+      last?.totalCardsDrawn || 0,
+      Number(data.stats?.totalCardsDrawn || 0),
+      boostersOpened * 5,
+      Number(data.totalCardsCount || 0)
+    );
 
     // Évite de spammer si le dernier snapshot date de moins de 30 secondes et que les valeurs n'ont pas bougé
-    const last = snapshots[snapshots.length - 1];
     if (
       last &&
       now - last.timestamp < 30000 &&
       last.wikithunes === data.wikithunes &&
       last.collectionValue === data.collectionValue &&
-      last.uniqueCardsCount === data.uniqueCardsCount
+      last.uniqueCardsCount === data.uniqueCardsCount &&
+      last.boostersOpened === boostersOpened &&
+      last.recordStreak === recordStreak &&
+      last.ultraRareCount === ultraRareCount &&
+      last.gifCount === gifCount
     ) {
       return;
     }
@@ -44,27 +151,21 @@ export function recordStatsSnapshot(data = {}) {
       collectionValue: Number(data.collectionValue || 0),
       uniqueCardsCount: Number(data.uniqueCardsCount || 0),
       totalCardsCount: Number(data.totalCardsCount || 0),
-      boostersOpened: Number(data.stats?.boostersOpened || 0),
-      legendaryCount: Number(data.legendaryCount || 0),
-      ultraRareCount: Number(data.ultraRareCount || 0),
-      gifCount: Number(data.gifCount || 0),
-      lostMoneyCasino: Number(data.stats?.lostMoneyCasino || 0),
-      netCasinoGains: Number(data.stats?.netCasinoGains || 0),
-      netCasinoBilan:
-        Number(data.stats?.netCasinoGains || 0) - Number(data.stats?.lostMoneyCasino || 0),
-      recordStreak: Number(data.stats?.recordStreak || 0),
-      lostCards: Number(data.stats?.lostCards || 0),
-      wonCards: Number(data.stats?.wonCards || 0),
-      netCardsBilan:
-        Number(data.stats?.wonCards || 0) - Number(data.stats?.lostCards || 0),
-      totalCardsDrawn: Math.max(
-        Number(data.stats?.totalCardsDrawn || 0),
-        Number(data.stats?.boostersOpened || 0) * 5,
-        Number(data.totalCardsCount || 0)
-      ),
+      boostersOpened,
+      legendaryCount,
+      ultraRareCount,
+      gifCount,
+      lostMoneyCasino,
+      netCasinoGains,
+      netCasinoBilan: netCasinoGains - lostMoneyCasino,
+      recordStreak,
+      lostCards,
+      wonCards,
+      netCardsBilan: wonCards - lostCards,
+      totalCardsDrawn,
     };
 
-    const next = [...snapshots, snap].slice(-500); // Conserve les 500 derniers snapshots
+    const next = [...snapshots, snap].slice(-500);
     localStorage.setItem(LOCAL_SNAPSHOTS_STORAGE_KEY, JSON.stringify(next));
   } catch {
     // ignore storage limit
@@ -254,7 +355,10 @@ export function generateMetricTimeSeries(metricId, {
           }
         }
         if (closestSnap && typeof closestSnap[metricId] === 'number') {
-          val = closestSnap[metricId];
+          // Ne remplace jamais un comptage réel par 0 (évite les trous de données accidentels)
+          if (closestSnap[metricId] > 0 || val === 0) {
+            val = closestSnap[metricId];
+          }
         }
       }
 
@@ -426,6 +530,38 @@ export function generateMetricTimeSeries(metricId, {
         timestamp: t,
         value: i === sampleCount - 1 ? currentVal : simulatedVal,
       });
+    }
+  }
+
+  // Sécurité anti-régressions pour les métriques de progression et d'inventaire cumulatif
+  const isMonotonic = [
+    'boostersOpened',
+    'recordStreak',
+    'totalCardsDrawn',
+    'wonCards',
+    'lostCards',
+    'lostMoneyCasino',
+    'netCasinoGains',
+    'uniqueCardsCount',
+    'totalCardsCount',
+    'legendaryCount',
+    'ultraRareCount',
+    'gifCount',
+  ].includes(metricId);
+
+  if (isMonotonic && points.length > 1) {
+    let runningMax = 0;
+    for (let i = 0; i < points.length; i++) {
+      if (i === points.length - 1) {
+        points[i].value = currentVal;
+      } else {
+        if (points[i].value < runningMax) {
+          points[i].value = runningMax;
+        } else {
+          runningMax = Math.min(currentVal, points[i].value);
+          points[i].value = runningMax;
+        }
+      }
     }
   }
 
