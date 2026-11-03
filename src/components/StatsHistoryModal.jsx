@@ -72,6 +72,20 @@ const METRIC_DEFINITIONS = {
     description: 'Nombre de cartes animées et holographiques dans la collection.',
     icon: Sparkles,
   },
+  netCasinoBilan: {
+    title: 'Bilan Casino (Net)',
+    unit: ' ₩',
+    isCurrency: true,
+    description: 'Solde net cumulé du jeu Plus ou Moins (Gains nets empochés − Mises perdues).',
+    icon: Coins,
+  },
+  recordStreak: {
+    title: 'Série record',
+    unit: ' victoires',
+    isCurrency: false,
+    description: 'Plus longue série ininterrompue de bonnes réponses au jeu Plus ou Moins.',
+    icon: Flame,
+  },
   lostMoneyCasino: {
     title: 'Argent perdu au jeu',
     unit: ' ₩',
@@ -329,7 +343,18 @@ export default function StatsHistoryModal({
         {/* Section Valeur Live & Performances (Trade Republic Scrubbing) */}
         <div className="px-5 sm:px-7 pt-5 pb-2">
           <div className="flex flex-wrap items-baseline gap-2.5">
-            <span className="text-[36px] sm:text-[44px] font-black tracking-tight text-[#101418] dark:text-white leading-none font-mono">
+            <span
+              className={`text-[36px] sm:text-[44px] font-black tracking-tight leading-none font-mono ${
+                metricId === 'netCasinoBilan'
+                  ? activePoint.value > 0
+                    ? 'text-[#00875a] dark:text-[#3fb950]'
+                    : activePoint.value < 0
+                    ? 'text-[#de350b] dark:text-[#f85149]'
+                    : 'text-[#101418] dark:text-white'
+                  : 'text-[#101418] dark:text-white'
+              }`}
+            >
+              {metricId === 'netCasinoBilan' && activePoint.value > 0 ? '+' : ''}
               {new Intl.NumberFormat('fr-FR').format(activePoint.value)}
             </span>
             {def.isCurrency && (

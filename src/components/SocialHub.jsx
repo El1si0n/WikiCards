@@ -22,6 +22,7 @@ import {
   Crown,
   ExternalLink,
   TrendingUp,
+  Flame,
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
@@ -430,6 +431,8 @@ export default function SocialHub({
     const lostCards = Number(activeStats.lostCards || 0);
     const wonCards = Number(activeStats.wonCards || 0);
     const netCasinoGains = Number(activeStats.netCasinoGains || 0);
+    const recordStreak = Number(activeStats.recordStreak || 0);
+    const casinoBilan = netCasinoGains - lostMoneyCasino;
 
     return {
       totalCopies,
@@ -444,6 +447,8 @@ export default function SocialHub({
       lostCards,
       wonCards,
       netCasinoGains,
+      recordStreak,
+      casinoBilan,
     };
   }, [peerCollection, isSelectedPeerMe, stats, wikithunes, selectedPeer]);
 
@@ -915,23 +920,32 @@ export default function SocialHub({
 
                 <button
                   type="button"
-                  onClick={() => setHistoryModalMetric('lostMoneyCasino')}
+                  onClick={() => setHistoryModalMetric('netCasinoBilan')}
                   className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
-                  title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+                  title="Cliquer pour afficher la courbe P&L d'évolution Trade Republic (Gains − Pertes)"
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                      title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+                      title="Bilan financier net au jeu Plus ou Moins (Bénéfices nets empochés − Mises perdues)"
                     >
-                      Argent perdu au jeu
+                      Bilan Casino (Net)
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-                    <span>
-                      {new Intl.NumberFormat('fr-FR').format(
-                        peerStats.lostMoneyCasino
+                  <div className="text-[18px] font-extrabold mt-1 inline-flex items-center gap-1">
+                    <span
+                      className={
+                        (peerStats.casinoBilan || 0) > 0
+                          ? "text-[#00875a]"
+                          : (peerStats.casinoBilan || 0) < 0
+                          ? "text-[#de350b]"
+                          : "text-[#202122]"
+                      }
+                    >
+                      {(peerStats.casinoBilan || 0) > 0 ? "+" : ""}
+                      {new Intl.NumberFormat("fr-FR").format(
+                        peerStats.casinoBilan || 0
                       )}
                     </span>
                     <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
@@ -940,26 +954,25 @@ export default function SocialHub({
 
                 <button
                   type="button"
-                  onClick={() => setHistoryModalMetric('netCasinoGains')}
+                  onClick={() => setHistoryModalMetric('recordStreak')}
                   className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
                   title="Cliquer pour afficher le graphique d'évolution Trade Republic"
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                      title="Total des bénéfices nets réels empochés au Plus ou Moins"
+                      title="Plus longue série ininterrompue de bonnes réponses au jeu Plus ou Moins"
                     >
-                      Gains casino (Gain net)
+                      Série record
                     </span>
                     <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-                    <span>
-                      {new Intl.NumberFormat('fr-FR').format(
-                        peerStats.netCasinoGains
-                      )}
+                  <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1.5">
+                    <span>{peerStats.recordStreak || 0}</span>
+                    <span className="text-[12px] font-semibold text-[#54595d]">
+                      {(peerStats.recordStreak || 0) > 1 ? "victoires" : "victoire"}
                     </span>
-                    <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
+                    <Flame className="w-3.5 h-3.5 text-[#e06915]" />
                   </div>
                 </button>
 

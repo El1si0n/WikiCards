@@ -19,6 +19,7 @@ import {
   Trash2,
   TrendingUp,
   ExternalLink,
+  Flame,
 } from 'lucide-react';
 
 const RARITY_ORDER = {
@@ -109,6 +110,12 @@ export default function UserProfile({
       ),
     [collection]
   );
+
+  const casinoBilan = useMemo(
+    () => Number(stats?.netCasinoGains || 0) - Number(stats?.lostMoneyCasino || 0),
+    [stats]
+  );
+  const recordStreak = Number(stats?.recordStreak || 0);
 
   const playerScore = useMemo(
     () =>
@@ -695,24 +702,31 @@ export default function UserProfile({
 
           <button
             type="button"
-            onClick={() => setHistoryModalMetric('lostMoneyCasino')}
+            onClick={() => setHistoryModalMetric('netCasinoBilan')}
             className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
-            title="Cliquer pour afficher le graphique d'évolution Trade Republic"
+            title="Cliquer pour afficher la courbe P&L d'évolution Trade Republic (Gains − Pertes)"
           >
             <div className="flex items-center justify-between">
               <span
                 className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                title="Cumul des mises perdues au Plus ou Moins et des ₩ dépensés pour des % d'upgrades échouées"
+                title="Bilan financier net au jeu Plus ou Moins (Bénéfices nets empochés − Mises perdues)"
               >
-                Argent perdu au jeu
+                Bilan Casino (Net)
               </span>
               <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-              <span>
-                {new Intl.NumberFormat('fr-FR').format(
-                  stats?.lostMoneyCasino || 0
-                )}
+            <div className="text-[18px] font-extrabold mt-1 inline-flex items-center gap-1">
+              <span
+                className={
+                  casinoBilan > 0
+                    ? 'text-[#00875a]'
+                    : casinoBilan < 0
+                    ? 'text-[#de350b]'
+                    : 'text-[#202122]'
+                }
+              >
+                {casinoBilan > 0 ? '+' : ''}
+                {new Intl.NumberFormat('fr-FR').format(casinoBilan)}
               </span>
               <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
             </div>
@@ -720,26 +734,25 @@ export default function UserProfile({
 
           <button
             type="button"
-            onClick={() => setHistoryModalMetric('netCasinoGains')}
+            onClick={() => setHistoryModalMetric('recordStreak')}
             className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
             title="Cliquer pour afficher le graphique d'évolution Trade Republic"
           >
             <div className="flex items-center justify-between">
               <span
                 className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
-                title="Total des bénéfices nets réels empochés au Plus ou Moins"
+                title="Plus longue série ininterrompue de bonnes réponses au jeu Plus ou Moins"
               >
-                Gains casino (Gain net)
+                Série record
               </span>
               <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
-              <span>
-                {new Intl.NumberFormat('fr-FR').format(
-                  stats?.netCasinoGains || 0
-                )}
+            <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1.5">
+              <span>{recordStreak}</span>
+              <span className="text-[12px] font-semibold text-[#54595d]">
+                {recordStreak > 1 ? 'victoires' : 'victoire'}
               </span>
-              <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
+              <Flame className="w-3.5 h-3.5 text-[#e06915]" />
             </div>
           </button>
 

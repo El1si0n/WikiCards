@@ -36,6 +36,7 @@ export const RARITY_SCORE_WEIGHTS = {
  * 10. Cartes perdues (Upgrades & Quitte ou Double)
  * 11. Cartes gagnées (Upgrades & Quitte ou Double)
  * 12. Gains casino (bénéfices nets réels empochés)
+ * 13. Série record au Plus ou Moins (impact modéré/léger : +5 pts par victoire de record)
  *
  * Règle d'or anti-triche & anti-exploit :
  * - Le Quitte ou Double et les Upgrades se basent sur le BILAN NET DE CARTES (Gagnées - Perdues).
@@ -129,6 +130,10 @@ export function calculatePlayerScore(playerData = {}) {
   // 12. Gains casino (bénéfices nets réels empochés au Plus ou Moins)
   const netCasinoGains = Number(stats.netCasinoGains || 0);
 
+  // 13. Série record au jeu Plus ou Moins (impact léger / prestige d'habileté)
+  const recordStreak = Number(stats.recordStreak || 0);
+  const streakPoints = Math.round(recordStreak * 5); // Faible importance : 5 pts par victoire consécutive (ex: 6 victoires = +30 pts)
+
   // Bilan net des cartes au jeu (anti-exploit : ne récompense que le gain net réel de cartes)
   const netWonCards = Math.max(0, wonCards - lostCards);
 
@@ -160,7 +165,8 @@ export function calculatePlayerScore(playerData = {}) {
 
         // Exploits & prouesses au jeu (bilans nets réels uniquement)
         netWonCards * 15 +
-        Math.floor(netCasinoMoney / 50)
+        Math.floor(netCasinoMoney / 50) +
+        streakPoints
     )
   );
 

@@ -50,6 +50,9 @@ export function recordStatsSnapshot(data = {}) {
       gifCount: Number(data.gifCount || 0),
       lostMoneyCasino: Number(data.stats?.lostMoneyCasino || 0),
       netCasinoGains: Number(data.stats?.netCasinoGains || 0),
+      netCasinoBilan:
+        Number(data.stats?.netCasinoGains || 0) - Number(data.stats?.lostMoneyCasino || 0),
+      recordStreak: Number(data.stats?.recordStreak || 0),
       lostCards: Number(data.stats?.lostCards || 0),
       wonCards: Number(data.stats?.wonCards || 0),
     };
@@ -153,6 +156,10 @@ export function generateMetricTimeSeries(metricId, {
         return Number(safeStats?.lostMoneyCasino || 0);
       case 'netCasinoGains':
         return Number(safeStats?.netCasinoGains || 0);
+      case 'netCasinoBilan':
+        return Number(safeStats?.netCasinoGains || 0) - Number(safeStats?.lostMoneyCasino || 0);
+      case 'recordStreak':
+        return Number(safeStats?.recordStreak || 0);
       case 'lostCards':
         return Number(safeStats?.lostCards || 0);
       case 'wonCards':
@@ -287,6 +294,35 @@ export function generateMetricTimeSeries(metricId, {
           const wiggle = Math.sin(i * 1.6) * Math.min(20, Math.abs(currentVal - startBal) * 0.02);
           simulatedVal = Math.max(0, Math.round(baseEst + (i === 0 ? 0 : wiggle)));
         }
+      } else if (metricId === 'netCasinoBilan') {
+        // Courbe P&L boursière du casino : peut monter en territoire positif ou descendre en négatif
+        if (i === 0 && startTime <= minCardTs) {
+          simulatedVal = 0;
+        } else if (i === sampleCount - 1) {
+          simulatedVal = currentVal;
+        } else {
+          // Reconstitution avec fluctuations réelles (hausses lors des gains, baisses lors des pertes)
+          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const totalColCount = safeCollection.length || 1;
+          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          const trend = currentVal * Math.pow(cardProgress, 1.05);
+          // Onde de casino fluctuante avec des swings au fil des sessions de jeu
+          const amplitude = Math.max(30, Math.abs(currentVal) * 0.35 + 20);
+          const swing = Math.sin(i * 1.75) * amplitude * (1 - Math.abs(ratio - 0.5));
+          simulatedVal = Math.round(trend + (i === 0 ? 0 : swing));
+        }
+      } else if (metricId === 'recordStreak') {
+        // Progression par paliers de records de victoires consécutives
+        if (i === 0 && startTime <= minCardTs) {
+          simulatedVal = 0;
+        } else if (i === sampleCount - 1) {
+          simulatedVal = currentVal;
+        } else {
+          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const totalColCount = safeCollection.length || 1;
+          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          simulatedVal = Math.min(currentVal, Math.floor(currentVal * Math.pow(cardProgress, 1.3)));
+        }
       } else if (
         ['boostersOpened', 'wonCards', 'lostCards', 'lostMoneyCasino', 'netCasinoGains'].includes(
           metricId
@@ -321,8 +357,16 @@ export function generateMetricTimeSeries(metricId, {
             closestSnap = s;
           }
         }
-        if (closestSnap && typeof closestSnap[metricId] === 'number') {
-          simulatedVal = closestSnap[metricId];
+        if (closestSnap) {
+          if (metricId === 'netCasinoBilan') {
+            const snapVal =
+              typeof closestSnap.netCasinoBilan === 'number'
+                ? closestSnap.netCasinoBilan
+                : Number(closestSnap.netCasinoGains || 0) - Number(closestSnap.lostMoneyCasino || 0);
+            simulatedVal = snapVal;
+          } else if (typeof closestSnap[metricId] === 'number') {
+            simulatedVal = closestSnap[metricId];
+          }
         }
       }
 
