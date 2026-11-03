@@ -61,6 +61,7 @@ import {
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
 } from './config/rarities';
+import { recordStatsSnapshot } from './utils/statsHistory';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
 import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
@@ -309,6 +310,17 @@ export default function App() {
     const now = bumpLocalUpdatedAt();
     const nextWikithunes = wikithunes + DAILY_REWARD_AMOUNT;
     setWikithunes(nextWikithunes);
+    // Instantané immédiat pour tracer la hausse de +550 ₩ dans le graphique Trade Republic
+    recordStatsSnapshot({
+      wikithunes: nextWikithunes,
+      collectionValue: collection.reduce(
+        (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
+        0
+      ),
+      uniqueCardsCount: collection.length,
+      totalCardsCount: collection.reduce((sum, c) => sum + (c.count || 1), 0),
+      stats,
+    });
     if (userCode) {
       syncUserAccountToServer(userCode, {
         profile: userProfile,
@@ -582,7 +594,20 @@ export default function App() {
     } catch {
       // ignore
     }
-  }, [wikithunes]);
+    // Enregistre automatiquement un instantané horodaté pour le graphique Trade Republic
+    if (typeof wikithunes === 'number') {
+      recordStatsSnapshot({
+        wikithunes,
+        collectionValue: collection.reduce(
+          (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
+          0
+        ),
+        uniqueCardsCount: collection.length,
+        totalCardsCount: collection.reduce((sum, c) => sum + (c.count || 1), 0),
+        stats,
+      });
+    }
+  }, [wikithunes, collection, stats]);
 
   useEffect(() => {
     try {

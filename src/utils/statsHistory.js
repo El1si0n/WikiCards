@@ -217,11 +217,17 @@ export function generateMetricTimeSeries(metricId, {
 
       // Si un instantané réel a été sauvegardé pour cette métrique
       if (savedSnapshots.length > 0 && i > 0 && i < sampleCount - 1) {
-        const snap = savedSnapshots.find(
-          (s) => Math.abs(s.timestamp - t) <= timeStep * 0.75
-        );
-        if (snap && typeof snap[metricId] === 'number') {
-          val = snap[metricId];
+        let closestSnap = null;
+        let minDiff = Infinity;
+        for (const s of savedSnapshots) {
+          const diff = Math.abs(s.timestamp - t);
+          if (diff <= timeStep && diff < minDiff) {
+            minDiff = diff;
+            closestSnap = s;
+          }
+        }
+        if (closestSnap && typeof closestSnap[metricId] === 'number') {
+          val = closestSnap[metricId];
         }
       }
 
@@ -300,11 +306,17 @@ export function generateMetricTimeSeries(metricId, {
 
       // Si un instantané réel a été sauvegardé
       if (savedSnapshots.length > 0 && i > 0 && i < sampleCount - 1) {
-        const snap = savedSnapshots.find(
-          (s) => Math.abs(s.timestamp - t) <= timeStep * 0.75
-        );
-        if (snap && typeof snap[metricId] === 'number') {
-          simulatedVal = snap[metricId];
+        let closestSnap = null;
+        let minDiff = Infinity;
+        for (const s of savedSnapshots) {
+          const diff = Math.abs(s.timestamp - t);
+          if (diff <= timeStep && diff < minDiff) {
+            minDiff = diff;
+            closestSnap = s;
+          }
+        }
+        if (closestSnap && typeof closestSnap[metricId] === 'number') {
+          simulatedVal = closestSnap[metricId];
         }
       }
 
