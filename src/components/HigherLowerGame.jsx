@@ -79,7 +79,10 @@ export default function HigherLowerGame({
     setSeenCards([]);
     setGameState('loading');
 
-    const firstCard = await fetchRandomDuelCard(sessionSeenTitles, null, null, betAmount);
+    // Le gain potentiel du tour 1 (mise * multiplicateur pour streak = 1)
+    const round1PotentialGain = Math.round(betAmount * getMultiplierForStreak(1));
+
+    const firstCard = await fetchRandomDuelCard(sessionSeenTitles, null, null, round1PotentialGain);
     const secondExcluded = [
       ...sessionSeenTitles,
       firstCard?.title,
@@ -89,7 +92,7 @@ export default function HigherLowerGame({
       secondExcluded,
       firstCard?.views ?? null,
       firstCard?.rarity ?? null,
-      betAmount
+      round1PotentialGain
     );
 
     if (firstCard && secondCard) {
@@ -155,11 +158,16 @@ export default function HigherLowerGame({
       newRefCard.id,
     ].filter(Boolean);
 
+    // Gain potentiel pour ce prochain palier (activeBet * multiplicateur streak + 1)
+    const nextPotentialGain = Math.round(
+      activeBet * getMultiplierForStreak(streak + 1)
+    );
+
     const newRightCard = await fetchRandomDuelCard(
       allExcluded,
       newRefCard.views,
       newRefCard.rarity,
-      activeBet
+      nextPotentialGain
     );
 
     setIsLoadingNext(false);

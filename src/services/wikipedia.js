@@ -585,17 +585,18 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitl
 /**
  * Tire une carte Wikipédia FR variée pour le jeu "Plus ou Moins" (Étape 9.2)
  * - Garantit strictement qu'aucune carte identique à la carte de référence (ou déjà vue) ne peut être tirée.
- * - Difficulté indexée sur la mise de base :
- *   • 50 ₩ : très accessible (écart prononcé de raretés pour deviner aisément)
- *   • 100 ₩ : modéré (plus accessible que le standard)
- *   • 250 ₩ : standard (45 % de duels serrés sur même rareté ou palier voisin +/- 1)
- *   • 500 ₩+ : corsé / défi (65 % de duels très serrés à notoriété proche)
+ * - Difficulté dynamiquement indexée sur la valeur du GAIN POTENTIEL du tour :
+ *   • < 150 ₩ (débuts à 50 ₩ / 100 ₩) : très accessible, écart prononcé de 2+ raretés
+ *   • 150 ₩ à 350 ₩ (progression modérée) : ~32 % de duels serrés, raretés plus proches
+ *   • 350 ₩ à 700 ₩ (série avancée ou mise 250 ₩) : 55 % de duels serrés (voisins ou même rareté)
+ *   • 700 ₩ à 1 500 ₩ (série longue 7+ ou mise 500 ₩+) : 75 % de duels très serrés (majorité même rareté)
+ *   • > 1 500 ₩ (jackpot / boss) : 88 % de duels ultra-serrés à notoriété très proche
  */
 export async function fetchRandomDuelCard(
   excludeInput = [],
   referenceViews = null,
   referenceRarity = null,
-  betAmount = 250
+  potentialGain = 250
 ) {
   const excludeList = Array.isArray(excludeInput)
     ? excludeInput
@@ -604,39 +605,70 @@ export async function fetchRandomDuelCard(
     excludeList.map((t) => String(t || '').trim().toLowerCase()).filter(Boolean)
   );
 
+  const safePotentialGain =
+    typeof potentialGain === 'number' && !Number.isNaN(potentialGain)
+      ? potentialGain
+      : 250;
+
   const allTiers = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
   let pickedTier;
 
-  // Détermination de la difficulté selon la mise :
+  // Détermination de la difficulté selon la valeur du gain potentiel :
   let closeDuelChance = 0.45;
-  if (betAmount <= 50) {
-    closeDuelChance = 0.12; // Très peu de duels serrés
-  } else if (betAmount <= 100) {
-    closeDuelChance = 0.28; // Plus facile que 250 ₩
-  } else if (betAmount <= 250) {
-    closeDuelChance = 0.45; // Difficulté standard actuelle
+  let exactSameRarityChance = 0.35;
+
+  if (safePotentialGain < 150) {
+    // Palier Découverte / Début de petite série : duels très accessibles
+    closeDuelChance = 0.10;
+    exactSameRarityChance = 0.15;
+  } else if (safePotentialGain < 350) {
+    // Palier Modéré
+    closeDuelChance = 0.32;
+    exactSameRarityChance = 0.25;
+  } else if (safePotentialGain < 700) {
+    // Palier Tendu (enjeux sérieux)
+    closeDuelChance = 0.55;
+    exactSameRarityChance = 0.45;
+  } else if (safePotentialGain < 1500) {
+    // Palier Redoutable (grosses séries ou grosses mises)
+    closeDuelChance = 0.75;
+    exactSameRarityChance = 0.65;
   } else {
-    closeDuelChance = 0.65; // Défi corsé à 500 ₩+
+    // Palier Jackpot / Boss (> 1 500 ₩ de gain potentiel)
+    closeDuelChance = 0.88;
+    exactSameRarityChance = 0.80;
   }
 
-  if (referenceRarity && allTiers.includes(referenceRarity) && Math.random() < closeDuelChance) {
+  const isCloseDuel =
+    referenceRarity &&
+    allTiers.includes(referenceRarity) &&
+    Math.random() < closeDuelChance;
+
+  if (isCloseDuel) {
     const refIdx = allTiers.indexOf(referenceRarity);
     let candidateIndices;
 
-    if (betAmount >= 500 && Math.random() < 0.5) {
-      // À 500 ₩, 50 % des duels serrés imposent la même rareté exacte
+    if (Math.random() < exactSameRarityChance) {
+      // Duel sur la même rareté exacte
       candidateIndices = [refIdx];
     } else {
-      candidateIndices = [refIdx];
+      // Duel sur des raretés voisines (+/- 1 palier)
+      candidateIndices = [];
       if (refIdx > 0) candidateIndices.push(refIdx - 1);
+      candidateIndices.push(refIdx);
       if (refIdx < allTiers.length - 1) candidateIndices.push(refIdx + 1);
     }
 
     const pickedIdx =
       candidateIndices[Math.floor(Math.random() * candidateIndices.length)];
     pickedTier = allTiers[pickedIdx];
-  } else if (referenceRarity && allTiers.includes(referenceRarity) && betAmount <= 50) {
-    // Pour une mise de 50 ₩, on favorise un écart d'au moins 2 paliers pour rendre l'issue évidente
+  } else if (
+    referenceRarity &&
+    allTiers.includes(referenceRarity) &&
+    safePotentialGain < 150
+  ) {
+    // À faible gain potentiel (< 150 ₩), si ce n'est pas un duel serré,
+    // on favorise un écart d'au moins 2 paliers pour rendre l'issue évidente
     const refIdx = allTiers.indexOf(referenceRarity);
     const distantTiers = allTiers.filter((_, idx) => Math.abs(idx - refIdx) >= 2);
     pickedTier =
