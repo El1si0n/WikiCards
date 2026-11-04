@@ -36,11 +36,7 @@ import {
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
 } from './config/rarities';
-import {
-  recordStatsSnapshot,
-  getSavedStatsSnapshots,
-  mergeServerSnapshots,
-} from './utils/statsHistory';
+import { recordStatsSnapshot } from './utils/statsHistory';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
 import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
@@ -278,17 +274,6 @@ export default function App() {
   });
 
   const [notifications, setNotifications] = useState([]);
-
-  // Horodatage officiel de création du compte (borne temporelle absolue)
-  const [accountCreatedAt, setAccountCreatedAt] = useState(() => {
-    try {
-      const raw = localStorage.getItem('wikicards_account_created_at');
-      if (raw) return Number(raw);
-    } catch {
-      // ignore
-    }
-    return null;
-  });
 
   const toolsDropdownRef = useRef(null);
 
@@ -793,15 +778,6 @@ export default function App() {
         // ignore
       }
     }
-    if (typeof serverAccount.createdAt === 'number' && serverAccount.createdAt > 0) {
-      setAccountCreatedAt(serverAccount.createdAt);
-      try {
-        localStorage.setItem('wikicards_account_created_at', String(serverAccount.createdAt));
-      } catch {}
-    }
-    if (Array.isArray(serverAccount.snapshots) && serverAccount.snapshots.length > 0) {
-      mergeServerSnapshots(serverAccount.snapshots);
-    }
     if (serverAccount.updatedAt) {
       const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
       setLocalUpdatedAt(syncedTs);
@@ -954,7 +930,6 @@ export default function App() {
         lastFreeBoostersResetTime,
         readNotifIds,
         dismissedNotifIds,
-        snapshots: getSavedStatsSnapshots(),
         clientUpdatedAt: localUpdatedAt,
       });
       if (result?.serverIsNewer && result?.user) {
@@ -2144,7 +2119,6 @@ export default function App() {
                       wikithunes={wikithunes}
                       stats={stats}
                       userProfile={userProfile}
-                      accountCreatedAt={accountCreatedAt}
                       onSyncAccountState={handleSyncAccountState}
                     />
                   </Suspense>
@@ -2177,7 +2151,6 @@ export default function App() {
                       onToggleFavorite={toggleFavorite}
                       wikithunes={wikithunes}
                       stats={stats}
-                      accountCreatedAt={accountCreatedAt}
                     />
                   </Suspense>
                 ) : (

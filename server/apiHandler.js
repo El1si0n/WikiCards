@@ -282,11 +282,7 @@ export async function handleApiRequest(req, res) {
                       ? parsed.wikithunes
                       : 0,
                   stats: parsed.stats || {},
-                  createdAt: parsed.createdAt || 0,
                   updatedAt: parsed.updatedAt || 0,
-                  snapshots: Array.isArray(parsed.snapshots)
-                    ? parsed.snapshots.slice(-100)
-                    : [],
                 })
               } catch {
                 // ignore malformed file
@@ -387,15 +383,10 @@ export async function handleApiRequest(req, res) {
                   ? incomingClaimDate
                   : existingClaimDate
 
-              const safeSnapshots = Array.isArray(cleanBody.snapshots)
-                ? cleanBody.snapshots.slice(-300)
-                : (Array.isArray(existing.snapshots) ? existing.snapshots : []);
-
               const merged = {
                 ...existing,
                 ...cleanBody,
                 code: cleanCode,
-                snapshots: safeSnapshots,
                 lastDailyClaimDate: resolvedClaimDate,
                 createdAt: existing.createdAt || cleanBody.createdAt || now,
                 updatedAt: existing.updatedAt || clientTimestamp || now,

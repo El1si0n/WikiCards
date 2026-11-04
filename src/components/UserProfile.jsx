@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
-import { recordStatsSnapshot, getSavedStatsSnapshots } from '../utils/statsHistory';
+import { recordStatsSnapshot } from '../utils/statsHistory';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -41,7 +41,6 @@ export default function UserProfile({
   onToggleFavorite,
   wikithunes,
   stats,
-  accountCreatedAt = null,
 }) {
   // Édition directe en cliquant sur la photo de profil, le nom ou la bio
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
@@ -1120,8 +1119,6 @@ export default function UserProfile({
           collectionValue={collectionTotalValue}
           playerName={profile.username || 'Mon profil'}
           isLocalUser={true}
-          createdAt={accountCreatedAt || profile?.createdAt}
-          snapshots={getSavedStatsSnapshots()}
         />
       )}
     </div>
