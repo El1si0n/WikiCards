@@ -55,10 +55,6 @@ export default function DoubleOrNothingGame({
   const [selectedThemeFilter, setSelectedThemeFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('rarity_desc');
 
-  // Onglet actif sur mobile pour condenser les 3 colonnes ('spin' | 'selected' | 'target')
-  const [mobileTab, setMobileTab] = useState('spin');
-  const doubleSectionRef = useRef(null);
-
   const tickTimersRef = useRef([]);
 
   useEffect(() => {
@@ -467,53 +463,10 @@ export default function DoubleOrNothingGame({
   const miniArcLength = (displayChance / 100) * miniCircumference;
 
   return (
-    <div ref={doubleSectionRef} className="space-y-4">
-      {/* Sélecteur d'onglets mobile pour condenser l'espace et éviter les 1500px de scroll */}
-      <div className="lg:hidden flex items-center p-1 bg-[#eaecf0] dark:bg-[#202630] rounded-[6px] gap-1">
-        <button
-          type="button"
-          onClick={() => setMobileTab('spin')}
-          className={`flex-1 py-2 px-2 text-[12px] font-bold rounded-[4px] transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'spin'
-              ? 'bg-white dark:bg-[#12161c] text-[#202122] dark:text-[#eaecf0] shadow-xs'
-              : 'text-[#54595d] dark:text-[#a2a9b1]'
-          }`}
-        >
-          <Coins className="w-3.5 h-3.5 text-[#3366cc]" />
-          <span>Tirage & Pièce</span>
-          <span className="px-1.5 py-0.2 bg-[#3366cc] text-white text-[10px] rounded-full">
-            {displayChance}%
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileTab('selected')}
-          className={`flex-1 py-2 px-2 text-[12px] font-bold rounded-[4px] transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'selected'
-              ? 'bg-white dark:bg-[#12161c] text-[#202122] dark:text-[#eaecf0] shadow-xs'
-              : 'text-[#54595d] dark:text-[#a2a9b1]'
-          }`}
-        >
-          <span>Cartes ({liveSelectedCards.length}/8)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileTab('target')}
-          className={`flex-1 py-2 px-2 text-[12px] font-bold rounded-[4px] transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'target'
-              ? 'bg-white dark:bg-[#12161c] text-[#202122] dark:text-[#eaecf0] shadow-xs'
-              : 'text-[#54595d] dark:text-[#a2a9b1]'
-          }`}
-        >
-          <span>Gain ({activeTier.code} ×2)</span>
-        </button>
-      </div>
-
+    <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* COLONNE GAUCHE (4 col) : Carte sélectionnée */}
-        <div className={`${mobileTab === 'selected' ? 'flex' : 'hidden lg:flex'} order-1 lg:order-1 lg:col-span-4 flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4`}>
+        <div className="order-1 lg:order-1 lg:col-span-4 flex flex-col justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
             <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               Cartes sélectionnées
@@ -523,12 +476,12 @@ export default function DoubleOrNothingGame({
             </span>
           </div>
 
-          <div className="flex-1 flex items-center justify-center min-h-[452px]">
+          <div className="flex-1 flex items-center justify-center py-2">
             {displayedSelectedCards.length > 0 ? (
               <div className="relative w-full flex items-center justify-center">
                 {displayedSelectedCards.length === 1 ? (
                   <div
-                    className="w-full max-w-[285px] sm:max-w-[272px]"
+                    className="w-full max-w-[284px]"
                     title="Cliquez sur la carte pour la retirer"
                   >
                     <WikiCard
@@ -543,7 +496,7 @@ export default function DoubleOrNothingGame({
                   </div>
                 ) : (
                   /* Plusieurs cartes sélectionnées : éventail responsive */
-                  <div className="relative flex items-center justify-center w-full h-[446px] sm:h-[452px] overflow-hidden">
+                  <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/386] overflow-hidden">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
                       const offsetStep = Math.min(
@@ -559,7 +512,7 @@ export default function DoubleOrNothingGame({
                             transform: `translateX(${translateX}px)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-full max-w-[285px] sm:max-w-[272px] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          className="absolute w-full max-w-[284px] aspect-[284/386] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard
@@ -578,7 +531,7 @@ export default function DoubleOrNothingGame({
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
                 <p className="text-[12px] sm:text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                   Cliquez sur 1 à 8 cartes dans le classeur ci-dessous pour
                   tenter de les doubler en même temps.
@@ -589,7 +542,7 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE CENTRALE (4 col) : Jauge 50/50 ou Roues individuelles */}
-        <div className={`${mobileTab === 'spin' ? 'flex' : 'hidden lg:flex'} order-2 lg:order-2 lg:col-span-4 flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4`}>
+        <div className="order-2 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
@@ -1023,7 +976,7 @@ export default function DoubleOrNothingGame({
         </div>
 
         {/* COLONNE DROITE (4 col) : Carte cible / Résultats du tirage */}
-        <div className={`${mobileTab === 'target' ? 'flex' : 'hidden lg:flex'} order-3 lg:order-3 lg:col-span-4 flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4`}>
+        <div className="order-3 lg:order-3 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-3">
             <span className="text-[12px] sm:text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {spinSnapshot
@@ -1045,13 +998,13 @@ export default function DoubleOrNothingGame({
             )}
           </div>
 
-          <div className="flex-1 flex items-center justify-center min-h-[452px] w-full">
+          <div className="flex-1 flex items-center justify-center py-2 w-full">
             {spinSnapshot ? (
               spinSnapshot.totalCount === 1 ? (
                 /* Résultat pour 1 carte */
                 isRoundFinished ? (
                   spinState === 'won' ? (
-                    <div className="w-full max-w-[285px] sm:max-w-[272px]">
+                    <div className="w-full max-w-[284px]">
                       <WikiCard
                         card={spinSnapshot.results[0].card}
                         compact={true}
@@ -1061,7 +1014,7 @@ export default function DoubleOrNothingGame({
                       />
                     </div>
                   ) : (
-                    <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
                       <div className="w-12 h-12 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] dark:border-[#b32424] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center mb-3">
                         <XCircle className="w-6 h-6" />
                       </div>
@@ -1076,7 +1029,7 @@ export default function DoubleOrNothingGame({
                 ) : (
                   /* Pendant le tirage 1 carte : carte mystère avec "Révélation en cours..." */
                   <div
-                    className="relative w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                    className="relative w-full max-w-[284px] aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                     style={{
                       background: activeTier.cardBg,
                       border: `1px solid ${activeTier.borderColor}`,
@@ -1266,7 +1219,7 @@ export default function DoubleOrNothingGame({
             ) : (
               /* Carte cible en attente (0 ou 1 carte) */
               <div
-                className="relative w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                className="relative w-full max-w-[284px] aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
                   background: activeTier.cardBg,
                   border:
@@ -1444,7 +1397,7 @@ export default function DoubleOrNothingGame({
         </div>
 
         {filteredAndSortedCollection.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 justify-items-center pb-20 lg:pb-0">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 justify-items-center">
             {filteredAndSortedCollection.map((card) => {
               const currentQty = selectedCountsMap[card.id] || 0;
               const maxCopies = getMaxSelectableCopies(card);
@@ -1484,80 +1437,6 @@ export default function DoubleOrNothingGame({
             </p>
           </div>
         )}
-      </div>
-
-      {/* =====================================================================
-          BARRE D'ACTION FLOTTANTE SUR MOBILE (Quitte ou Double direct)
-      ===================================================================== */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1.5 text-[11px] text-[#cbd5e1]">
-            <span>
-              {liveSelectedCards.length > 0
-                ? `${liveSelectedCards.length}/8 carte${liveSelectedCards.length > 1 ? 's' : ''}`
-                : '0 carte engagée'}
-            </span>
-            <span>➔</span>
-            <span
-              className="px-1.5 py-0.2 rounded-[2px] font-bold text-white text-[10px]"
-              style={{
-                background: activeTier.badgeBg || '#3366cc',
-                color: activeTier.badgeText || '#ffffff',
-              }}
-            >
-              {activeTier.code} ×2
-            </span>
-          </div>
-          <div className="text-[14px] font-extrabold text-white flex items-center gap-1 truncate">
-            <span>Chance :</span>
-            <span className="text-[#34d399]">{displayChance}&nbsp;%</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              setMobileTab('spin');
-              doubleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }}
-            className="px-2.5 py-2 rounded-[4px] bg-[#363e4a] text-white text-[12px] font-semibold flex items-center gap-1 hover:bg-[#475569] active:scale-95 transition-all"
-            title="Voir le tirage"
-          >
-            <span>Tirage</span>
-          </button>
-
-          {spinState === 'won' || spinState === 'lost' ? (
-            <button
-              type="button"
-              onClick={handleFinishRound}
-              className="wiki-casino-btn wiki-casino-btn--success !min-h-[40px] !py-2 !px-4 text-[13px] font-bold shadow-lg"
-            >
-              <span>{spinState === 'won' ? 'Suivant' : 'Terminer'}</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={spinState === 'spinning' || liveSelectedCards.length === 0}
-              onClick={() => {
-                setMobileTab('spin');
-                doubleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                handleLaunchDouble();
-              }}
-              className="wiki-casino-btn wiki-casino-btn--primary !min-h-[40px] !py-2 !px-4 text-[13px] font-bold shadow-lg disabled:opacity-50"
-            >
-              <Coins className="w-4 h-4 mr-1" />
-              <span>
-                {spinState === 'spinning'
-                  ? 'Tirage...'
-                  : liveSelectedCards.length > 1
-                  ? `Doubler (${liveSelectedCards.length})`
-                  : 'Tenter le Double'}
-              </span>
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

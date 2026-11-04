@@ -198,16 +198,10 @@ export default function WikiCard({
   const isProtectedInRecycleMode =
     isRecycleMode && isFavorite && duplicateCount <= 1;
 
-  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile (calquée sur la carte booster de référence)
-  const maxChars = trade ? 70 : mini ? 300 : compact ? 300 : 365;
-  const fullText = formatCompleteExtract(card.extract, maxChars);
-  const descriptionTypography = trade
-    ? 'text-[9.5px] leading-[1.25] line-clamp-2'
-    : mini
-    ? 'text-[12px] sm:text-[10.8px] leading-[1.35] sm:leading-[1.3] line-clamp-4'
-    : compact
-    ? 'text-[12px] sm:text-[12.5px] leading-[1.35] sm:leading-[1.38] line-clamp-4 sm:line-clamp-6'
-    : 'text-[12px] sm:text-[13.5px] leading-[1.35] sm:leading-[1.42] line-clamp-4 sm:line-clamp-6';
+  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile (calquée sur la carte booster de référence 284x386)
+  const fullText = formatCompleteExtract(card.extract, 250);
+  const descriptionTypography =
+    'text-[10px] sm:text-[12px] leading-[1.3] line-clamp-2 sm:line-clamp-4';
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -257,15 +251,7 @@ export default function WikiCard({
   return (
     <div
       onClick={handleCardClick}
-      className={`relative select-none w-full mx-auto ${
-        trade
-          ? 'max-w-[155px]'
-          : mini
-          ? 'max-w-[285px] sm:max-w-[215px]'
-          : compact
-          ? 'max-w-[285px] sm:max-w-[272px]'
-          : 'max-w-[285px] sm:max-w-[330px]'
-      } ${
+      className={`relative select-none w-full mx-auto max-w-[284px] ${
         isRecycleMode
           ? isProtectedInRecycleMode
             ? 'opacity-55 cursor-not-allowed'
@@ -283,15 +269,9 @@ export default function WikiCard({
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className={`relative w-full transition-transform duration-200 ease-out ${
-          trade
-            ? 'rounded-[10px]'
-            : mini
-            ? 'rounded-[16px] sm:rounded-[13px]'
-            : compact
-            ? 'rounded-[16px] sm:rounded-[16px]'
-            : 'rounded-[16px] sm:rounded-[19px]'
-        } ${isShiny ? 'wiki-shiny-frame p-[3px]' : ''}`}
+        className={`relative w-full transition-transform duration-200 ease-out rounded-[14px] ${
+          isShiny ? 'wiki-shiny-frame p-[3px]' : ''
+        }`}
         style={{
           boxShadow: isShiny
             ? tilt.isHovered
@@ -306,15 +286,7 @@ export default function WikiCard({
         }}
       >
         <article
-          className={`wiki-card-item relative w-full ${
-            trade
-              ? 'h-[220px] rounded-[9px]'
-              : mini
-              ? 'h-[446px] sm:h-[316px] rounded-[14px] sm:rounded-[11px]'
-              : compact
-              ? 'h-[446px] sm:h-[446px] rounded-[14px] sm:rounded-[14px]'
-              : 'h-[446px] sm:h-[500px] rounded-[14px] sm:rounded-[17px]'
-          } overflow-hidden flex flex-col ${
+          className={`wiki-card-item relative w-full aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col ${
             isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
           }`}
           style={{
@@ -438,15 +410,7 @@ export default function WikiCard({
           >
             {/* 1. PARTIE SUPÉRIEURE : IMAGE DE LA PAGE WIKIPÉDIA */}
             <div
-              className={`relative w-full ${
-                trade
-                  ? 'h-[85px]'
-                  : mini
-                  ? 'h-[168px] sm:h-[112px]'
-                  : compact
-                  ? 'h-[168px] sm:h-[168px]'
-                  : 'h-[168px] sm:h-[192px]'
-              } shrink-0 overflow-hidden`}
+              className="relative w-full h-[43.5%] shrink-0 overflow-hidden"
               style={{
                 background:
                   card.imageContain || !card.image || imgError
@@ -487,31 +451,15 @@ export default function WikiCard({
                   <img
                     src="https://fr.wikipedia.org/static/images/icons/wikipedia.png"
                     alt="Wikipédia"
-                    className={`${
-                      trade
-                        ? 'w-9 h-9'
-                        : mini
-                        ? 'w-12 h-12'
-                        : compact
-                        ? 'w-12 h-12 sm:w-16 sm:h-16'
-                        : 'w-16 h-16 sm:w-20 sm:h-20'
-                    } object-contain opacity-85 drop-shadow-md`}
+                    className="w-12 h-12 sm:w-16 sm:h-16 object-contain opacity-85 drop-shadow-md"
                   />
                 </div>
               )}
 
               {/* Badges en haut à gauche : Rareté + Badge Métal GIF (si .gif) */}
-              <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
+              <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-20 flex items-center gap-1 sm:gap-1.5">
                 <div
-                  className={`${
-                    trade
-                      ? 'min-w-[20px] h-[17px] px-1 text-[9.5px]'
-                      : mini
-                      ? 'min-w-[32px] sm:min-w-[26px] h-[24px] sm:h-[20px] px-2 sm:px-1.5 text-[12px] sm:text-[10.5px]'
-                      : compact
-                      ? 'min-w-[32px] sm:min-w-[32px] h-[24px] sm:h-[24px] px-2 sm:px-2 text-[12px] sm:text-[12px]'
-                      : 'min-w-[32px] sm:min-w-[36px] h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[12px] sm:text-[13px]'
-                  } rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
+                  className="min-w-[22px] sm:min-w-[28px] h-[18px] sm:h-[22px] px-1.5 sm:px-2 text-[10px] sm:text-[11.5px] rounded-[4px] sm:rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
                   style={{
                     backgroundColor: tier.badgeBg,
                     color: tier.badgeText,
@@ -523,16 +471,10 @@ export default function WikiCard({
 
                 {isShiny && (
                   <div
-                    className={`wiki-shiny-badge ${
-                      mini
-                        ? 'h-[24px] sm:h-[20px] px-2 sm:px-1.5 text-[10.5px] sm:text-[9.5px]'
-                        : compact
-                        ? 'h-[24px] sm:h-[24px] px-2 sm:px-2 text-[10.5px] sm:text-[10.5px]'
-                        : 'h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px]'
-                    } rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
+                    className="wiki-shiny-badge h-[18px] sm:h-[22px] px-1.5 sm:px-2 text-[9px] sm:text-[10px] rounded-[4px] sm:rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]"
                     title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
                   >
-                    <Sparkles className="w-2.5 h-2.5 shrink-0 text-[#e2e8f0]" />
+                    <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0 text-[#e2e8f0]" />
                     <span>GIF</span>
                   </div>
                 )}
@@ -541,13 +483,7 @@ export default function WikiCard({
 
             {/* 2. PARTIE INFÉRIEURE : FOND TEXTURÉ (MÉTAL BROSSÉ SI GIF) + TITRE + DESCRIPTION + PIED */}
             <div
-              className={`relative flex-1 flex flex-col justify-between ${
-                mini
-                  ? 'px-3.5 sm:px-2.5 pt-3 sm:pt-2 pb-2.5 sm:pb-2'
-                  : compact
-                  ? 'px-3.5 sm:px-3.5 pt-3 sm:pt-3 pb-2.5 sm:pb-2.5'
-                  : 'px-3.5 sm:px-4 pt-3 sm:pt-3.5 pb-2.5 sm:pb-3'
-              } overflow-hidden`}
+              className="relative flex-1 min-h-0 flex flex-col justify-between px-2.5 sm:px-3.5 pt-2 sm:pt-2.5 pb-2 sm:pb-2.5 overflow-hidden"
             >
               {/* Texture d'ondes organiques (argentée/titane si carte GIF métal) */}
               <RarityWavePattern
@@ -604,15 +540,7 @@ export default function WikiCard({
               {/* Contenu textuel */}
               <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden">
                 <h3
-                  className={`font-extrabold ${
-                    trade
-                      ? 'text-[11.5px] mb-0.5'
-                      : mini
-                      ? 'text-[17px] sm:text-[13.5px] mb-1.5 sm:mb-1'
-                      : compact
-                      ? 'text-[17px] sm:text-[17.5px] mb-1.5 sm:mb-1.5'
-                      : 'text-[17.5px] sm:text-[19.5px] mb-1.5'
-                  } leading-[1.18] tracking-[-0.01em] line-clamp-2`}
+                  className="font-extrabold text-[12.5px] sm:text-[15.5px] mb-0.5 sm:mb-1 leading-[1.2] line-clamp-2 tracking-[-0.01em]"
                   style={{
                     color: isShiny ? '#0f172a' : tier.textColor,
                     textShadow: isShiny
@@ -633,13 +561,7 @@ export default function WikiCard({
 
               {/* 3. PIED DE CARTE : VUES WIKIPÉDIA + LIEN DIRECT */}
               <div
-                className={`relative z-10 shrink-0 ${
-                  trade
-                    ? 'pt-1 mt-0.5'
-                    : mini
-                    ? 'pt-1.5 sm:pt-1.5 mt-1 sm:mt-1'
-                    : 'pt-1.5 sm:pt-2 mt-1 sm:mt-1.5'
-                } flex items-center justify-between gap-1 border-t`}
+                className="relative z-10 shrink-0 pt-1 sm:pt-1.5 mt-0.5 sm:mt-1 flex items-center justify-between gap-1 border-t"
                 style={{
                   borderColor: isShiny
                     ? 'rgba(15, 23, 42, 0.22)'
@@ -647,19 +569,11 @@ export default function WikiCard({
                 }}
               >
                 <div
-                  className={`flex items-center gap-1 font-bold shrink-0 ${
-                    trade
-                      ? 'text-[9px]'
-                      : mini
-                      ? 'text-[12px] sm:text-[10.5px]'
-                      : compact
-                      ? 'text-[12px] sm:text-[12px]'
-                      : 'text-[12px] sm:text-[13px]'
-                  }`}
+                  className="flex items-center gap-1 font-bold shrink-0 text-[9.5px] sm:text-[11.5px]"
                   style={{ color: isShiny ? '#0f172a' : tier.textColor }}
                   title={`Fréquentation de la page : ${formattedViews} vues (${tier.name})`}
                 >
-                  <Eye className="w-3 h-3 opacity-80 shrink-0" />
+                  <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-80 shrink-0" />
                   <span>{formattedViews} vues</span>
                 </div>
 
@@ -673,15 +587,7 @@ export default function WikiCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className={`inline-flex items-center gap-1 shrink-0 ${
-                    trade
-                      ? 'px-1 py-0.2 text-[8.5px]'
-                      : mini
-                      ? 'px-2 sm:px-1.5 py-0.5 text-[11px] sm:text-[9.5px]'
-                      : compact
-                      ? 'px-2 sm:px-2 py-0.5 text-[11px] sm:text-[11px]'
-                      : 'px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-[12px]'
-                  } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                  className="inline-flex items-center gap-1 shrink-0 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] rounded-[4px] sm:rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{
                     backgroundColor: isShiny
                       ? 'rgba(255, 255, 255, 0.68)'
@@ -693,20 +599,9 @@ export default function WikiCard({
                   }}
                   title="Consulter l'article officiel sur Wikipédia (nouvel onglet)"
                 >
-                  {compact ? (
-                    <>
-                      <span className="hidden sm:inline">Lire sur </span>
-                      <span>Wikipédia</span>
-                    </>
-                  ) : trade || mini ? (
-                    <span>Wikipédia</span>
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">Lire sur </span>
-                      <span>Wikipédia</span>
-                    </>
-                  )}
-                  <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                  <span className="hidden sm:inline">Wikipédia</span>
+                  <span className="sm:hidden">Wiki</span>
+                  <ExternalLink className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0" />
                 </a>
               </div>
             </div>

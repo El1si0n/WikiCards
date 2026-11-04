@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
@@ -29,7 +29,11 @@ function formatRemainingTime(bidExpiresAt, highestBidderCode, now) {
   if (!highestBidderCode || !bidExpiresAt) {
     return '24h après 1ère offre';
   }
-  const diff = Number(bidExpiresAt) - now;
+  const expiry = Number(bidExpiresAt);
+  if (isNaN(expiry)) {
+    return '24h après 1ère offre';
+  }
+  const diff = expiry - now;
   if (diff <= 0) {
     return 'Délai écoulé';
   }
@@ -41,9 +45,9 @@ function formatRemainingTime(bidExpiresAt, highestBidderCode, now) {
 
 export default function AuctionMarket({
   userCode,
-  collection,
-  favorites,
-  wikithunes,
+  collection = [],
+  favorites = [],
+  wikithunes = 0,
   onSyncAccountState,
 }) {
   // Navigation interne : 'browse' (Enchères en cours) | 'sell' (Mettre une carte en vente) | 'my_listings' (Mes ventes)
@@ -138,7 +142,11 @@ export default function AuctionMarket({
     setStartingBidInput(String(Math.max(15, Math.round(baseVal * 1.2))));
     setBuyoutPriceInput(String(Math.max(30, Math.round(baseVal * 2.5))));
     soundManager.playCardSlide();
-    sellFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      sellFormRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    } catch {
+      sellFormRef.current?.scrollIntoView?.();
+    }
   };
 
   const handleCreateListing = async (e) => {
@@ -338,7 +346,7 @@ export default function AuctionMarket({
                       </div>
 
                       <div className="flex justify-center">
-                        <div className="w-full max-w-[285px] sm:max-w-[272px]">
+                        <div className="w-full max-w-[284px]">
                           <WikiCard card={listing.card} compact={true} />
                         </div>
                       </div>
@@ -347,13 +355,13 @@ export default function AuctionMarket({
                         <div className="flex items-center justify-between">
                           <span className="text-[#54595d]">
                             {listing.highestBidderCode
-                              ? `Meilleure offre (${listing.highestBidderUsername})`
+                              ? `Meilleure offre (${listing.highestBidderUsername || 'Joueur'})`
                               : 'Mise à prix'}
                           </span>
                           <span className="font-extrabold text-[#202122] inline-flex items-center gap-1">
                             <span>
                               {new Intl.NumberFormat('fr-FR').format(
-                                listing.currentBid
+                                Number(listing.currentBid || 0)
                               )}
                             </span>
                             <WikithuneIcon className="w-3.5 h-3.5 text-[#3366cc]" />
@@ -365,7 +373,7 @@ export default function AuctionMarket({
                           <span className="font-extrabold text-[#177860] inline-flex items-center gap-1">
                             <span>
                               {new Intl.NumberFormat('fr-FR').format(
-                                listing.buyoutPrice
+                                Number(listing.buyoutPrice || 0)
                               )}
                             </span>
                             <WikithuneIcon className="w-3.5 h-3.5 text-[#177860]" />
@@ -513,7 +521,7 @@ export default function AuctionMarket({
 
                 {selectedSellCard ? (
                   <>
-                    <div className="w-full max-w-[285px] sm:max-w-[272px]">
+                    <div className="w-full max-w-[284px]">
                       <WikiCard card={selectedSellCard} compact={true} />
                     </div>
 
@@ -583,7 +591,7 @@ export default function AuctionMarket({
                     </form>
                   </>
                 ) : (
-                  <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
+                  <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
                     Sélectionnez une carte dans votre classeur à droite pour fixer son prix de départ et son prix d'achat immédiat.
                   </div>
                 )}
@@ -625,7 +633,7 @@ export default function AuctionMarket({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center max-h-[620px] overflow-y-auto p-1 pb-16 lg:pb-1">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 justify-items-center max-h-[620px] overflow-y-auto p-1">
                   {collection
                     .filter((c) => c.rarity === sellRarityFilter)
                     .map((card) => {
@@ -655,26 +663,6 @@ export default function AuctionMarket({
                 </div>
               </div>
             </div>
-
-            {/* Barre flottante mobile si une carte est sélectionnée pour fixer le prix */}
-            {selectedSellCard && (
-              <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10.5px] text-[#94a3b8]">Carte sélectionnée :</span>
-                  <span className="text-[13px] font-bold text-white truncate">
-                    {selectedSellCard.title}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => sellFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="wiki-casino-btn wiki-casino-btn--primary !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold shrink-0"
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>Fixer le prix ➔</span>
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           /* =====================================================================
@@ -701,12 +689,12 @@ export default function AuctionMarket({
                       }`}
                     >
                       {listing.status === 'sold'
-                        ? `Vendue (${listing.finalPrice} ₩ à ${listing.buyerUsername})`
+                        ? `Vendue (${listing.finalPrice || listing.currentBid || 0} ₩ à ${listing.buyerUsername || 'un joueur'})`
                         : listing.status === 'cancelled'
                         ? 'Retirée'
                         : listing.highestBidderCode
-                        ? `Enchère de 24h en cours (${listing.currentBid} ₩ par ${listing.highestBidderUsername} • Fin dans ${formatRemainingTime(listing.bidExpiresAt, listing.highestBidderCode, now)})`
-                        : `En attente de 1ère offre (Mise à prix : ${listing.startingBid} ₩ / Achat : ${listing.buyoutPrice} ₩)`}
+                        ? `Enchère de 24h en cours (${listing.currentBid || 0} ₩ par ${listing.highestBidderUsername || 'un joueur'} • Fin dans ${formatRemainingTime(listing.bidExpiresAt, listing.highestBidderCode, now)})`
+                        : `En attente de 1ère offre (Mise à prix : ${listing.startingBid || 0} ₩ / Achat : ${listing.buyoutPrice || 0} ₩)`}
                     </span>
                   </div>
 

@@ -694,6 +694,24 @@ export default function App() {
     if (typeof serverAccount.wikithunes === 'number') {
       setWikithunes(serverAccount.wikithunes);
     }
+    if (Array.isArray(serverAccount.readNotifIds)) {
+      setReadNotifIds((prev) => {
+        const merged = Array.from(new Set([...prev, ...serverAccount.readNotifIds]));
+        try {
+          localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+    if (Array.isArray(serverAccount.dismissedNotifIds)) {
+      setDismissedNotifIds((prev) => {
+        const merged = Array.from(new Set([...prev, ...serverAccount.dismissedNotifIds]));
+        try {
+          localStorage.setItem(STORAGE_KEYS.DISMISSED_NOTIFS, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
     if (serverAccount.stats && typeof serverAccount.stats === 'object') {
       setStats({
         boostersOpened: Number(serverAccount.stats.boostersOpened || 0),
@@ -887,6 +905,8 @@ export default function App() {
         lastDailyClaimDate,
         freeBoostersCount,
         lastFreeBoostersResetTime,
+        readNotifIds,
+        dismissedNotifIds,
         clientUpdatedAt: localUpdatedAt,
       });
       if (result?.serverIsNewer && result?.user) {
@@ -904,6 +924,8 @@ export default function App() {
     lastDailyClaimDate,
     freeBoostersCount,
     lastFreeBoostersResetTime,
+    readNotifIds,
+    dismissedNotifIds,
     localUpdatedAt,
   ]);
 
@@ -987,6 +1009,22 @@ export default function App() {
     }
     setFreeBoostersCount(loginCount);
     setLastFreeBoostersResetTime(loginReset);
+    if (Array.isArray(account.readNotifIds)) {
+      setReadNotifIds(account.readNotifIds);
+      try {
+        localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(account.readNotifIds));
+      } catch {
+        // ignore
+      }
+    }
+    if (Array.isArray(account.dismissedNotifIds)) {
+      setDismissedNotifIds(account.dismissedNotifIds);
+      try {
+        localStorage.setItem(STORAGE_KEYS.DISMISSED_NOTIFS, JSON.stringify(account.dismissedNotifIds));
+      } catch {
+        // ignore
+      }
+    }
     try {
       localStorage.setItem(STORAGE_KEYS.FREE_BOOSTERS, String(loginCount));
       localStorage.setItem(
@@ -1291,13 +1329,18 @@ export default function App() {
 
   const handleMarkAllNotifsRead = () => {
     const allIds = notifications.map((n) => n.id);
-    const updated = Array.from(new Set([...readNotifIds, ...allIds]));
-    setReadNotifIds(updated);
-    try {
-      localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
+    setReadNotifIds((prev) => {
+      const updated = Array.from(new Set([...prev, ...allIds]));
+      try {
+        localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      if (userCode) {
+        syncUserAccountToServer(userCode, { readNotifIds: updated });
+      }
+      return updated;
+    });
   };
 
   const handleMarkNotifRead = (notifId) => {
@@ -1309,6 +1352,9 @@ export default function App() {
         localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
       } catch {
         // ignore
+      }
+      if (userCode) {
+        syncUserAccountToServer(userCode, { readNotifIds: updated });
       }
       return updated;
     });
@@ -1328,6 +1374,9 @@ export default function App() {
       } catch {
         // ignore
       }
+      if (userCode) {
+        syncUserAccountToServer(userCode, { dismissedNotifIds: updated });
+      }
       return updated;
     });
   };
@@ -1345,21 +1394,16 @@ export default function App() {
       } catch {
         // ignore
       }
+      if (userCode) {
+        syncUserAccountToServer(userCode, { dismissedNotifIds: updated });
+      }
       return updated;
     });
   };
 
   const handleSelectNotification = (notif) => {
     if (!notif) return;
-    if (!readNotifIds.includes(notif.id)) {
-      const updated = [...readNotifIds, notif.id];
-      setReadNotifIds(updated);
-      try {
-        localStorage.setItem(STORAGE_KEYS.READ_NOTIFS, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-    }
+    handleMarkNotifRead(notif.id);
     if (notif.tab) {
       setActiveTab(notif.tab);
     }
@@ -2118,28 +2162,6 @@ export default function App() {
                       <h2 className="wiki-smallcaps m-0">
                         Classeur de cartes Wikipédia
                       </h2>
-                      <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-[#54595d]">
-                        <span>
-                          <strong className="text-[#202122]">
-                            {collection.length}
-                          </strong>{' '}
-                          pages uniques
-                        </span>
-                        <span>•</span>
-                        <span>
-                          <strong className="text-[#202122]">
-                            {totalCopiesCount}
-                          </strong>{' '}
-                          cartes au total
-                        </span>
-                        <span>•</span>
-                        <span>
-                          <strong className="text-[#202122]">
-                            {stats.boostersOpened}
-                          </strong>{' '}
-                          booster(s) ouvert(s)
-                        </span>
-                      </div>
                     </div>
 
                     {/* Barre de filtres par rareté + Filtre par Thème (Étape 8) + Sélecteur de tri */}
@@ -2299,7 +2321,7 @@ export default function App() {
 
                     {/* Grille 2 colonnes sur mobile, jusqu'à 4 sur grand écran (lg:grid-cols-4) avec cartes au format compact */}
                     {filteredAndSortedCollection.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 justify-items-center">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5 justify-items-center">
                         {filteredAndSortedCollection.map((card) => {
                           const cardQty = selectedRecycleCounts[String(card.id)] || 0;
                           return (

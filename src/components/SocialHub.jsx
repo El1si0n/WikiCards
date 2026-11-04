@@ -1173,12 +1173,12 @@ export default function SocialHub({
                 {peerShowcaseCards.map((card, idx) => (
                   <div
                     key={idx}
-                    className="w-full max-w-[285px] sm:max-w-[272px] flex flex-col items-center"
+                    className="w-full max-w-[284px] flex flex-col items-center"
                   >
                     {card ? (
                       <WikiCard card={card} compact={true} />
                     ) : (
-                      <div className="w-full h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-6 text-center text-[13px] text-[#72777d]">
+                      <div className="w-full aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-3 sm:p-6 text-center text-[12px] sm:text-[13px] text-[#72777d]">
                         Emplacement vide
                       </div>
                     )}
@@ -1500,12 +1500,12 @@ export default function SocialHub({
                               ? `${trade.fromUsername} propose :`
                               : 'Vous proposez :'}
                           </span>
-                          <div className="flex flex-wrap gap-2.5">
+                          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 justify-items-center">
                             {(trade.offeredCards || []).map((item, i) => (
-                              <div key={i} className="w-[145px] sm:w-[150px]">
+                              <div key={i} className="w-full max-w-[284px]">
                                 <WikiCard
                                   card={item.card}
-                                  trade={true}
+                                  compact={true}
                                   duplicateCount={item.qty || 1}
                                 />
                               </div>
@@ -1524,12 +1524,12 @@ export default function SocialHub({
                               ? 'En échange de vos cartes :'
                               : `Demandé à ${trade.toUsername} :`}
                           </span>
-                          <div className="flex flex-wrap gap-2.5">
+                          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 justify-items-center">
                             {(trade.requestedCards || []).map((item, i) => (
-                              <div key={i} className="w-[145px] sm:w-[150px]">
+                              <div key={i} className="w-full max-w-[284px]">
                                 <WikiCard
                                   card={item.card}
-                                  trade={true}
+                                  compact={true}
                                   duplicateCount={item.qty || 1}
                                 />
                               </div>
