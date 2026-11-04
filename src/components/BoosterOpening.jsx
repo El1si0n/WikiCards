@@ -836,19 +836,18 @@ export default function BoosterOpening({
             transition={{ duration: 0.3 }}
             className="flex flex-col"
           >
-            {/* Grille récapitulative des 5 cartes obtenues (2 colonnes uniformes sur mobile, 5 sur PC) */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5 justify-items-center py-2">
+            {/* Grille récapitulative des 5 cartes obtenues (grandes cartes lisibles à taille réelle 284x443) */}
+            <div className="flex flex-wrap justify-center gap-3.5 sm:gap-6 py-2 max-w-[940px] mx-auto">
               {packCards.map((card, index) => (
                 <motion.div
                   key={card.id}
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: index * 0.05 }}
-                  className="w-full flex justify-center"
+                  className="w-[calc(50%-7px)] sm:w-[calc(50%-12px)] md:w-[calc(33.333%-16px)] max-w-[284px] flex justify-center"
                 >
                   <WikiCard
                     card={card}
-                    compact={true}
                     isFavorite={favorites.includes(card.id)}
                     onToggleFavorite={onToggleFavorite}
                   />
