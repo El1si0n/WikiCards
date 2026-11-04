@@ -158,7 +158,7 @@ export default function StatsHistoryModal({
   const def = METRIC_DEFINITIONS[metricId] || METRIC_DEFINITIONS.collectionValue;
   const MetricIcon = def.icon;
 
-  // Génération de la série temporelle Trade Republic
+  // Génération de la série temporelle 100% factuelle
   const points = useMemo(() => {
     return generateMetricTimeSeries(metricId, {
       collection,
@@ -223,20 +223,21 @@ export default function StatsHistoryModal({
   const paddingTop = 20;
   const paddingBottom = 26;
 
-  const { pathD, areaD, plottedPoints, zeroY, hasNegative } = useMemo(() => {
+  const { pathD, areaD, plottedPoints, zeroY, hasNegative, isFlat, isZeroFlat } = useMemo(() => {
     if (!points || points.length === 0) {
-      return { pathD: '', areaD: '', plottedPoints: [], zeroY: null, hasNegative: false };
+      return { pathD: '', areaD: '', plottedPoints: [], zeroY: null, hasNegative: false, isFlat: false, isZeroFlat: false };
     }
 
     const values = points.map((p) => p.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
+    const isFlat = minVal === maxVal;
+    const isZeroFlat = isFlat && minVal === 0;
     const range = maxVal - minVal || 1;
 
     const innerWidth = chartWidth - paddingX * 2;
     const innerHeight = chartHeight - paddingTop - paddingBottom;
 
-    const isFlat = minVal === maxVal;
     const coords = points.map((p, idx) => {
       const x = paddingX + (idx / Math.max(1, points.length - 1)) * innerWidth;
       const normalizedY = isFlat ? 0.5 : (p.value - minVal) / range;
@@ -248,14 +249,18 @@ export default function StatsHistoryModal({
     const normalizedZeroY = isFlat ? 0.5 : (0 - minVal) / range;
     const zeroY = paddingTop + (1 - normalizedZeroY) * innerHeight;
 
-    if (coords.length === 1) {
-      const p = coords[0];
+    if (coords.length === 1 || isFlat) {
+      const pY = coords[0].y;
+      const startX = coords[0].x;
+      const endX = coords[coords.length - 1].x;
       return {
-        pathD: `M ${paddingX} ${p.y} L ${chartWidth - paddingX} ${p.y}`,
-        areaD: '',
+        pathD: `M ${startX},${pY} L ${endX},${pY}`,
+        areaD: isZeroFlat ? '' : `M ${startX},${pY} L ${endX},${pY} L ${endX},${chartHeight - paddingBottom} L ${startX},${chartHeight - paddingBottom} Z`,
         plottedPoints: coords,
         zeroY,
         hasNegative,
+        isFlat,
+        isZeroFlat,
       };
     }
 
@@ -276,7 +281,7 @@ export default function StatsHistoryModal({
     const firstX = coords[0].x;
     const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
 
-    return { pathD: d, areaD: area, plottedPoints: coords, zeroY, hasNegative };
+    return { pathD: d, areaD: area, plottedPoints: coords, zeroY, hasNegative, isFlat, isZeroFlat };
   }, [points]);
 
   // Gestion du scrubbing interactif à la souris ou au doigt
@@ -408,6 +413,12 @@ export default function StatsHistoryModal({
               </span>
             </span>
 
+            {isZeroFlat && (
+              <span className="text-[11.5px] px-2 py-0.5 rounded-[2px] bg-[#eaecf0] dark:bg-[#21262d] text-[#54595d] dark:text-[#8b949e] font-medium border border-[#c8ccd1] dark:border-[#363e4a]">
+                Solde neutre · Aucune transaction
+              </span>
+            )}
+
             <span className="text-[12px] text-[#72777d] dark:text-[#8b949e] font-medium">
               {hoverIndex !== null ? 'À la date du :' : 'Sur la période :'}
               <strong className="ml-1 text-[#202122] dark:text-white">
@@ -530,15 +541,17 @@ export default function StatsHistoryModal({
               />
             )}
 
-            {/* Ligne principale de la courbe */}
+            {/* Ligne principale de la courbe (pleine si activité, pointillée/neutre si plat à 0) */}
             {pathD && (
               <path
                 d={pathD}
                 fill="none"
-                stroke="#3366cc"
-                strokeWidth="2.8"
+                stroke={isZeroFlat ? '#72777d' : '#3366cc'}
+                strokeWidth={isZeroFlat ? '1.8' : '2.8'}
+                strokeDasharray={isZeroFlat ? '6 6' : undefined}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className={isZeroFlat ? 'opacity-65 dark:opacity-55' : ''}
               />
             )}
 
@@ -550,41 +563,46 @@ export default function StatsHistoryModal({
                   y1={paddingTop - 6}
                   x2={activeCoord.x}
                   y2={chartHeight - paddingBottom + 6}
-                  stroke="#3366cc"
+                  stroke={isZeroFlat ? '#72777d' : '#3366cc'}
                   strokeWidth="1.5"
                   strokeDasharray="3 3"
-                  className="opacity-75"
+                  className={isZeroFlat ? 'opacity-40' : 'opacity-75'}
                 />
 
-                {/* Halo pulsant natif SVG strictement centré sur (cx, cy) sans bug de transform CSS */}
-                <circle
-                  cx={activeCoord.x}
-                  cy={activeCoord.y}
-                  r="5"
-                  fill="#3366cc"
-                  opacity="0.35"
-                  pointerEvents="none"
-                >
-                  <animate
-                    attributeName="r"
-                    values="5;9.5;5"
-                    dur="1.8s"
-                    repeatCount="indefinite"
-                  />
-                  <animate
-                    attributeName="opacity"
-                    values="0.4;0.06;0.4"
-                    dur="1.8s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
+                {!isZeroFlat && (
+                  <circle
+                    cx={activeCoord.x}
+                    cy={activeCoord.y}
+                    r="5"
+                    fill="#3366cc"
+                    opacity="0.35"
+                    pointerEvents="none"
+                  >
+                    <animate
+                      attributeName="r"
+                      values="5;9.5;5"
+                      dur="1.8s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.4;0.06;0.4"
+                      dur="1.8s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
 
                 {/* Point central net sur la courbe */}
                 <circle
                   cx={activeCoord.x}
                   cy={activeCoord.y}
                   r="4.5"
-                  className="fill-white dark:fill-[#181d24] stroke-[#3366cc]"
+                  className={
+                    isZeroFlat
+                      ? 'fill-white dark:fill-[#181d24] stroke-[#72777d]'
+                      : 'fill-white dark:fill-[#181d24] stroke-[#3366cc]'
+                  }
                   strokeWidth="2.5"
                   pointerEvents="none"
                 />

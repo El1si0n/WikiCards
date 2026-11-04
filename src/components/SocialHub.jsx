@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
-import { getSavedStatsSnapshots } from '../utils/statsHistory';
 
 const RARITY_ORDER = {
   L: 6,
@@ -43,6 +42,7 @@ export default function SocialHub({
   wikithunes = 0,
   stats = {},
   userProfile = {},
+  accountCreatedAt = null,
   onSyncAccountState,
 }) {
   // Navigation interne : 'directory' (Annuaire des joueurs) | 'trades' (Mes propositions d'échange)
@@ -122,13 +122,12 @@ export default function SocialHub({
     if (targetCode === userCode) {
       setSelectedPeer({
         code: userCode,
+        createdAt: accountCreatedAt,
         profile: userProfile,
         collection: collection,
         favorites: favorites,
         wikithunes: wikithunes,
         stats: stats,
-        createdAt: userProfile?.createdAt,
-        snapshots: getSavedStatsSnapshots(),
       });
       if (collection.length > 0) {
         setPeerRarityFilter(collection[0].rarity || 'C');
@@ -157,7 +156,7 @@ export default function SocialHub({
         gifCount: cachedUser.gifCount,
         wikithunes: cachedUser.wikithunes,
         stats: cachedUser.stats || {},
-        createdAt: cachedUser.createdAt,
+        createdAt: cachedUser.createdAt || null,
         snapshots: cachedUser.snapshots || [],
       });
     }
@@ -1576,8 +1575,8 @@ export default function SocialHub({
             activePeerProfile?.username || selectedPeer?.code || 'Joueur'
           }
           isLocalUser={isSelectedPeerMe}
-          createdAt={isSelectedPeerMe ? userProfile?.createdAt : selectedPeer?.createdAt}
-          snapshots={isSelectedPeerMe ? getSavedStatsSnapshots() : (selectedPeer?.snapshots || [])}
+          createdAt={isSelectedPeerMe ? accountCreatedAt : selectedPeer?.createdAt}
+          snapshots={isSelectedPeerMe ? undefined : (selectedPeer?.snapshots || [])}
         />
       )}
     </div>

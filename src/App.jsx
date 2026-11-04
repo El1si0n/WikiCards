@@ -279,6 +279,17 @@ export default function App() {
 
   const [notifications, setNotifications] = useState([]);
 
+  // Horodatage officiel de création du compte (borne temporelle absolue)
+  const [accountCreatedAt, setAccountCreatedAt] = useState(() => {
+    try {
+      const raw = localStorage.getItem('wikicards_account_created_at');
+      if (raw) return Number(raw);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
   const toolsDropdownRef = useRef(null);
 
   // Fermeture du menu Outils (⋮) au clic à l'extérieur
@@ -698,14 +709,10 @@ export default function App() {
     if (!serverAccount) return;
     skipNextPushRef.current = true;
     if (serverAccount.profile) {
-      setUserProfile((prev) => ({
+      setUserProfile({
         ...getDefaultProfile(serverAccount.code || userCode),
         ...serverAccount.profile,
-        createdAt:
-          serverAccount.createdAt ||
-          serverAccount.profile?.createdAt ||
-          prev?.createdAt,
-      }));
+      });
       if (serverAccount.profile.themePreference) {
         setIsDarkMode(serverAccount.profile.themePreference === 'dark');
       }
@@ -755,9 +762,6 @@ export default function App() {
         ...serverAccount.stats,
       });
     }
-    if (Array.isArray(serverAccount.snapshots) && serverAccount.snapshots.length > 0) {
-      mergeServerSnapshots(serverAccount.snapshots);
-    }
     if (serverAccount.lastDailyClaimDate) {
       setLastDailyClaimDate(serverAccount.lastDailyClaimDate);
       try {
@@ -788,6 +792,15 @@ export default function App() {
       } catch {
         // ignore
       }
+    }
+    if (typeof serverAccount.createdAt === 'number' && serverAccount.createdAt > 0) {
+      setAccountCreatedAt(serverAccount.createdAt);
+      try {
+        localStorage.setItem('wikicards_account_created_at', String(serverAccount.createdAt));
+      } catch {}
+    }
+    if (Array.isArray(serverAccount.snapshots) && serverAccount.snapshots.length > 0) {
+      mergeServerSnapshots(serverAccount.snapshots);
     }
     if (serverAccount.updatedAt) {
       const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
@@ -976,7 +989,6 @@ export default function App() {
         wikithunes,
         stats,
         lastDailyClaimDate,
-        snapshots: getSavedStatsSnapshots(),
         clientUpdatedAt: now,
       });
       if (res?.serverIsNewer && res?.user) {
@@ -2132,6 +2144,7 @@ export default function App() {
                       wikithunes={wikithunes}
                       stats={stats}
                       userProfile={userProfile}
+                      accountCreatedAt={accountCreatedAt}
                       onSyncAccountState={handleSyncAccountState}
                     />
                   </Suspense>
@@ -2164,6 +2177,7 @@ export default function App() {
                       onToggleFavorite={toggleFavorite}
                       wikithunes={wikithunes}
                       stats={stats}
+                      accountCreatedAt={accountCreatedAt}
                     />
                   </Suspense>
                 ) : (

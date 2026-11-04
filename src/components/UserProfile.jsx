@@ -41,6 +41,7 @@ export default function UserProfile({
   onToggleFavorite,
   wikithunes,
   stats,
+  accountCreatedAt = null,
 }) {
   // Édition directe en cliquant sur la photo de profil, le nom ou la bio
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
@@ -1119,7 +1120,7 @@ export default function UserProfile({
           collectionValue={collectionTotalValue}
           playerName={profile.username || 'Mon profil'}
           isLocalUser={true}
-          createdAt={profile?.createdAt}
+          createdAt={accountCreatedAt || profile?.createdAt}
           snapshots={getSavedStatsSnapshots()}
         />
       )}
