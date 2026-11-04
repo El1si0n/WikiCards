@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
-import { recordStatsSnapshot } from '../utils/statsHistory';
+import { recordStatsSnapshot, getSavedStatsSnapshots } from '../utils/statsHistory';
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -1119,6 +1119,8 @@ export default function UserProfile({
           collectionValue={collectionTotalValue}
           playerName={profile.username || 'Mon profil'}
           isLocalUser={true}
+          createdAt={profile?.createdAt}
+          snapshots={getSavedStatsSnapshots()}
         />
       )}
     </div>

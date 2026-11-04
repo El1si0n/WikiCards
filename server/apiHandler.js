@@ -282,6 +282,10 @@ export async function handleApiRequest(req, res) {
                       ? parsed.wikithunes
                       : 0,
                   stats: parsed.stats || {},
+                  createdAt: parsed.createdAt || 0,
+                  snapshots: Array.isArray(parsed.snapshots)
+                    ? parsed.snapshots.slice(-100)
+                    : [],
                   updatedAt: parsed.updatedAt || 0,
                 })
               } catch {

@@ -36,7 +36,11 @@ import {
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
 } from './config/rarities';
-import { recordStatsSnapshot } from './utils/statsHistory';
+import {
+  recordStatsSnapshot,
+  getSavedStatsSnapshots,
+  mergeServerSnapshots,
+} from './utils/statsHistory';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
 import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
@@ -694,10 +698,14 @@ export default function App() {
     if (!serverAccount) return;
     skipNextPushRef.current = true;
     if (serverAccount.profile) {
-      setUserProfile({
+      setUserProfile((prev) => ({
         ...getDefaultProfile(serverAccount.code || userCode),
         ...serverAccount.profile,
-      });
+        createdAt:
+          serverAccount.createdAt ||
+          serverAccount.profile?.createdAt ||
+          prev?.createdAt,
+      }));
       if (serverAccount.profile.themePreference) {
         setIsDarkMode(serverAccount.profile.themePreference === 'dark');
       }
@@ -746,6 +754,9 @@ export default function App() {
         recordStreak: Number(serverAccount.stats.recordStreak || 0),
         ...serverAccount.stats,
       });
+    }
+    if (Array.isArray(serverAccount.snapshots) && serverAccount.snapshots.length > 0) {
+      mergeServerSnapshots(serverAccount.snapshots);
     }
     if (serverAccount.lastDailyClaimDate) {
       setLastDailyClaimDate(serverAccount.lastDailyClaimDate);
@@ -930,6 +941,7 @@ export default function App() {
         lastFreeBoostersResetTime,
         readNotifIds,
         dismissedNotifIds,
+        snapshots: getSavedStatsSnapshots(),
         clientUpdatedAt: localUpdatedAt,
       });
       if (result?.serverIsNewer && result?.user) {
@@ -964,6 +976,7 @@ export default function App() {
         wikithunes,
         stats,
         lastDailyClaimDate,
+        snapshots: getSavedStatsSnapshots(),
         clientUpdatedAt: now,
       });
       if (res?.serverIsNewer && res?.user) {

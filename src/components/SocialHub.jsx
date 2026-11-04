@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
+import { getSavedStatsSnapshots } from '../utils/statsHistory';
 
 const RARITY_ORDER = {
   L: 6,
@@ -126,6 +127,8 @@ export default function SocialHub({
         favorites: favorites,
         wikithunes: wikithunes,
         stats: stats,
+        createdAt: userProfile?.createdAt,
+        snapshots: getSavedStatsSnapshots(),
       });
       if (collection.length > 0) {
         setPeerRarityFilter(collection[0].rarity || 'C');
@@ -154,6 +157,8 @@ export default function SocialHub({
         gifCount: cachedUser.gifCount,
         wikithunes: cachedUser.wikithunes,
         stats: cachedUser.stats || {},
+        createdAt: cachedUser.createdAt,
+        snapshots: cachedUser.snapshots || [],
       });
     }
 
@@ -1571,6 +1576,8 @@ export default function SocialHub({
             activePeerProfile?.username || selectedPeer?.code || 'Joueur'
           }
           isLocalUser={isSelectedPeerMe}
+          createdAt={isSelectedPeerMe ? userProfile?.createdAt : selectedPeer?.createdAt}
+          snapshots={isSelectedPeerMe ? getSavedStatsSnapshots() : (selectedPeer?.snapshots || [])}
         />
       )}
     </div>

@@ -148,6 +148,8 @@ export default function StatsHistoryModal({
   collectionValue = null,
   playerName = 'Mocobanks',
   isLocalUser = false,
+  createdAt = null,
+  snapshots = null,
 }) {
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -165,6 +167,8 @@ export default function StatsHistoryModal({
       collectionValue,
       period: selectedPeriod,
       isLocalUser,
+      createdAt,
+      snapshots,
     });
   }, [
     metricId,
@@ -174,6 +178,8 @@ export default function StatsHistoryModal({
     collectionValue,
     selectedPeriod,
     isLocalUser,
+    createdAt,
+    snapshots,
   ]);
 
   // Valeurs remarquables (ATH, ATL, départ, fin)
@@ -230,15 +236,16 @@ export default function StatsHistoryModal({
     const innerWidth = chartWidth - paddingX * 2;
     const innerHeight = chartHeight - paddingTop - paddingBottom;
 
+    const isFlat = minVal === maxVal;
     const coords = points.map((p, idx) => {
-      const x = paddingX + (idx / (points.length - 1)) * innerWidth;
-      const normalizedY = (p.value - minVal) / range;
+      const x = paddingX + (idx / Math.max(1, points.length - 1)) * innerWidth;
+      const normalizedY = isFlat ? 0.5 : (p.value - minVal) / range;
       const y = paddingTop + (1 - normalizedY) * innerHeight;
       return { x, y, ...p };
     });
 
     const hasNegative = minVal < 0 && maxVal > 0;
-    const normalizedZeroY = (0 - minVal) / range;
+    const normalizedZeroY = isFlat ? 0.5 : (0 - minVal) / range;
     const zeroY = paddingTop + (1 - normalizedZeroY) * innerHeight;
 
     if (coords.length === 1) {
