@@ -49,7 +49,7 @@ export default class ErrorBoundary extends React.Component {
               />
               <div>
                 <h1 className="text-[19px] font-serif font-bold text-[#202122] leading-tight">
-                  WikiCards — Récupération d'affichage
+                  WikiCards - Récupération d'affichage
                 </h1>
                 <p className="text-[12px] text-[#54595d]">
                   Une anomalie temporaire est survenue dans votre navigateur.

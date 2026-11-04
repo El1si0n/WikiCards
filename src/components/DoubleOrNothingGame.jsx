@@ -11,6 +11,7 @@ import {
   XCircle,
   Check,
   X,
+  Coins,
 } from 'lucide-react';
 
 const RARITY_ORDER = {

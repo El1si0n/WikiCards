@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Check,
   X,
+  Sparkles,
 } from 'lucide-react';
 
 // Configuration des paliers d'Upgrade (N -> N+1)
