@@ -252,6 +252,29 @@ export default function App() {
     return stored ? loadLocalProfile(stored) : getDefaultProfile('WIKI-0000');
   });
 
+  // État des notifications et identifiants lus / supprimés (placés en amont pour éviter tout TDZ)
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.READ_NOTIFS);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const [dismissedNotifIds, setDismissedNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DISMISSED_NOTIFS);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const [notifications, setNotifications] = useState([]);
+
   const toolsDropdownRef = useRef(null);
 
   // Fermeture du menu Outils (⋮) au clic à l'extérieur
@@ -1094,29 +1117,6 @@ export default function App() {
     setActiveTab('booster');
     soundManager.playCardSlide();
   };
-
-  // État des notifications et liste des identifiants marqués comme lus / supprimés
-  const [readNotifIds, setReadNotifIds] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.READ_NOTIFS);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return [];
-  });
-
-  const [dismissedNotifIds, setDismissedNotifIds] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.DISMISSED_NOTIFS);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return [];
-  });
-
-  const [notifications, setNotifications] = useState([]);
 
   // Agrégation dynamique des notifications (échanges, marché, bourse de recherche)
   useEffect(() => {
