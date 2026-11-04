@@ -838,7 +838,7 @@ export default function UserProfile({
                     onClick={() =>
                       setActiveShowcaseSlot(isSlotActive ? null : slotIdx)
                     }
-                    className={`w-full aspect-[284/386] rounded-[14px] border-2 border-dashed flex flex-col items-center justify-center p-3 sm:p-6 text-center cursor-pointer transition-colors ${
+                    className={`w-full aspect-[284/443] rounded-[14px] border-2 border-dashed flex flex-col items-center justify-center p-3 sm:p-6 text-center cursor-pointer transition-colors ${
                       isSlotActive
                         ? 'border-[#3366cc] bg-[#eaf3ff]/50 text-[#3366cc]'
                         : 'border-[#c8ccd1] bg-[#f8f9fa] hover:bg-white hover:border-[#72777d] text-[#54595d]'

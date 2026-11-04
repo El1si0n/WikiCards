@@ -598,7 +598,7 @@ export default function WikiSino({
                         </div>
                       ) : (
                         /* Plusieurs cartes sélectionnées : éventail responsive */
-                        <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/386] overflow-hidden">
+                        <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/443] overflow-hidden">
                           {displayedSelectedCards.map((card, idx) => {
                             const total = displayedSelectedCards.length;
                             const offsetStep = Math.min(
@@ -615,7 +615,7 @@ export default function WikiSino({
                                   transform: `translateX(${translateX}px)`,
                                   zIndex: 10 + idx,
                                 }}
-                                className="absolute w-full max-w-[284px] aspect-[284/386] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                                className="absolute w-full max-w-[284px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                                 title="Cliquez sur cette carte pour la retirer"
                               >
                                 <WikiCard
@@ -634,7 +634,7 @@ export default function WikiSino({
                       )}
                     </div>
                   ) : (
-                    <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
                       <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                         Cliquez sur une ou plusieurs cartes dans le classeur
                         ci-dessous pour les placer dans l'Upgrader.
@@ -983,7 +983,7 @@ export default function WikiSino({
                   </div>
                 ) : (
                   <div
-                    className="relative w-full max-w-[284px] aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                    className="relative w-full max-w-[284px] aspect-[284/443] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                     style={{
                       background: targetTier.cardBg,
                       border:

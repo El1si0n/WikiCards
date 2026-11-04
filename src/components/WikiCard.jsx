@@ -201,7 +201,7 @@ export default function WikiCard({
   // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile (calquée sur la carte booster de référence 284x386)
   const fullText = formatCompleteExtract(card.extract, 250);
   const descriptionTypography =
-    'text-[10px] sm:text-[12px] leading-[1.3] line-clamp-2 sm:line-clamp-4';
+    'text-[10px] sm:text-[12px] leading-[1.35] line-clamp-3 sm:line-clamp-4';
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -286,7 +286,7 @@ export default function WikiCard({
         }}
       >
         <article
-          className={`wiki-card-item relative w-full aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col ${
+          className={`wiki-card-item relative w-full aspect-[284/443] rounded-[14px] overflow-hidden flex flex-col ${
             isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
           }`}
           style={{

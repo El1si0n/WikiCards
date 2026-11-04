@@ -1178,7 +1178,7 @@ export default function SocialHub({
                     {card ? (
                       <WikiCard card={card} compact={true} />
                     ) : (
-                      <div className="w-full aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-3 sm:p-6 text-center text-[12px] sm:text-[13px] text-[#72777d]">
+                      <div className="w-full aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-3 sm:p-6 text-center text-[12px] sm:text-[13px] text-[#72777d]">
                         Emplacement vide
                       </div>
                     )}

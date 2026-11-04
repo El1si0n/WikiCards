@@ -238,7 +238,7 @@ export default function HigherLowerGame({
               <WikiCard card={leftCard} compact={true} />
             </div>
           ) : (
-            <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
               <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                 Choisissez votre mise au centre et lancez une série pour
                 afficher la première page Wikipédia.
@@ -457,7 +457,7 @@ export default function HigherLowerGame({
               />
             </div>
           ) : (
-            <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-2">
                 <HelpCircle className="w-6 h-6" />
               </div>

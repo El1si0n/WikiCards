@@ -496,7 +496,7 @@ export default function DoubleOrNothingGame({
                   </div>
                 ) : (
                   /* Plusieurs cartes sélectionnées : éventail responsive */
-                  <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/386] overflow-hidden">
+                  <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/443] overflow-hidden">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
                       const offsetStep = Math.min(
@@ -512,7 +512,7 @@ export default function DoubleOrNothingGame({
                             transform: `translateX(${translateX}px)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-full max-w-[284px] aspect-[284/386] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          className="absolute w-full max-w-[284px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard
@@ -531,7 +531,7 @@ export default function DoubleOrNothingGame({
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
                 <p className="text-[12px] sm:text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                   Cliquez sur 1 à 8 cartes dans le classeur ci-dessous pour
                   tenter de les doubler en même temps.
@@ -1014,7 +1014,7 @@ export default function DoubleOrNothingGame({
                       />
                     </div>
                   ) : (
-                    <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#f54739]/50 dark:border-[#b32424]/60 bg-[#fff5f5] dark:bg-[#201515] flex flex-col items-center justify-center p-6 text-center">
                       <div className="w-12 h-12 rounded-full bg-[#ffe9e5] dark:bg-[#3b1815] border border-[#f54739] dark:border-[#b32424] text-[#bf3c2c] dark:text-[#f87171] flex items-center justify-center mb-3">
                         <XCircle className="w-6 h-6" />
                       </div>
@@ -1029,7 +1029,7 @@ export default function DoubleOrNothingGame({
                 ) : (
                   /* Pendant le tirage 1 carte : carte mystère avec "Révélation en cours..." */
                   <div
-                    className="relative w-full max-w-[284px] aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                    className="relative w-full max-w-[284px] aspect-[284/443] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                     style={{
                       background: activeTier.cardBg,
                       border: `1px solid ${activeTier.borderColor}`,
@@ -1219,7 +1219,7 @@ export default function DoubleOrNothingGame({
             ) : (
               /* Carte cible en attente (0 ou 1 carte) */
               <div
-                className="relative w-full max-w-[284px] aspect-[284/386] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                className="relative w-full max-w-[284px] aspect-[284/443] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
                   background: activeTier.cardBg,
                   border:

@@ -591,7 +591,7 @@ export default function AuctionMarket({
                     </form>
                   </>
                 ) : (
-                  <div className="w-full max-w-[284px] aspect-[284/386] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
+                  <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
                     Sélectionnez une carte dans votre classeur à droite pour fixer son prix de départ et son prix d'achat immédiat.
                   </div>
                 )}

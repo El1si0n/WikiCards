@@ -281,6 +281,25 @@ export async function fetchPageViews30Days(title) {
   try {
     const normalizedTitle = title.trim().replace(/ /g, '_');
     const { start, end } = getPageviewsDateRange();
+
+    // 1. Essai via le proxy backend pour éviter les erreurs 404 dans la console du navigateur
+    try {
+      const proxyRes = await fetchWithTimeout(
+        `/api/pageviews?title=${encodeURIComponent(normalizedTitle)}&start=${start}&end=${end}`,
+        {},
+        3500
+      );
+      if (proxyRes.ok) {
+        const json = await proxyRes.json();
+        if (typeof json?.views === 'number') {
+          return json.views;
+        }
+      }
+    } catch {
+      // En cas d'indisponibilité du proxy local, on continue vers Wikimedia directement
+    }
+
+    // 2. Requête directe Wikimedia Pageviews
     const url = `${WIKIMEDIA_PAGEVIEWS}/${encodeURIComponent(
       normalizedTitle
     )}/daily/${start}/${end}`;
