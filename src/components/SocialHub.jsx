@@ -1173,12 +1173,12 @@ export default function SocialHub({
                 {peerShowcaseCards.map((card, idx) => (
                   <div
                     key={idx}
-                    className="w-full max-w-[272px] flex flex-col items-center"
+                    className="w-full max-w-[215px] sm:max-w-[272px] flex flex-col items-center"
                   >
                     {card ? (
                       <WikiCard card={card} compact={true} />
                     ) : (
-                      <div className="w-full h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-6 text-center text-[13px] text-[#72777d]">
+                      <div className="w-full h-[316px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex items-center justify-center p-4 sm:p-6 text-center text-[13px] text-[#72777d]">
                         Emplacement vide
                       </div>
                     )}

@@ -710,7 +710,7 @@ export default function BoosterOpening({
             </div>
 
             {/* Pile de cartes */}
-            <div className="relative z-10 flex items-center justify-center w-full max-w-[340px] sm:max-w-[360px] min-h-[460px] sm:min-h-[515px] px-2">
+            <div className="relative z-10 flex items-center justify-center w-full max-w-[290px] sm:max-w-[360px] min-h-[446px] sm:min-h-[515px] px-2">
               {/* La vraie PROCHAINE carte (derrière la carte actuelle) */}
               {nextCard && (
                 <motion.div
@@ -836,8 +836,8 @@ export default function BoosterOpening({
             transition={{ duration: 0.3 }}
             className="flex flex-col"
           >
-            {/* Grille récapitulative des 5 cartes obtenues */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center py-2">
+            {/* Grille récapitulative des 5 cartes obtenues (2 colonnes uniformes sur mobile, 5 sur PC) */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5 justify-items-center py-2">
               {packCards.map((card, index) => (
                 <motion.div
                   key={card.id}
@@ -848,6 +848,7 @@ export default function BoosterOpening({
                 >
                   <WikiCard
                     card={card}
+                    compact={true}
                     isFavorite={favorites.includes(card.id)}
                     onToggleFavorite={onToggleFavorite}
                   />

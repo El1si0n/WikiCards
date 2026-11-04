@@ -336,7 +336,7 @@ export default function AuctionMarket({
                       </div>
 
                       <div className="flex justify-center">
-                        <div className="w-full max-w-[272px]">
+                        <div className="w-full max-w-[215px] sm:max-w-[272px]">
                           <WikiCard card={listing.card} compact={true} />
                         </div>
                       </div>
@@ -511,7 +511,7 @@ export default function AuctionMarket({
 
                 {selectedSellCard ? (
                   <>
-                    <div className="w-full max-w-[272px]">
+                    <div className="w-full max-w-[215px] sm:max-w-[272px]">
                       <WikiCard card={selectedSellCard} compact={true} />
                     </div>
 

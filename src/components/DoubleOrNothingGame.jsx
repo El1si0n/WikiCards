@@ -475,12 +475,12 @@ export default function DoubleOrNothingGame({
             </span>
           </div>
 
-          <div className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[452px]">
+          <div className="flex-1 flex items-center justify-center min-h-[120px] sm:min-h-[452px]">
             {displayedSelectedCards.length > 0 ? (
               <div className="relative w-full flex items-center justify-center">
                 {displayedSelectedCards.length === 1 ? (
                   <div
-                    className="w-full max-w-[272px]"
+                    className="w-full max-w-[215px] sm:max-w-[272px]"
                     title="Cliquez sur la carte pour la retirer"
                   >
                     <WikiCard
@@ -494,8 +494,8 @@ export default function DoubleOrNothingGame({
                     />
                   </div>
                 ) : (
-                  /* Plusieurs cartes sélectionnées : éventail à la taille native 272x446 */
-                  <div className="relative flex items-center justify-center w-full h-[320px] sm:h-[452px] overflow-hidden">
+                  /* Plusieurs cartes sélectionnées : éventail responsive */
+                  <div className="relative flex items-center justify-center w-full h-[316px] sm:h-[452px] overflow-hidden">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
                       const offsetStep = Math.min(
@@ -511,7 +511,7 @@ export default function DoubleOrNothingGame({
                             transform: `translateX(${translateX}px)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-full max-w-[272px] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          className="absolute w-full max-w-[215px] sm:max-w-[272px] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard
@@ -530,8 +530,8 @@ export default function DoubleOrNothingGame({
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-6 text-center">
-                <p className="text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
+              <div className="w-full max-w-[215px] sm:max-w-[272px] h-[120px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+                <p className="text-[12px] sm:text-[13px] text-[#54595d] dark:text-[#a2a9b1] m-0 leading-[1.5]">
                   Cliquez sur 1 à 8 cartes dans le classeur ci-dessous pour
                   tenter de les doubler en même temps.
                 </p>
@@ -1218,7 +1218,7 @@ export default function DoubleOrNothingGame({
             ) : (
               /* Carte cible en attente (0 ou 1 carte) */
               <div
-                className="relative w-full max-w-[272px] h-[320px] sm:h-[446px] rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
+                className="relative w-full max-w-[215px] sm:max-w-[272px] h-[316px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] overflow-hidden flex flex-col justify-between select-none transition-colors duration-300"
                 style={{
                   background: activeTier.cardBg,
                   border:
@@ -1231,9 +1231,9 @@ export default function DoubleOrNothingGame({
                   color: activeTier.textColor,
                 }}
               >
-                <div className="relative z-20 p-3 flex items-center justify-between">
+                <div className="relative z-20 p-2 sm:p-3 flex items-center justify-between">
                   <div
-                    className="min-w-[32px] h-[24px] px-2 text-[12px] rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                    className="min-w-[26px] sm:min-w-[32px] h-[20px] sm:h-[24px] px-1.5 sm:px-2 text-[10.5px] sm:text-[12px] rounded-[6px] sm:rounded-[7px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
                     style={{
                       backgroundColor: activeTier.badgeBg,
                       color: activeTier.badgeText,
@@ -1241,41 +1241,41 @@ export default function DoubleOrNothingGame({
                   >
                     {activeTier.code}
                   </div>
-                  <span className="px-2 py-0.5 rounded-[2px] bg-black/65 text-white text-[11px] font-bold">
+                  <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-[2px] bg-black/65 text-white text-[10px] sm:text-[11px] font-bold">
                     ×2
                   </span>
                 </div>
 
-                <div className="relative flex-1 px-3.5 flex flex-col justify-center">
-                  <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-3.5">
+                <div className="relative flex-1 px-2.5 sm:px-3.5 flex flex-col justify-center">
+                  <div className="filter blur-[8px] opacity-75 pointer-events-none space-y-2 sm:space-y-3.5">
                     <div
-                      className="w-full h-[168px] rounded-[8px]"
+                      className="w-full h-[112px] sm:h-[168px] rounded-[8px]"
                       style={{
                         background:
                           'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(15,23,42,0.25) 50%, rgba(255,255,255,0.6) 100%)',
                       }}
                     />
-                    <div className="space-y-2.5 pt-2">
-                      <div className="h-4 w-3/4 rounded bg-black/25" />
-                      <div className="h-3 w-full rounded bg-black/20" />
-                      <div className="h-3 w-11/12 rounded bg-black/20" />
-                      <div className="h-3 w-4/5 rounded bg-black/20" />
+                    <div className="space-y-1.5 sm:space-y-2.5 pt-1 sm:pt-2">
+                      <div className="h-3 sm:h-4 w-3/4 rounded bg-black/25" />
+                      <div className="h-2.5 sm:h-3 w-full rounded bg-black/20" />
+                      <div className="h-2.5 sm:h-3 w-11/12 rounded bg-black/20" />
+                      <div className="h-2.5 sm:h-3 w-4/5 rounded bg-black/20" />
                     </div>
                   </div>
 
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-2"
+                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-1.5 sm:mb-2"
                       style={{
                         backgroundColor: activeTier.badgeBg,
                         borderColor: activeTier.borderColor,
                         color: activeTier.badgeText,
                       }}
                     >
-                      <HelpCircle className="w-6 h-6" />
+                      <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <span
-                      className="px-3 py-1 rounded-[5px] text-[12px] font-bold shadow-xs"
+                      className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-[5px] text-[11px] sm:text-[12px] font-bold shadow-xs"
                       style={{
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         color: '#202122',
@@ -1289,7 +1289,7 @@ export default function DoubleOrNothingGame({
                 </div>
 
                 <div
-                  className="relative z-10 px-3.5 py-2.5 border-t flex items-center justify-between text-[12px] font-bold"
+                  className="relative z-10 px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 border-t flex items-center justify-between text-[11px] sm:text-[12px] font-bold"
                   style={{ borderColor: activeTier.dividerColor }}
                 >
                   <span>{activeTier.thresholdLabel}</span>

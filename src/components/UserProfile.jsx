@@ -814,11 +814,11 @@ export default function UserProfile({
             return (
               <div
                 key={slotIdx}
-                className="w-full max-w-[272px] flex flex-col items-center"
+                className="w-full max-w-[215px] sm:max-w-[272px] flex flex-col items-center"
               >
                 {card ? (
                   <div
-                    className={`w-full rounded-[14px] transition-all ${
+                    className={`w-full rounded-[11px] sm:rounded-[14px] transition-all ${
                       isSlotActive ? 'ring-3 ring-[#3366cc]' : ''
                     }`}
                   >
@@ -838,7 +838,7 @@ export default function UserProfile({
                     onClick={() =>
                       setActiveShowcaseSlot(isSlotActive ? null : slotIdx)
                     }
-                    className={`w-full h-[446px] rounded-[14px] border-2 border-dashed flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors ${
+                    className={`w-full h-[316px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed flex flex-col items-center justify-center p-4 sm:p-6 text-center cursor-pointer transition-colors ${
                       isSlotActive
                         ? 'border-[#3366cc] bg-[#eaf3ff]/50 text-[#3366cc]'
                         : 'border-[#c8ccd1] bg-[#f8f9fa] hover:bg-white hover:border-[#72777d] text-[#54595d]'

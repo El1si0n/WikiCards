@@ -206,8 +206,8 @@ export default function WikiCard({
     : mini
     ? 'text-[10.8px] leading-[1.3] line-clamp-4'
     : compact
-    ? 'text-[11.5px] sm:text-[12.5px] leading-[1.32] sm:leading-[1.38] line-clamp-4 sm:line-clamp-6'
-    : 'text-[13.5px] leading-[1.42] line-clamp-6';
+    ? 'text-[10.8px] sm:text-[12.5px] leading-[1.3] sm:leading-[1.38] line-clamp-3 sm:line-clamp-6'
+    : 'text-[12px] sm:text-[13.5px] leading-[1.35] sm:leading-[1.42] line-clamp-4 sm:line-clamp-6';
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -263,8 +263,8 @@ export default function WikiCard({
           : mini
           ? 'max-w-[215px]'
           : compact
-          ? 'max-w-[272px]'
-          : 'max-w-[330px]'
+          ? 'max-w-[215px] sm:max-w-[272px]'
+          : 'max-w-[285px] sm:max-w-[330px]'
       } ${
         isRecycleMode
           ? isProtectedInRecycleMode
@@ -289,8 +289,8 @@ export default function WikiCard({
             : mini
             ? 'rounded-[13px]'
             : compact
-            ? 'rounded-[16px]'
-            : 'rounded-[19px]'
+            ? 'rounded-[13px] sm:rounded-[16px]'
+            : 'rounded-[16px] sm:rounded-[19px]'
         } ${isShiny ? 'wiki-shiny-frame p-[3px]' : ''}`}
         style={{
           boxShadow: isShiny
@@ -312,8 +312,8 @@ export default function WikiCard({
               : mini
               ? 'h-[316px] rounded-[11px]'
               : compact
-              ? 'h-[446px] rounded-[14px]'
-              : 'h-[500px] rounded-[17px]'
+              ? 'h-[316px] sm:h-[446px] rounded-[11px] sm:rounded-[14px]'
+              : 'h-[446px] sm:h-[500px] rounded-[14px] sm:rounded-[17px]'
           } overflow-hidden flex flex-col ${
             isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
           }`}
@@ -444,8 +444,8 @@ export default function WikiCard({
                   : mini
                   ? 'h-[112px]'
                   : compact
-                  ? 'h-[168px]'
-                  : 'h-[192px]'
+                  ? 'h-[112px] sm:h-[168px]'
+                  : 'h-[168px] sm:h-[192px]'
               } shrink-0 overflow-hidden`}
               style={{
                 background:
@@ -493,8 +493,8 @@ export default function WikiCard({
                         : mini
                         ? 'w-12 h-12'
                         : compact
-                        ? 'w-16 h-16'
-                        : 'w-20 h-20'
+                        ? 'w-12 h-12 sm:w-16 sm:h-16'
+                        : 'w-16 h-16 sm:w-20 sm:h-20'
                     } object-contain opacity-85 drop-shadow-md`}
                   />
                 </div>
@@ -509,8 +509,8 @@ export default function WikiCard({
                       : mini
                       ? 'min-w-[26px] h-[20px] px-1.5 text-[10.5px]'
                       : compact
-                      ? 'min-w-[32px] h-[24px] px-2 text-[12px]'
-                      : 'min-w-[36px] h-[27px] px-2.5 text-[13px]'
+                      ? 'min-w-[26px] sm:min-w-[32px] h-[20px] sm:h-[24px] px-1.5 sm:px-2 text-[10.5px] sm:text-[12px]'
+                      : 'min-w-[32px] sm:min-w-[36px] h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[12px] sm:text-[13px]'
                   } rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
                   style={{
                     backgroundColor: tier.badgeBg,
@@ -527,8 +527,8 @@ export default function WikiCard({
                       mini
                         ? 'h-[20px] px-1.5 text-[9.5px]'
                         : compact
-                        ? 'h-[24px] px-2 text-[10.5px]'
-                        : 'h-[27px] px-2.5 text-[11.5px]'
+                        ? 'h-[20px] sm:h-[24px] px-1.5 sm:px-2 text-[9.5px] sm:text-[10.5px]'
+                        : 'h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px]'
                     } rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
                     title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
                   >
@@ -545,8 +545,8 @@ export default function WikiCard({
                 mini
                   ? 'px-2.5 pt-2 pb-2'
                   : compact
-                  ? 'px-3 sm:px-3.5 pt-2.5 sm:pt-3 pb-2 sm:pb-2.5'
-                  : 'px-4 pt-3.5 pb-3'
+                  ? 'px-2.5 sm:px-3.5 pt-2 sm:pt-3 pb-2 sm:pb-2.5'
+                  : 'px-3.5 sm:px-4 pt-3 sm:pt-3.5 pb-2.5 sm:pb-3'
               } overflow-hidden`}
             >
               {/* Texture d'ondes organiques (argentée/titane si carte GIF métal) */}
@@ -610,8 +610,8 @@ export default function WikiCard({
                       : mini
                       ? 'text-[13.5px] mb-1'
                       : compact
-                      ? 'text-[14px] sm:text-[17.5px] mb-1 sm:mb-1.5'
-                      : 'text-[19.5px] mb-1.5'
+                      ? 'text-[13.5px] sm:text-[17.5px] mb-1 sm:mb-1.5'
+                      : 'text-[17.5px] sm:text-[19.5px] mb-1.5'
                   } leading-[1.18] tracking-[-0.01em] line-clamp-2`}
                   style={{
                     color: isShiny ? '#0f172a' : tier.textColor,
@@ -654,7 +654,7 @@ export default function WikiCard({
                       ? 'text-[10.5px]'
                       : compact
                       ? 'text-[10.5px] sm:text-[12px]'
-                      : 'text-[13px]'
+                      : 'text-[12px] sm:text-[13px]'
                   }`}
                   style={{ color: isShiny ? '#0f172a' : tier.textColor }}
                   title={`Fréquentation de la page : ${formattedViews} vues (${tier.name})`}
@@ -679,8 +679,8 @@ export default function WikiCard({
                       : mini
                       ? 'px-1.5 py-0.5 text-[9.5px]'
                       : compact
-                      ? 'px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px]'
-                      : 'px-2.5 py-1 text-[12px]'
+                      ? 'px-1.5 sm:px-2 py-0.5 text-[9.5px] sm:text-[11px]'
+                      : 'px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-[12px]'
                   } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
                   style={{
                     backgroundColor: isShiny
@@ -701,7 +701,10 @@ export default function WikiCard({
                   ) : trade || mini ? (
                     <span>Wikipédia</span>
                   ) : (
-                    <span>Lire sur Wikipédia</span>
+                    <>
+                      <span className="hidden sm:inline">Lire sur </span>
+                      <span>Wikipédia</span>
+                    </>
                   )}
                   <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                 </a>

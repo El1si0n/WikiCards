@@ -233,11 +233,11 @@ export default function HigherLowerGame({
 
         <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
           {leftCard ? (
-            <div className="w-full max-w-[272px]">
+            <div className="w-full max-w-[215px] sm:max-w-[272px]">
               <WikiCard card={leftCard} compact={true} />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[110px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+            <div className="w-full max-w-[215px] sm:max-w-[272px] h-[110px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
               <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                 Choisissez votre mise au centre et lancez une série pour
                 afficher la première page Wikipédia.
@@ -448,7 +448,7 @@ export default function HigherLowerGame({
 
         <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
           {rightCard ? (
-            <div className="w-full max-w-[272px]">
+            <div className="w-full max-w-[215px] sm:max-w-[272px]">
               <WikiCard
                 card={rightCard}
                 compact={true}
@@ -456,7 +456,7 @@ export default function HigherLowerGame({
               />
             </div>
           ) : (
-            <div className="w-full max-w-[272px] h-[110px] sm:h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+            <div className="w-full max-w-[215px] sm:max-w-[272px] h-[110px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
               <div className="w-7 h-7 sm:w-12 sm:h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-1 sm:mb-2">
                 <HelpCircle className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
