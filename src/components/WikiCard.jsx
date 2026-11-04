@@ -198,15 +198,15 @@ export default function WikiCard({
   const isProtectedInRecycleMode =
     isRecycleMode && isFavorite && duplicateCount <= 1;
 
-  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile
-  const maxChars = trade ? 70 : mini ? 130 : compact ? 220 : 365;
+  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile (calquée sur la carte booster de référence)
+  const maxChars = trade ? 70 : mini ? 300 : compact ? 300 : 365;
   const fullText = formatCompleteExtract(card.extract, maxChars);
   const descriptionTypography = trade
     ? 'text-[9.5px] leading-[1.25] line-clamp-2'
     : mini
-    ? 'text-[10.8px] leading-[1.3] line-clamp-4'
+    ? 'text-[12px] sm:text-[10.8px] leading-[1.35] sm:leading-[1.3] line-clamp-4'
     : compact
-    ? 'text-[10.8px] sm:text-[12.5px] leading-[1.3] sm:leading-[1.38] line-clamp-3 sm:line-clamp-6'
+    ? 'text-[12px] sm:text-[12.5px] leading-[1.35] sm:leading-[1.38] line-clamp-4 sm:line-clamp-6'
     : 'text-[12px] sm:text-[13.5px] leading-[1.35] sm:leading-[1.42] line-clamp-4 sm:line-clamp-6';
 
   const handleMouseMove = (e) => {
@@ -261,9 +261,9 @@ export default function WikiCard({
         trade
           ? 'max-w-[155px]'
           : mini
-          ? 'max-w-[215px]'
+          ? 'max-w-[285px] sm:max-w-[215px]'
           : compact
-          ? 'max-w-[215px] sm:max-w-[272px]'
+          ? 'max-w-[285px] sm:max-w-[272px]'
           : 'max-w-[285px] sm:max-w-[330px]'
       } ${
         isRecycleMode
@@ -287,9 +287,9 @@ export default function WikiCard({
           trade
             ? 'rounded-[10px]'
             : mini
-            ? 'rounded-[13px]'
+            ? 'rounded-[16px] sm:rounded-[13px]'
             : compact
-            ? 'rounded-[13px] sm:rounded-[16px]'
+            ? 'rounded-[16px] sm:rounded-[16px]'
             : 'rounded-[16px] sm:rounded-[19px]'
         } ${isShiny ? 'wiki-shiny-frame p-[3px]' : ''}`}
         style={{
@@ -310,9 +310,9 @@ export default function WikiCard({
             trade
               ? 'h-[220px] rounded-[9px]'
               : mini
-              ? 'h-[316px] rounded-[11px]'
+              ? 'h-[446px] sm:h-[316px] rounded-[14px] sm:rounded-[11px]'
               : compact
-              ? 'h-[316px] sm:h-[446px] rounded-[11px] sm:rounded-[14px]'
+              ? 'h-[446px] sm:h-[446px] rounded-[14px] sm:rounded-[14px]'
               : 'h-[446px] sm:h-[500px] rounded-[14px] sm:rounded-[17px]'
           } overflow-hidden flex flex-col ${
             isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
@@ -442,9 +442,9 @@ export default function WikiCard({
                 trade
                   ? 'h-[85px]'
                   : mini
-                  ? 'h-[112px]'
+                  ? 'h-[168px] sm:h-[112px]'
                   : compact
-                  ? 'h-[112px] sm:h-[168px]'
+                  ? 'h-[168px] sm:h-[168px]'
                   : 'h-[168px] sm:h-[192px]'
               } shrink-0 overflow-hidden`}
               style={{
@@ -507,9 +507,9 @@ export default function WikiCard({
                     trade
                       ? 'min-w-[20px] h-[17px] px-1 text-[9.5px]'
                       : mini
-                      ? 'min-w-[26px] h-[20px] px-1.5 text-[10.5px]'
+                      ? 'min-w-[32px] sm:min-w-[26px] h-[24px] sm:h-[20px] px-2 sm:px-1.5 text-[12px] sm:text-[10.5px]'
                       : compact
-                      ? 'min-w-[26px] sm:min-w-[32px] h-[20px] sm:h-[24px] px-1.5 sm:px-2 text-[10.5px] sm:text-[12px]'
+                      ? 'min-w-[32px] sm:min-w-[32px] h-[24px] sm:h-[24px] px-2 sm:px-2 text-[12px] sm:text-[12px]'
                       : 'min-w-[32px] sm:min-w-[36px] h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[12px] sm:text-[13px]'
                   } rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
                   style={{
@@ -525,9 +525,9 @@ export default function WikiCard({
                   <div
                     className={`wiki-shiny-badge ${
                       mini
-                        ? 'h-[20px] px-1.5 text-[9.5px]'
+                        ? 'h-[24px] sm:h-[20px] px-2 sm:px-1.5 text-[10.5px] sm:text-[9.5px]'
                         : compact
-                        ? 'h-[20px] sm:h-[24px] px-1.5 sm:px-2 text-[9.5px] sm:text-[10.5px]'
+                        ? 'h-[24px] sm:h-[24px] px-2 sm:px-2 text-[10.5px] sm:text-[10.5px]'
                         : 'h-[24px] sm:h-[27px] px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px]'
                     } rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
                     title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
@@ -543,9 +543,9 @@ export default function WikiCard({
             <div
               className={`relative flex-1 flex flex-col justify-between ${
                 mini
-                  ? 'px-2.5 pt-2 pb-2'
+                  ? 'px-3.5 sm:px-2.5 pt-3 sm:pt-2 pb-2.5 sm:pb-2'
                   : compact
-                  ? 'px-2.5 sm:px-3.5 pt-2 sm:pt-3 pb-2 sm:pb-2.5'
+                  ? 'px-3.5 sm:px-3.5 pt-3 sm:pt-3 pb-2.5 sm:pb-2.5'
                   : 'px-3.5 sm:px-4 pt-3 sm:pt-3.5 pb-2.5 sm:pb-3'
               } overflow-hidden`}
             >
@@ -608,9 +608,9 @@ export default function WikiCard({
                     trade
                       ? 'text-[11.5px] mb-0.5'
                       : mini
-                      ? 'text-[13.5px] mb-1'
+                      ? 'text-[17px] sm:text-[13.5px] mb-1.5 sm:mb-1'
                       : compact
-                      ? 'text-[13.5px] sm:text-[17.5px] mb-1 sm:mb-1.5'
+                      ? 'text-[17px] sm:text-[17.5px] mb-1.5 sm:mb-1.5'
                       : 'text-[17.5px] sm:text-[19.5px] mb-1.5'
                   } leading-[1.18] tracking-[-0.01em] line-clamp-2`}
                   style={{
@@ -637,7 +637,7 @@ export default function WikiCard({
                   trade
                     ? 'pt-1 mt-0.5'
                     : mini
-                    ? 'pt-1.5 mt-1'
+                    ? 'pt-1.5 sm:pt-1.5 mt-1 sm:mt-1'
                     : 'pt-1.5 sm:pt-2 mt-1 sm:mt-1.5'
                 } flex items-center justify-between gap-1 border-t`}
                 style={{
@@ -651,9 +651,9 @@ export default function WikiCard({
                     trade
                       ? 'text-[9px]'
                       : mini
-                      ? 'text-[10.5px]'
+                      ? 'text-[12px] sm:text-[10.5px]'
                       : compact
-                      ? 'text-[10.5px] sm:text-[12px]'
+                      ? 'text-[12px] sm:text-[12px]'
                       : 'text-[12px] sm:text-[13px]'
                   }`}
                   style={{ color: isShiny ? '#0f172a' : tier.textColor }}
@@ -677,9 +677,9 @@ export default function WikiCard({
                     trade
                       ? 'px-1 py-0.2 text-[8.5px]'
                       : mini
-                      ? 'px-1.5 py-0.5 text-[9.5px]'
+                      ? 'px-2 sm:px-1.5 py-0.5 text-[11px] sm:text-[9.5px]'
                       : compact
-                      ? 'px-1.5 sm:px-2 py-0.5 text-[9.5px] sm:text-[11px]'
+                      ? 'px-2 sm:px-2 py-0.5 text-[11px] sm:text-[11px]'
                       : 'px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-[12px]'
                   } rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
                   style={{

@@ -218,7 +218,8 @@ export default function HigherLowerGame({
     gameState === 'won_round' || gameState === 'lost_round';
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
       {/* COLONNE GAUCHE (4 col) : Carte de référence */}
       <div
         className={`${
@@ -231,13 +232,13 @@ export default function HigherLowerGame({
           </span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
+        <div className="flex-1 flex items-center justify-center min-h-[452px]">
           {leftCard ? (
-            <div className="w-full max-w-[215px] sm:max-w-[272px]">
+            <div className="w-full max-w-[285px] sm:max-w-[272px]">
               <WikiCard card={leftCard} compact={true} />
             </div>
           ) : (
-            <div className="w-full max-w-[215px] sm:max-w-[272px] h-[110px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
+            <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
               <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                 Choisissez votre mise au centre et lancez une série pour
                 afficher la première page Wikipédia.
@@ -446,9 +447,9 @@ export default function HigherLowerGame({
           </span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center min-h-[110px] sm:min-h-[452px]">
+        <div className="flex-1 flex items-center justify-center min-h-[452px]">
           {rightCard ? (
-            <div className="w-full max-w-[215px] sm:max-w-[272px]">
+            <div className="w-full max-w-[285px] sm:max-w-[272px]">
               <WikiCard
                 card={rightCard}
                 compact={true}
@@ -456,16 +457,114 @@ export default function HigherLowerGame({
               />
             </div>
           ) : (
-            <div className="w-full max-w-[215px] sm:max-w-[272px] h-[110px] sm:h-[446px] rounded-[11px] sm:rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-3 sm:p-6 text-center">
-              <div className="w-7 h-7 sm:w-12 sm:h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-1 sm:mb-2">
-                <HelpCircle className="w-4 h-4 sm:w-6 sm:h-6" />
+            <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-white border border-[#c8ccd1] flex items-center justify-center text-[#72777d] mb-2">
+                <HelpCircle className="w-6 h-6" />
               </div>
-              <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.4] sm:leading-[1.5]">
+              <p className="text-[12px] sm:text-[13px] text-[#54595d] m-0 leading-[1.5]">
                 La page adverse s'affichera ici avec son nombre de vues masqué.
               </p>
             </div>
           )}
         </div>
+      </div>
+
+      {/* =====================================================================
+          BARRE D'ACTION FLOTTANTE SUR MOBILE (Plus ou Moins sous le pouce)
+      ===================================================================== */}
+      {gameState === 'playing' ? (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
+          <div className="flex flex-col min-w-0">
+            <div className="text-[11px] text-[#cbd5e1] font-medium">
+              Série : <strong className="text-white">{streak}</strong> (×{getMultiplierForStreak(streak)})
+            </div>
+            <div className="text-[14px] font-extrabold text-[#38bdf8] flex items-center gap-1 leading-tight">
+              <span>{new Intl.NumberFormat('fr-FR').format(currentPot)}</span>
+              <WikithuneIcon className="w-3.5 h-3.5 text-[#38bdf8]" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {streak > 0 && (
+              <button
+                type="button"
+                onClick={handleCashOut}
+                className="wiki-casino-btn wiki-casino-btn--success !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold"
+              >
+                <span>Encaisser</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleGuess('higher')}
+              className="wiki-casino-btn wiki-casino-btn--subtle !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Plus</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleGuess('lower')}
+              className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold"
+            >
+              <TrendingDown className="w-3.5 h-3.5" />
+              <span>Moins</span>
+            </button>
+          </div>
+        </div>
+      ) : gameState === 'won_round' ? (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[11px] text-[#34d399] font-bold uppercase tracking-wider">
+              Bien vu ! (+{new Intl.NumberFormat('fr-FR').format(Math.max(0, currentPot - activeBet))} ₩)
+            </span>
+            <div className="text-[14px] font-extrabold text-white flex items-center gap-1 leading-tight">
+              <span>Total : {new Intl.NumberFormat('fr-FR').format(currentPot)}</span>
+              <WikithuneIcon className="w-3.5 h-3.5 text-[#34d399]" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={isLoadingNext}
+              onClick={handleCashOut}
+              className="wiki-casino-btn wiki-casino-btn--success !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold"
+            >
+              <span>Encaisser</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isLoadingNext}
+              onClick={handleNextRound}
+              className="wiki-casino-btn wiki-casino-btn--primary !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold"
+            >
+              <span>{isLoadingNext ? 'Tirage...' : 'Suivant'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : gameState === 'lost_round' ? (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[12px] text-[#f87171] font-bold">
+              Manqué ! Série terminée.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleFinishLost}
+            className="wiki-casino-btn wiki-casino-btn--neutral !min-h-[38px] !py-1.5 !px-4 !text-[12px] font-bold"
+          >
+            <span>Terminer</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          </button>
+        </div>
+      ) : null}
       </div>
     </div>
   );

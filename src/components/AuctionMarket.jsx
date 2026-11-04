@@ -56,6 +56,7 @@ export default function AuctionMarket({
 
   // Horloge en direct pour rafraîchir les comptes à rebours de 24h
   const [now, setNow] = useState(Date.now());
+  const sellFormRef = useRef(null);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -137,6 +138,7 @@ export default function AuctionMarket({
     setStartingBidInput(String(Math.max(15, Math.round(baseVal * 1.2))));
     setBuyoutPriceInput(String(Math.max(30, Math.round(baseVal * 2.5))));
     soundManager.playCardSlide();
+    sellFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleCreateListing = async (e) => {
@@ -319,7 +321,7 @@ export default function AuctionMarket({
                   return (
                     <div
                       key={listing.id}
-                      className="w-full max-w-[288px] bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-3 flex flex-col justify-between gap-3"
+                      className="w-full max-w-[310px] sm:max-w-[300px] bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-3 flex flex-col justify-between gap-3"
                     >
                       <div className="flex items-center justify-between text-[11.5px] text-[#54595d] border-b border-[#eaecf0] pb-1.5">
                         <span className="truncate">
@@ -336,7 +338,7 @@ export default function AuctionMarket({
                       </div>
 
                       <div className="flex justify-center">
-                        <div className="w-full max-w-[215px] sm:max-w-[272px]">
+                        <div className="w-full max-w-[285px] sm:max-w-[272px]">
                           <WikiCard card={listing.card} compact={true} />
                         </div>
                       </div>
@@ -502,7 +504,7 @@ export default function AuctionMarket({
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Aperçu de la carte choisie + Formulaire de prix */}
-              <div className="lg:col-span-4 bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-4 flex flex-col items-center gap-4">
+              <div ref={sellFormRef} className="lg:col-span-4 bg-[#f8f9fa] border border-[#c8ccd1] rounded-[2px] p-4 flex flex-col items-center gap-4">
                 <div className="w-full border-b border-[#eaecf0] pb-2">
                   <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
                     Carte à mettre en vente
@@ -511,7 +513,7 @@ export default function AuctionMarket({
 
                 {selectedSellCard ? (
                   <>
-                    <div className="w-full max-w-[215px] sm:max-w-[272px]">
+                    <div className="w-full max-w-[285px] sm:max-w-[272px]">
                       <WikiCard card={selectedSellCard} compact={true} />
                     </div>
 
@@ -581,7 +583,7 @@ export default function AuctionMarket({
                     </form>
                   </>
                 ) : (
-                  <div className="w-full max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
+                  <div className="w-full max-w-[285px] sm:max-w-[272px] h-[446px] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-white flex items-center justify-center p-6 text-center text-[13px] text-[#54595d]">
                     Sélectionnez une carte dans votre classeur à droite pour fixer son prix de départ et son prix d'achat immédiat.
                   </div>
                 )}
@@ -623,7 +625,7 @@ export default function AuctionMarket({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 justify-items-center max-h-[620px] overflow-y-auto p-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center max-h-[620px] overflow-y-auto p-1 pb-16 lg:pb-1">
                   {collection
                     .filter((c) => c.rarity === sellRarityFilter)
                     .map((card) => {
@@ -653,6 +655,26 @@ export default function AuctionMarket({
                 </div>
               </div>
             </div>
+
+            {/* Barre flottante mobile si une carte est sélectionnée pour fixer le prix */}
+            {selectedSellCard && (
+              <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#1e232d]/95 backdrop-blur-md border-t border-[#363e4a] p-3 shadow-2xl flex items-center justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10.5px] text-[#94a3b8]">Carte sélectionnée :</span>
+                  <span className="text-[13px] font-bold text-white truncate">
+                    {selectedSellCard.title}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => sellFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="wiki-casino-btn wiki-casino-btn--primary !min-h-[38px] !py-1.5 !px-3 !text-[12px] font-bold shrink-0"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Fixer le prix ➔</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* =====================================================================

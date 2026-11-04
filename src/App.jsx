@@ -2299,7 +2299,7 @@ export default function App() {
 
                     {/* Grille 2 colonnes sur mobile, jusqu'à 4 sur grand écran (lg:grid-cols-4) avec cartes au format compact */}
                     {filteredAndSortedCollection.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 justify-items-center">
                         {filteredAndSortedCollection.map((card) => {
                           const cardQty = selectedRecycleCounts[String(card.id)] || 0;
                           return (
