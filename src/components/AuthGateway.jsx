@@ -85,10 +85,19 @@ export default function AuthGateway({ onLoginSuccess }) {
         collection: [],
         favorites: [],
         wikithunes: INITIAL_WIKITHUNES,
-        stats: { boostersOpened: 0, totalCardsDrawn: 0 },
+        stats: {
+          boostersOpened: 0,
+          totalCardsDrawn: 0,
+          lostMoneyCasino: 0,
+          lostCards: 0,
+          wonCards: 0,
+          netCasinoGains: 0,
+          recordStreak: 0,
+        },
         snapshots: [
           {
             timestamp: now,
+            userCode: freshCode,
             wikithunes: INITIAL_WIKITHUNES,
             collectionValue: 0,
             uniqueCardsCount: 0,

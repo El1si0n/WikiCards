@@ -36,7 +36,7 @@ import {
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
 } from './config/rarities';
-import { recordStatsSnapshot, getSavedStatsSnapshots } from './utils/statsHistory';
+import { recordStatsSnapshot, getSavedStatsSnapshots, getSnapshotStorageKey } from './utils/statsHistory';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
 import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
@@ -234,7 +234,7 @@ export default function App() {
             wikithunes,
             stats,
             createdAt: accountCreatedAt || undefined,
-            snapshots: getSavedStatsSnapshots().slice(-40),
+            snapshots: getSavedStatsSnapshots(userCode).slice(-40),
             lastDailyClaimDate,
           }).catch(() => {});
         }
@@ -352,6 +352,7 @@ export default function App() {
         Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
       ).length;
       recordStatsSnapshot({
+        userCode,
         wikithunes: nextWikithunes,
         collectionValue: safeCol.reduce(
           (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
@@ -651,6 +652,7 @@ export default function App() {
           Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
         ).length;
         recordStatsSnapshot({
+          userCode,
           wikithunes,
           collectionValue: safeCol.reduce(
             (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
@@ -866,7 +868,7 @@ export default function App() {
         wikithunes: current.wikithunes,
         stats: current.stats,
         createdAt: current.accountCreatedAt || undefined,
-        snapshots: getSavedStatsSnapshots().slice(-40),
+        snapshots: getSavedStatsSnapshots(current.userCode).slice(-40),
         lastDailyClaimDate: current.lastDailyClaimDate || '',
         freeBoostersCount:
           typeof current.freeBoostersCount === 'number'
@@ -1032,17 +1034,24 @@ export default function App() {
         ? account.wikithunes
         : INITIAL_WIKITHUNES
     );
-    setStats(
-      account.stats || {
-        boostersOpened: 0,
-        totalCardsDrawn: 0,
-        lostMoneyCasino: 0,
-        lostCards: 0,
-        wonCards: 0,
-        netCasinoGains: 0,
-        recordStreak: 0,
-      }
-    );
+    setStats({
+      boostersOpened: 0,
+      totalCardsDrawn: 0,
+      lostMoneyCasino: 0,
+      lostCards: 0,
+      wonCards: 0,
+      netCasinoGains: 0,
+      recordStreak: 0,
+      ...(account.stats || {}),
+    });
+    if (Array.isArray(account.snapshots) && account.snapshots.length > 0) {
+      try {
+        localStorage.setItem(
+          getSnapshotStorageKey(cleanCode),
+          JSON.stringify(account.snapshots.slice(-500))
+        );
+      } catch {}
+    }
     if (account.lastDailyClaimDate) {
       setLastDailyClaimDate(account.lastDailyClaimDate);
       try {
@@ -1098,14 +1107,30 @@ export default function App() {
     setAccountCreatedAt(null);
     try {
       localStorage.removeItem(STORAGE_KEYS.ACCOUNT_CREATED_AT);
+      localStorage.removeItem(STORAGE_KEYS.STATS);
+      localStorage.removeItem(STORAGE_KEYS.COLLECTION);
+      localStorage.removeItem(STORAGE_KEYS.WIKITHUNES);
+      localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS);
+      localStorage.removeItem(STORAGE_KEYS.FREE_BOOSTERS_RESET);
+      localStorage.removeItem(STORAGE_KEYS.DAILY_REWARD);
+      localStorage.removeItem(STORAGE_KEYS.READ_NOTIFS);
+      localStorage.removeItem(STORAGE_KEYS.DISMISSED_NOTIFS);
     } catch {}
     setIsDarkMode(false);
     setDismissedNotifIds([]);
-    try {
-      localStorage.removeItem(STORAGE_KEYS.DISMISSED_NOTIFS);
-    } catch {
-      // ignore
-    }
+    setReadNotifIds([]);
+    setCollection([]);
+    setFavorites([]);
+    setWikithunes(INITIAL_WIKITHUNES);
+    setStats({
+      boostersOpened: 0,
+      totalCardsDrawn: 0,
+      lostMoneyCasino: 0,
+      lostCards: 0,
+      wonCards: 0,
+      netCasinoGains: 0,
+      recordStreak: 0,
+    });
   };
 
   const handleDeleteAccount = async () => {

@@ -150,6 +150,7 @@ export default function StatsHistoryModal({
   isLocalUser = false,
   createdAt = null,
   snapshots = undefined,
+  userCode = null,
 }) {
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -169,6 +170,7 @@ export default function StatsHistoryModal({
       isLocalUser,
       createdAt,
       snapshots,
+      userCode,
     });
   }, [
     metricId,
@@ -180,6 +182,7 @@ export default function StatsHistoryModal({
     isLocalUser,
     createdAt,
     snapshots,
+    userCode,
   ]);
 
   // Valeurs remarquables (ATH, ATL, départ, fin)

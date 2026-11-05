@@ -3,17 +3,44 @@ import { getCardRecycleValue, INITIAL_WIKITHUNES } from '../config/rarities';
 const LOCAL_SNAPSHOTS_STORAGE_KEY = 'wikicards_stats_timeline_v1';
 
 /**
- * Récupère les instantanés persistés localement
+ * Retourne la clé de stockage des instantanés, optionnellement cloisonnée par utilisateur
  */
-export function getSavedStatsSnapshots() {
+export function getSnapshotStorageKey(userCode = null) {
+  if (userCode && typeof userCode === 'string') {
+    const clean = userCode.trim().toUpperCase();
+    if (clean.length > 0) {
+      return `wikicards_stats_timeline_${clean}`;
+    }
+  }
+  return LOCAL_SNAPSHOTS_STORAGE_KEY;
+}
+
+/**
+ * Récupère les instantanés persistés localement (cloisonnés par utilisateur pour éviter les contaminations)
+ */
+export function getSavedStatsSnapshots(userCode = null) {
   try {
-    const raw = localStorage.getItem(LOCAL_SNAPSHOTS_STORAGE_KEY);
+    const scopedKey = getSnapshotStorageKey(userCode);
+    let raw = localStorage.getItem(scopedKey);
+
+    // Rétrocompatibilité : si aucune donnée cloisonnée, lecture du stockage global
+    if (!raw && scopedKey !== LOCAL_SNAPSHOTS_STORAGE_KEY) {
+      raw = localStorage.getItem(LOCAL_SNAPSHOTS_STORAGE_KEY);
+    }
+
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
     // Filtre les éléments valides et trie par chronologie croissante
-    const valid = parsed.filter((s) => s && typeof s.timestamp === 'number');
+    let valid = parsed.filter((s) => s && typeof s.timestamp === 'number');
+
+    // Si un code utilisateur est fourni, exclut les instantanés explicitement étiquetés d'un autre joueur
+    if (userCode && typeof userCode === 'string') {
+      const cleanCode = userCode.trim().toUpperCase();
+      valid = valid.filter((s) => !s.userCode || s.userCode === cleanCode);
+    }
+
     valid.sort((a, b) => a.timestamp - b.timestamp);
 
     // Auto-réparation des anomalies et creux aberrants dans l'historique local
@@ -62,6 +89,23 @@ export function getSavedStatsSnapshots() {
         if (s.lostCards < maxLost) s.lostCards = maxLost;
         else maxLost = s.lostCards;
       }
+
+      // Assainissement des bilans nets : ils ne peuvent pas excéder leurs gains respectifs
+      const gCasino = Math.max(0, Number(s.netCasinoGains || 0));
+      const lCasino = Math.max(0, Number(s.lostMoneyCasino || 0));
+      if (typeof s.netCasinoBilan === 'number') {
+        s.netCasinoBilan = Math.max(-lCasino, Math.min(gCasino, s.netCasinoBilan));
+      } else {
+        s.netCasinoBilan = gCasino - lCasino;
+      }
+
+      const wCards = Math.max(0, Number(s.wonCards || 0));
+      const lCards = Math.max(0, Number(s.lostCards || 0));
+      if (typeof s.netCardsBilan === 'number') {
+        s.netCardsBilan = Math.max(-lCards, Math.min(wCards, s.netCardsBilan));
+      } else {
+        s.netCardsBilan = wCards - lCards;
+      }
     }
 
     return valid;
@@ -75,7 +119,8 @@ export function getSavedStatsSnapshots() {
  */
 export function recordStatsSnapshot(data = {}) {
   try {
-    const snapshots = getSavedStatsSnapshots();
+    const userCode = data.userCode ? String(data.userCode).trim().toUpperCase() : null;
+    const snapshots = getSavedStatsSnapshots(userCode);
     const now = Date.now();
     const last = snapshots[snapshots.length - 1];
 
@@ -98,37 +143,34 @@ export function recordStatsSnapshot(data = {}) {
         ).length
       : last?.gifCount || 0;
 
-    // Protection de monotonie contre les désynchronisations temporaires
-    const boostersOpened = Math.max(
-      last?.boostersOpened || 0,
-      Number(data.stats?.boostersOpened || 0)
-    );
-    const recordStreak = Math.max(
-      last?.recordStreak || 0,
-      Number(data.stats?.recordStreak || 0)
-    );
-    const lostMoneyCasino = Math.max(
-      last?.lostMoneyCasino || 0,
-      Number(data.stats?.lostMoneyCasino || 0)
-    );
-    const netCasinoGains = Math.max(
-      last?.netCasinoGains || 0,
-      Number(data.stats?.netCasinoGains || 0)
-    );
-    const lostCards = Math.max(
-      last?.lostCards || 0,
-      Number(data.stats?.lostCards || 0)
-    );
-    const wonCards = Math.max(
-      last?.wonCards || 0,
-      Number(data.stats?.wonCards || 0)
-    );
-    const totalCardsDrawn = Math.max(
-      last?.totalCardsDrawn || 0,
-      Number(data.stats?.totalCardsDrawn || 0),
-      boostersOpened * 5,
-      Number(data.totalCardsCount || 0)
-    );
+    // Si data.stats est explicitement fourni, on respecte fidèlement les valeurs réelles du compte actuel
+    const hasExplicitStats = Boolean(data.stats && typeof data.stats === 'object');
+
+    const boostersOpened = hasExplicitStats
+      ? Number(data.stats.boostersOpened || 0)
+      : Number(last?.boostersOpened || 0);
+    const recordStreak = hasExplicitStats
+      ? Number(data.stats.recordStreak || 0)
+      : Number(last?.recordStreak || 0);
+    const lostMoneyCasino = hasExplicitStats
+      ? Number(data.stats.lostMoneyCasino || 0)
+      : Number(last?.lostMoneyCasino || 0);
+    const netCasinoGains = hasExplicitStats
+      ? Number(data.stats.netCasinoGains || 0)
+      : Number(last?.netCasinoGains || 0);
+    const lostCards = hasExplicitStats
+      ? Number(data.stats.lostCards || 0)
+      : Number(last?.lostCards || 0);
+    const wonCards = hasExplicitStats
+      ? Number(data.stats.wonCards || 0)
+      : Number(last?.wonCards || 0);
+    const totalCardsDrawn = hasExplicitStats
+      ? Math.max(
+          Number(data.stats.totalCardsDrawn || 0),
+          boostersOpened * 5,
+          Number(data.totalCardsCount || 0)
+        )
+      : Number(last?.totalCardsDrawn || 0);
 
     // Évite de spammer si le dernier snapshot date de moins de 30 secondes et que les valeurs n'ont pas bougé
     if (
@@ -140,13 +182,16 @@ export function recordStatsSnapshot(data = {}) {
       last.boostersOpened === boostersOpened &&
       last.recordStreak === recordStreak &&
       last.ultraRareCount === ultraRareCount &&
-      last.gifCount === gifCount
+      last.gifCount === gifCount &&
+      last.netCasinoBilan === (netCasinoGains - lostMoneyCasino) &&
+      last.netCardsBilan === (wonCards - lostCards)
     ) {
       return;
     }
 
     const snap = {
       timestamp: now,
+      userCode: userCode || undefined,
       wikithunes: Number(data.wikithunes || 0),
       collectionValue: Number(data.collectionValue || 0),
       uniqueCardsCount: Number(data.uniqueCardsCount || 0),
@@ -166,9 +211,50 @@ export function recordStatsSnapshot(data = {}) {
     };
 
     const next = [...snapshots, snap].slice(-500);
-    localStorage.setItem(LOCAL_SNAPSHOTS_STORAGE_KEY, JSON.stringify(next));
+    const storageKey = getSnapshotStorageKey(userCode);
+    localStorage.setItem(storageKey, JSON.stringify(next));
+    if (storageKey !== LOCAL_SNAPSHOTS_STORAGE_KEY) {
+      localStorage.setItem(LOCAL_SNAPSHOTS_STORAGE_KEY, JSON.stringify(next));
+    }
   } catch {
     // ignore storage limit
+  }
+}
+
+/**
+ * Assure le bornage mathématique strict d'une métrique pour éviter toute valeur absurde ou fictive
+ */
+function clampMetricValue(metricId, val, safeStats, currentVal) {
+  if (typeof val !== 'number' || isNaN(val)) return 0;
+  switch (metricId) {
+    case 'netCasinoBilan': {
+      const maxGains = Math.max(0, Number(safeStats?.netCasinoGains || 0));
+      const maxLosses = Math.max(0, Number(safeStats?.lostMoneyCasino || 0));
+      if (maxGains === 0 && maxLosses === 0) return 0;
+      return Math.max(-maxLosses, Math.min(maxGains, val));
+    }
+    case 'netCardsBilan': {
+      const maxWon = Math.max(0, Number(safeStats?.wonCards || 0));
+      const maxLost = Math.max(0, Number(safeStats?.lostCards || 0));
+      if (maxWon === 0 && maxLost === 0) return 0;
+      return Math.max(-maxLost, Math.min(maxWon, val));
+    }
+    case 'lostMoneyCasino':
+      return Math.max(0, Math.min(Number(safeStats?.lostMoneyCasino || 0), val));
+    case 'netCasinoGains':
+      return Math.max(0, Math.min(Number(safeStats?.netCasinoGains || 0), val));
+    case 'wonCards':
+      return Math.max(0, Math.min(Number(safeStats?.wonCards || 0), val));
+    case 'lostCards':
+      return Math.max(0, Math.min(Number(safeStats?.lostCards || 0), val));
+    case 'recordStreak':
+      return Math.max(0, Math.min(Number(safeStats?.recordStreak || 0), val));
+    case 'boostersOpened':
+      return Math.max(0, Math.min(Number(safeStats?.boostersOpened || 0), val));
+    case 'totalCardsDrawn':
+      return Math.max(0, Math.min(currentVal, val));
+    default:
+      return val;
   }
 }
 
@@ -185,6 +271,7 @@ export function recordStatsSnapshot(data = {}) {
  * @param {boolean} isLocalUser - Indique s'il s'agit du joueur actif sur cet appareil
  * @param {number|null} createdAt - Horodatage de création du compte (timestamp ms)
  * @param {Array|undefined} snapshots - Liste d'instantanés réels (ex: envoyés par le serveur ou un pair)
+ * @param {string|null} userCode - Code d'identification unique du compte
  */
 export function generateMetricTimeSeries(metricId, {
   collection = [],
@@ -195,6 +282,7 @@ export function generateMetricTimeSeries(metricId, {
   isLocalUser = false,
   createdAt = null,
   snapshots = undefined,
+  userCode = null,
 }) {
   const safeCollection = Array.isArray(collection) ? collection.filter(Boolean) : [];
   const safeStats = stats || {};
@@ -258,7 +346,7 @@ export function generateMetricTimeSeries(metricId, {
   const rawSnapshots = Array.isArray(snapshots) && snapshots.length > 0
     ? snapshots
     : isLocalUser
-    ? getSavedStatsSnapshots()
+    ? getSavedStatsSnapshots(userCode)
     : [];
   // On ne garde que les snapshots valides postérieurs au début du compte
   const savedSnapshots = rawSnapshots.filter(
@@ -402,9 +490,10 @@ export function generateMetricTimeSeries(metricId, {
         }
       }
 
+      const finalVal = i === sampleCount - 1 ? currentVal : val;
       points.push({
         timestamp: t,
-        value: i === sampleCount - 1 ? currentVal : val,
+        value: Math.max(0, Math.min(currentVal, finalVal)),
       });
     } else {
       // Pour les métriques de statistiques (solde, boosters, casino) :
@@ -568,9 +657,10 @@ export function generateMetricTimeSeries(metricId, {
         }
       }
 
+      const finalVal = i === sampleCount - 1 ? currentVal : simulatedVal;
       points.push({
         timestamp: t,
-        value: i === sampleCount - 1 ? currentVal : simulatedVal,
+        value: clampMetricValue(metricId, finalVal, safeStats, currentVal),
       });
     }
   }

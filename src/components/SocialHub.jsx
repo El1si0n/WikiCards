@@ -1577,6 +1577,7 @@ export default function SocialHub({
           isLocalUser={isSelectedPeerMe}
           createdAt={isSelectedPeerMe ? accountCreatedAt : selectedPeer?.createdAt}
           snapshots={isSelectedPeerMe ? undefined : (selectedPeer?.snapshots || [])}
+          userCode={isSelectedPeerMe ? userCode : selectedPeer?.code}
         />
       )}
     </div>

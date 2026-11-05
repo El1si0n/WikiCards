@@ -161,6 +161,7 @@ export default function UserProfile({
   // Enregistre périodiquement un instantané des statistiques pour tracer la courbe Trade Republic
   useEffect(() => {
     recordStatsSnapshot({
+      userCode,
       wikithunes,
       collectionValue: collectionTotalValue,
       uniqueCardsCount: collection.length,
@@ -1121,6 +1122,7 @@ export default function UserProfile({
           playerName={profile.username || 'Mon profil'}
           isLocalUser={true}
           createdAt={accountCreatedAt || profile.createdAt}
+          userCode={userCode}
         />
       )}
     </div>
