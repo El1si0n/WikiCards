@@ -1,3 +1,33 @@
+/**
+ * @file Rôle : Client d'interrogation de l'API Wikipédia FR, Wikimedia Pageviews et génération de cartes.
+ * Dépendances : `../config/rarities`, `../config/themes`, API REST Wikipédia, API Wikimedia Pageviews.
+ * Effets de bord : Requêtes réseau HTTP externes vers Wikipédia / Wikimedia et appels proxy locaux.
+ */
+
+/**
+ * @typedef {Object} WikiCard
+ * @property {string} id - Identifiant unique préfixé (ex: "wiki-12345")
+ * @property {number} [pageid] - Identifiant officiel d'article Wikipédia
+ * @property {string} title - Titre de l'article encyclopédique
+ * @property {string} description - Description courte officielle
+ * @property {string} extract - Résumé textuel d'introduction
+ * @property {string|null} image - URL de l'illustration
+ * @property {boolean} [imageContain] - Affichage avec ajustement de ratio
+ * @property {boolean} isGif - Image animée .gif
+ * @property {boolean} isShiny - Carte holographique / GIF Métal
+ * @property {number} views - Vues réelles des 30 derniers jours
+ * @property {'C'|'PC'|'R'|'SR'|'UR'|'L'} rarity - Rareté calculée
+ * @property {string} url - URL de la page officielle sur fr.wikipedia.org
+ * @property {string} theme - Identifiant du thème thématique
+ * @property {number} [count] - Nombre d'exemplaires dans le classeur
+ * @property {number} [obtainedAt] - Timestamp ms d'obtention
+ */
+
+/**
+ * @typedef {Object} BoosterPackOptions
+ * @property {boolean} [isIconic=false] - Garantit au moins 1 Légendaire et le reste en Ultra Rare
+ */
+
 import { getRarityByViews, getRarityByCode } from '../config/rarities';
 import { detectCardTheme } from '../config/themes';
 
@@ -275,7 +305,9 @@ function getPageviewsDateRange() {
 }
 
 /**
- * Récupère le nombre réel de visiteurs sur 30 jours via l'API officielle Wikimedia Pageviews
+ * Récupère le nombre réel de visiteurs sur 30 jours via l'API officielle Wikimedia Pageviews.
+ * @param {string} title - Titre de l'article Wikipédia
+ * @returns {Promise<number>} Somme cumulée des vues
  */
 export async function fetchPageViews30Days(title) {
   try {
@@ -317,7 +349,9 @@ export async function fetchPageViews30Days(title) {
 }
 
 /**
- * Vérifie si l'URL d'image Wikipédia correspond à un fichier .gif
+ * Vérifie si l'URL d'image Wikipédia correspond à un fichier .gif animé.
+ * @param {string} [url=''] - URL de l'illustration
+ * @returns {boolean} Vrai si l'extension est .gif
  */
 export function isGifImageUrl(url = '') {
   if (!url) return false;
@@ -325,8 +359,10 @@ export function isGifImageUrl(url = '') {
 }
 
 /**
- * Récupère une carte complète à partir du titre d'une page Wikipédia FR
+ * Récupère une carte complète à partir du titre d'une page Wikipédia FR.
  * (Résumé officiel + Image miniature ou .gif animé + Vues réelles sur 30 jours + Rareté + Thème + détection GIF)
+ * @param {string} title - Titre de l'article
+ * @returns {Promise<WikiCard>} Carte instanciée
  */
 export async function fetchWikiCardByTitle(title) {
   const cleanTitle = title.trim();
@@ -380,7 +416,8 @@ export async function fetchWikiCardByTitle(title) {
 }
 
 /**
- * Récupère une carte Wikipédia garantie avec une image .gif
+ * Récupère une carte Wikipédia garantie avec une illustration .gif animé.
+ * @returns {Promise<WikiCard|null>}
  */
 export async function fetchRandomGifWikiCard() {
   const shuffled = [...WIKI_GIF_ARTICLES].sort(() => Math.random() - 0.5);
@@ -430,10 +467,10 @@ async function fetchPureRandomTitles(limit = 12) {
 }
 
 /**
- * Tire un booster de 6 cartes sur Wikipédia FR.
- * - Mode standard (isIconic = false) : tirage aléatoire naturel sur Wikipédia FR (~7 % de chance qu'une page .gif s'y glisse).
- * - Mode Booster Iconique (isIconic = true) : garantit strictement MINIMUM 1 Légendaire (L) et MAXIMUM 2 Légendaires (L).
- * Les 6 cartes sont triées par nombre de vues croissant pour garder le suspense jusqu'à la 6e carte.
+ * Tire un paquet de cartes aléatoires sur Wikipédia FR triées par suspense croissant.
+ * @param {number} [count=6] - Nombre de cartes à tirer (par défaut: 6)
+ * @param {BoosterPackOptions} [options={}] - Options de tirage (ex: isIconic)
+ * @returns {Promise<WikiCard[]>} Liste des cartes du paquet triées
  */
 export async function fetchBoosterPackCards(count = 6, options = {}) {
   const { isIconic = false } = options;
@@ -561,8 +598,11 @@ function getSimulatedViewsForTier(rarityCode, actualViews = 0) {
 }
 
 /**
- * Tire une carte Wikipédia FR 100 % aléatoire correspondant exactement à la rareté cible (PC, R, SR, UR, L)
+ * Tire une carte Wikipédia FR 100 % aléatoire correspondant exactement à la rareté cible.
  * Utilisé notamment par l'Upgrader de Cartes du WikiSino.
+ * @param {'PC'|'R'|'SR'|'UR'|'L'} [targetRarityCode='PC'] - Rareté ciblée
+ * @param {string|string[]} [excludeTitles=[]] - Titres ou IDs à exclure
+ * @returns {Promise<WikiCard|null>}
  */
 export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitles = []) {
   const excludeSet = new Set(
@@ -602,14 +642,12 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitl
 }
 
 /**
- * Tire une carte Wikipédia FR variée pour le jeu "Plus ou Moins" (Étape 9.2)
- * - Garantit strictement qu'aucune carte identique à la carte de référence (ou déjà vue) ne peut être tirée.
- * - Difficulté dynamiquement indexée sur la valeur du GAIN POTENTIEL du tour :
- *   • < 150 ₩ (débuts à 50 ₩ / 100 ₩) : très accessible, écart prononcé de 2+ raretés
- *   • 150 ₩ à 350 ₩ (progression modérée) : ~32 % de duels serrés, raretés plus proches
- *   • 350 ₩ à 700 ₩ (série avancée ou mise 250 ₩) : 55 % de duels serrés (voisins ou même rareté)
- *   • 700 ₩ à 1 500 ₩ (série longue 7+ ou mise 500 ₩+) : 75 % de duels très serrés (majorité même rareté)
- *   • > 1 500 ₩ (jackpot / boss) : 88 % de duels ultra-serrés à notoriété très proche
+ * Tire une carte Wikipédia FR variée pour le duel du jeu "Plus ou Moins".
+ * @param {string|string[]} [excludeInput=[]] - Titres ou IDs à exclure du tirage
+ * @param {number|null} [referenceViews=null] - Vues de la carte de référence
+ * @param {string|null} [referenceRarity=null] - Rareté de la carte de référence
+ * @param {number} [potentialGain=250] - Gain potentiel pour calibrage de difficulté
+ * @returns {Promise<WikiCard>} Carte de duel générée
  */
 export async function fetchRandomDuelCard(
   excludeInput = [],

@@ -1,3 +1,9 @@
+/**
+ * @file Rôle : Contrôleur et routeur HTTP autonome pour l'ensemble des routes /api/* (users, trades, market, proxy).
+ * Dépendances : `node:fs`, `node:path`.
+ * Effets de bord : Lecture et écriture de fichiers JSON dans le répertoire `data/` (users, market, trades).
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -136,6 +142,12 @@ import path from 'node:path';
       req.on('error', reject)
     })
 
+/**
+ * Traite les requêtes HTTP entrantes préfixées par `/api/`.
+ * @param {import('node:http').IncomingMessage} req - Requête HTTP entrante
+ * @param {import('node:http').ServerResponse} res - Réponse HTTP sortante
+ * @returns {Promise<boolean>} Vrai si la requête a été prise en charge par ce routeur, faux sinon
+ */
 export async function handleApiRequest(req, res) {
   if (!req.url || !req.url.startsWith('/api/')) {
     return false;

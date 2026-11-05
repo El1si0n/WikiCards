@@ -1,3 +1,31 @@
+/**
+ * @file Rôle : Définition des constantes économiques, barèmes de rareté et valeurs de recyclage.
+ * Dépendances : Aucune.
+ * Effets de bord : Aucun (constantes et fonctions pures).
+ */
+
+/**
+ * @typedef {Object} RarityTier
+ * @property {'C'|'PC'|'R'|'SR'|'UR'|'L'} code - Code court de la rareté
+ * @property {string} name - Nom français de la rareté
+ * @property {string} thresholdLabel - Libellé du seuil de visiteurs
+ * @property {string} dropRate - Taux d'apparition indicatif
+ * @property {number} recycleValue - Valeur de recyclage unitaire de base en Wikithunes
+ * @property {number} minViews - Vues mensuelles minimales
+ * @property {number} maxViews - Vues mensuelles maximales (Infinity pour L)
+ * @property {string} badgeBg - Couleur de fond CSS du badge
+ * @property {string} badgeText - Couleur textuelle CSS du badge
+ * @property {string} cardBg - Dégradé CSS d'arrière-plan de la carte
+ * @property {string} waveColor1 - Couleur de la première onde SVG
+ * @property {string} waveColor2 - Couleur de la seconde onde SVG
+ * @property {string} borderColor - Couleur CSS de bordure
+ * @property {string} shadowColor - Couleur CSS de halo / ombre
+ * @property {string} foilGradient - Dégradé CSS d'effet holographique
+ * @property {string} textColor - Couleur principale du texte
+ * @property {string} subTextColor - Couleur secondaire du texte
+ * @property {string} dividerColor - Couleur de ligne de séparation
+ */
+
 export const BOOSTER_PRICE = 200; // Ajusté à 200 ₩ (au lieu de 300 ₩)
 export const ICONIC_BOOSTER_PRICE = 1000; // Ajusté à 1 000 ₩ (5x le booster standard)
 export const INITIAL_WIKITHUNES = 3000;
@@ -128,6 +156,11 @@ export const RARITY_TIERS = [
   },
 ];
 
+/**
+ * Détermine le palier de rareté correspondant à un nombre de vues mensuelles.
+ * @param {number} [views=0] - Vues cumulées sur les 30 derniers jours
+ * @returns {RarityTier} Objet palier de rareté
+ */
 export function getRarityByViews(views = 0) {
   for (let i = RARITY_TIERS.length - 1; i >= 0; i--) {
     if (views >= RARITY_TIERS[i].minViews) {
@@ -137,10 +170,20 @@ export function getRarityByViews(views = 0) {
   return RARITY_TIERS[0];
 }
 
+/**
+ * Récupère la configuration d'un palier à partir de son code court.
+ * @param {'C'|'PC'|'R'|'SR'|'UR'|'L'|string} code - Code de rareté
+ * @returns {RarityTier} Objet palier de rareté
+ */
 export function getRarityByCode(code) {
   return RARITY_TIERS.find((t) => t.code === code) || RARITY_TIERS[0];
 }
 
+/**
+ * Calcule la valeur de recyclage en Wikithunes d'une carte.
+ * @param {{ rarity?: string, isShiny?: boolean } | null} card - Carte à recycler
+ * @returns {number} Montant en Wikithunes obtenu
+ */
 export function getCardRecycleValue(card) {
   if (!card) return 10;
   const tier = getRarityByCode(card.rarity);

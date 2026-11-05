@@ -1,4 +1,15 @@
-// Classification thématique encyclopédique des cartes Wikipédia (inspirée des portails de fr.wikipedia.org)
+/**
+ * @file Rôle : Classification encyclopédique et détection automatique des thèmes des cartes.
+ * Dépendances : Aucune.
+ * Effets de bord : Aucun (constantes et fonctions pures).
+ */
+
+/**
+ * @typedef {Object} WikiTheme
+ * @property {string} id - Identifiant en majuscules (ex: "SCIENCE", "HISTOIRE")
+ * @property {string} label - Libellé affiché dans l'interface
+ * @property {string[]} keywords - Racines textuelles et mots-clés d'association
+ */
 
 export const WIKI_THEMES = [
   {
@@ -299,6 +310,8 @@ export const WIKI_THEMES = [
 /**
  * Détecte automatiquement le thème encyclopédique d'une carte Wikipédia
  * à partir de son titre, de sa description courte et de son extrait.
+ * @param {{ title?: string, description?: string, extract?: string, theme?: string } | null} card - Carte à analyser
+ * @returns {string} Identifiant du thème correspondant
  */
 export function detectCardTheme(card) {
   if (!card) return 'CULTURE';
@@ -331,6 +344,11 @@ export function detectCardTheme(card) {
   return bestTheme;
 }
 
+/**
+ * Récupère l'objet de configuration d'un thème à partir de son identifiant.
+ * @param {string} themeId - Identifiant du thème (ex: "SCIENCE")
+ * @returns {WikiTheme} Objet thème trouvé ou thème par défaut
+ */
 export function getThemeById(themeId) {
   return WIKI_THEMES.find((t) => t.id === themeId) || WIKI_THEMES[0];
 }

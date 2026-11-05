@@ -1,4 +1,40 @@
 /**
+ * @file Rôle : Calcul mathématique et pondération du score d'accomplissement global du joueur.
+ * Dépendances : Aucune.
+ * Effets de bord : Aucun (fonctions et constantes pures).
+ */
+
+/**
+ * @typedef {Object} PlayerScoreData
+ * @property {number} [uniqueCardsCount] - Nombre d'articles uniques dans le classeur
+ * @property {number} [uniqueCount] - Alias alternatif pour les articles uniques
+ * @property {number} [totalCardsCount] - Total d'exemplaires physiques
+ * @property {number} [totalCards] - Alias pour le total de cartes
+ * @property {number} [wikithunes] - Solde de monnaie virtuelle
+ * @property {number} [collectionValue] - Valeur marchande estimée du classeur
+ * @property {number} [legendaryCount] - Nombre de cartes Légendaires
+ * @property {number} [ultraRareCount] - Nombre de cartes Ultra Rares
+ * @property {number} [superRareCount] - Nombre de cartes Super Rares
+ * @property {number} [rareCount] - Nombre de cartes Rares
+ * @property {number} [uncommonCount] - Nombre de cartes Peu Communes
+ * @property {number} [commonCount] - Nombre de cartes Communes
+ * @property {number} [gifCount] - Nombre de cartes GIF Métal
+ * @property {number} [gifCardsCount] - Alias cartes GIF
+ * @property {number} [gifs] - Alias cartes GIF
+ * @property {Array<Object>} [collection] - Collection détaillée des cartes
+ * @property {Object} [stats] - Statistiques de jeu
+ * @property {number} [stats.boostersOpened] - Boosters ouverts
+ * @property {number} [stats.totalCardsDrawn] - Cartes tirées
+ * @property {number} [stats.wonCards] - Cartes gagnées
+ * @property {number} [stats.lostCards] - Cartes perdues
+ * @property {number} [stats.lostMoneyCasino] - Argent perdu aux jeux
+ * @property {number} [stats.netCasinoGains] - Bénéfices bruts casino
+ * @property {number} [stats.recordStreak] - Record de série Plus ou Moins
+ * @property {number} [stats.duelVictories] - Victoires en duels
+ * @property {number} [stats.duelDefeats] - Défaites en duels
+ */
+
+/**
  * Configuration des points par rareté (Échelle ~4x par palier supérieur) :
  *
  * 1 Commune (C) = 5 pts
@@ -41,6 +77,9 @@ export const RARITY_SCORE_WEIGHTS = {
  * Règle d'or anti-triche & anti-exploit :
  * - Le Quitte ou Double et les Upgrades se basent sur le BILAN NET DE CARTES (Gagnées - Perdues).
  * - Le Casino Plus ou Moins se base sur le BILAN FINANCIER NET (Gains casino - Argent perdu).
+ *
+ * @param {PlayerScoreData} [playerData={}] - Données du joueur ou statistiques de profil
+ * @returns {number} Score d'accomplissement global en points
  */
 export function calculatePlayerScore(playerData = {}) {
   // 1. Articles uniques

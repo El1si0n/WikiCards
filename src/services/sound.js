@@ -1,9 +1,14 @@
-// Moteur audio procédural Web Audio API pour WikiCards
-// Génère des effets sonores réalistes et cristallins (déchirure de booster, glissement de carte, révélations par rareté)
-// sans dépendre de fichiers MP3 externes.
+/**
+ * @file Rôle : Moteur de synthèse audio procédurale Web Audio API (effets sonores sans MP3 externes).
+ * Dépendances : Web Audio API native (AudioContext), localStorage.
+ * Effets de bord : Émission audio sur la sortie sonore du navigateur, persistance de l'état muet.
+ */
 
 const SOUND_STORAGE_KEY = 'wikicards_sound_muted_v1';
 
+/**
+ * Gestionnaire audio procédural pour l'application WikiCards.
+ */
 class SoundManager {
   constructor() {
     this.ctx = null;
@@ -549,4 +554,8 @@ class SoundManager {
   }
 }
 
+/**
+ * Instance unique partagée du gestionnaire audio procédural.
+ * @type {SoundManager}
+ */
 export const soundManager = new SoundManager();

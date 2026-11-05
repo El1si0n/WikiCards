@@ -1,9 +1,55 @@
+/**
+ * @file Rôle : Gestion du stockage local, arbitrage des versions et synchronisation API des comptes joueurs.
+ * Dépendances : localStorage natif, fetch API native.
+ * Effets de bord : Lecture/écriture dans localStorage et requêtes réseau HTTP vers les routes /api/*.
+ */
+
+/**
+ * @typedef {Object} UserProfile
+ * @property {string} username - Pseudonyme communautaire
+ * @property {string} avatar - URL de l'image d'avatar
+ * @property {string} bio - Courte biographie du profil
+ * @property {string[]} showcaseIds - Jusqu'à 4 IDs de cartes en vitrine
+ * @property {'light'|'dark'} themePreference - Thème d'interface favori
+ */
+
+/**
+ * @typedef {Object} UserAccountStats
+ * @property {number} boostersOpened - Total de boosters ouverts
+ * @property {number} totalCardsDrawn - Total de cartes obtenues
+ * @property {number} wonCards - Cartes gagnées aux mini-jeux
+ * @property {number} lostCards - Cartes perdues aux mini-jeux
+ * @property {number} lostMoneyCasino - Argent perdu aux jeux
+ * @property {number} netCasinoGains - Gains bruts empochés
+ * @property {number} recordStreak - Série record Plus ou Moins
+ * @property {number} [duelVictories] - Victoires en duels
+ * @property {number} [duelDefeats] - Défaites en duels
+ */
+
+/**
+ * @typedef {Object} UserAccount
+ * @property {string} code - Identifiant normalisé WIKI-XXXX
+ * @property {UserProfile} profile - Profil public du joueur
+ * @property {Array<Object>} collection - Inventaire des cartes
+ * @property {number} wikithunes - Solde de monnaie
+ * @property {number} [freeBoostersCount] - Boosters gratuits disponibles
+ * @property {number} [lastFreeBoostersResetTime] - Horodatage de recharge
+ * @property {string} [lastDailyClaimDate] - Date journalière YYYY-MM-DD
+ * @property {UserAccountStats} stats - Statistiques de progression
+ * @property {string[]} [favorites] - IDs des cartes favorites
+ * @property {number} [createdAt] - Date de création du compte
+ * @property {number} [updatedAt] - Date de dernière mise à jour
+ */
+
 const USER_CODE_STORAGE_KEY = 'wikicards_user_code_v1';
 const USER_PROFILE_STORAGE_KEY = 'wikicards_user_profile_v1';
 const USER_UPDATED_AT_STORAGE_KEY = 'wikicards_updated_at_v1';
 const LOCAL_USERS_DIRECTORY_KEY = 'wikicards_local_users_dir_v1';
 
-// Génère un code unique au format WIKI-XXXX (4 caractères non ambigus, ex : WIKI-4GU5)
+/**
+ * Génère un code unique au format WIKI-XXXX (4 caractères alphanumériques non ambigus).
+ * @returns {string} Nouveau code généré
+ */
 export function generateUniqueUserCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const block = Array.from(
@@ -13,6 +59,11 @@ export function generateUniqueUserCode() {
   return `WIKI-${block}`;
 }
 
+/**
+ * Nettoie et normalise la casse et les tirets d'un code utilisateur.
+ * @param {string} input - Chaîne brute saisie ou reçue
+ * @returns {string} Code normalisé
+ */
 export function normalizeUserCode(input) {
   const raw = String(input || '')
     .toUpperCase()
@@ -38,11 +89,19 @@ export function normalizeUserCode(input) {
     .toUpperCase();
 }
 
+/**
+ * Vérifie si un code correspond au format officiel attendu (WIKI-XXXX ou WIKI-XXXX-XXXX).
+ * @param {string} code - Code à valider
+ * @returns {boolean} Vrai si le format est valide
+ */
 export function isValidUserCode(code) {
   return /^WIKI-[A-Z0-9]{4}(-[A-Z0-9]{4})?$/.test(normalizeUserCode(code));
 }
 
-// Récupère le code stocké localement sans en créer un nouveau automatiquement
+/**
+ * Récupère le code stocké localement sans en créer un nouveau automatiquement.
+ * @returns {string|null} Code utilisateur stocké ou null
+ */
 export function getStoredUserCode() {
   try {
     const saved = localStorage.getItem(USER_CODE_STORAGE_KEY);
@@ -55,7 +114,10 @@ export function getStoredUserCode() {
   return null;
 }
 
-// Supprime le code utilisateur stocké (déconnexion)
+/**
+ * Supprime le code utilisateur stocké (déconnexion locale).
+ * @returns {void}
+ */
 export function clearStoredUserCode() {
   try {
     localStorage.removeItem(USER_CODE_STORAGE_KEY);
@@ -64,6 +126,10 @@ export function clearStoredUserCode() {
   }
 }
 
+/**
+ * Récupère le code existant ou en initialise un nouveau immédiatement en localStorage.
+ * @returns {string} Code utilisateur garanti
+ */
 export function getOrCreateUserCode() {
   const existing = getStoredUserCode();
   if (existing) return existing;
@@ -76,6 +142,11 @@ export function getOrCreateUserCode() {
   return freshCode;
 }
 
+/**
+ * Enregistre explicitement un code utilisateur dans le stockage local.
+ * @param {string} code - Code à persister
+ * @returns {string} Code normalisé enregistré
+ */
 export function setStoredUserCode(code) {
   const clean = normalizeUserCode(code);
   try {
@@ -86,6 +157,11 @@ export function setStoredUserCode(code) {
   return clean;
 }
 
+/**
+ * Construit un objet de profil par défaut pour un compte.
+ * @param {string} code - Code utilisateur associé
+ * @returns {UserProfile} Objet profil initial
+ */
 export function getDefaultProfile(code) {
   const suffix = String(code || 'WIKI-0000-0000').slice(-4);
   return {
@@ -97,6 +173,11 @@ export function getDefaultProfile(code) {
   };
 }
 
+/**
+ * Charge le profil utilisateur local associé à un code.
+ * @param {string} code - Code utilisateur
+ * @returns {UserProfile} Objet profil résolu
+ */
 export function loadLocalProfile(code) {
   const cleanCode = normalizeUserCode(code);
   try {
@@ -132,6 +213,12 @@ export function loadLocalProfile(code) {
   return getDefaultProfile(cleanCode);
 }
 
+/**
+ * Sauvegarde localement le profil d'un joueur.
+ * @param {UserProfile} profile - Objet profil à persister
+ * @param {string} [code] - Code du compte concerné
+ * @returns {void}
+ */
 export function saveLocalProfile(profile, code) {
   if (!profile) return;
   const cleanCode = code ? normalizeUserCode(code) : getStoredUserCode();
@@ -146,6 +233,12 @@ export function saveLocalProfile(profile, code) {
   }
 }
 
+/**
+ * Récupère le dernier horodatage de synchronisation connu d'un compte.
+ * @param {string} code - Code utilisateur
+ * @param {Array<Object>} [collection=[]] - Collection pour recherche de fallback
+ * @returns {number} Timestamp ms du dernier changement
+ */
 export function getStoredUpdatedAt(code, collection = []) {
   try {
     const saved = Number(localStorage.getItem(USER_UPDATED_AT_STORAGE_KEY) || 0);
@@ -166,6 +259,11 @@ export function getStoredUpdatedAt(code, collection = []) {
   return Number(fallback?.updatedAt || 0);
 }
 
+/**
+ * Enregistre le timestamp de dernière modification dans le stockage local.
+ * @param {number|string} ts - Horodatage ms
+ * @returns {number} Horodatage valide enregistré
+ */
 export function setStoredUpdatedAt(ts) {
   const validTs = Number(ts) || Date.now();
   try {
@@ -176,7 +274,12 @@ export function setStoredUpdatedAt(ts) {
   return validTs;
 }
 
-// Compare deux états d'un même compte et détermine si `candidate` est plus récent / plus avancé que `baseline`
+/**
+ * Compare deux états d'un compte et détermine si candidate est plus récent ou avancé que baseline.
+ * @param {UserAccount|null} candidate - Sauvegarde candidate à évaluer
+ * @param {UserAccount|null} baseline - Sauvegarde de référence
+ * @returns {boolean} Vrai si candidate doit primer
+ */
 export function isAccountStateNewer(candidate, baseline) {
   if (!candidate) return false;
   if (!baseline) return true;
@@ -252,7 +355,11 @@ function loadFromLocalDirectoryFallback(code) {
   }
 }
 
-// Interroge l'état du compte directement sur le serveur (sans cache)
+/**
+ * Interroge l'état du compte directement sur le serveur (/api/users/:code).
+ * @param {string} code - Code d'identification
+ * @returns {Promise<{ status: 'ok'|'not_found'|'invalid'|'error'|'offline', user: UserAccount|null }>}
+ */
 export async function fetchServerUserAccount(code) {
   const cleanCode = normalizeUserCode(code);
   if (!isValidUserCode(cleanCode)) {
@@ -277,7 +384,13 @@ export async function fetchServerUserAccount(code) {
   }
 }
 
-// Synchronise les données complètes de l'utilisateur vers data/users/<CODE>.json
+/**
+ * Synchronise l'état complet du joueur vers le serveur avec protection anti-écrasement.
+ * @param {string} code - Code utilisateur
+ * @param {Partial<UserAccount>} data - Données à synchroniser
+ * @param {{ forceOverwrite?: boolean }} [options={}] - Options de synchronisation
+ * @returns {Promise<{ user: UserAccount|null, serverIsNewer: boolean }|null>}
+ */
 export async function syncUserAccountToServer(code, data, options = {}) {
   const cleanCode = normalizeUserCode(code);
   if (!isValidUserCode(cleanCode)) return null;
@@ -315,7 +428,11 @@ export async function syncUserAccountToServer(code, data, options = {}) {
   }
 }
 
-// Charge un compte utilisateur par son Code Unique depuis data/users/<CODE>.json
+/**
+ * Charge un compte utilisateur par son code unique depuis l'API ou le fallback local.
+ * @param {string} code - Code du compte à charger
+ * @returns {Promise<UserAccount>}
+ */
 export async function fetchUserAccountByCode(code) {
   const cleanCode = normalizeUserCode(code);
   if (!isValidUserCode(cleanCode)) {
@@ -347,6 +464,11 @@ export async function fetchUserAccountByCode(code) {
 // =====================================================================
 // API COMMUNAUTÉ / SOCIAL & ÉCHANGES (/api/users & /api/trades)
 // =====================================================================
+
+/**
+ * Récupère l'annuaire public de l'ensemble des joueurs enregistrés.
+ * @returns {Promise<Array<{ code: string, profile: UserProfile, stats: UserAccountStats, collectionLength: number }>>}
+ */
 export async function fetchAllUsersDirectory() {
   try {
     const res = await fetch('/api/users', { cache: 'no-store' });
@@ -362,6 +484,11 @@ export async function fetchAllUsersDirectory() {
   return [];
 }
 
+/**
+ * Récupère la liste des propositions d'échanges actives ou passées d'un joueur.
+ * @param {string} userCode - Code du joueur
+ * @returns {Promise<Array<Object>>} Liste des échanges
+ */
 export async function fetchUserTrades(userCode) {
   try {
     const res = await fetch(
@@ -380,6 +507,15 @@ export async function fetchUserTrades(userCode) {
   return [];
 }
 
+/**
+ * Propose une nouvelle offre d'échange de cartes à un joueur tiers.
+ * @param {Object} params
+ * @param {string} params.fromCode - Code de l'émetteur
+ * @param {string} params.toCode - Code du destinataire
+ * @param {Array<Object>} params.offeredCards - Cartes proposées
+ * @param {Array<Object>} params.requestedCards - Cartes demandées
+ * @returns {Promise<Object>} Échange créé
+ */
 export async function createTradeOffer({
   fromCode,
   toCode,
@@ -403,6 +539,12 @@ export async function createTradeOffer({
   return json.trade;
 }
 
+/**
+ * Répond à une offre d'échange reçue ou annule une offre émise.
+ * @param {string} tradeId - Identifiant de l'échange
+ * @param {'accept'|'decline'|'cancel'} action - Action à exécuter
+ * @returns {Promise<Object>} Réponse du serveur
+ */
 export async function respondToTradeOffer(tradeId, action) {
   // action: 'accept' | 'decline' | 'cancel'
   const res = await fetch(
@@ -422,6 +564,11 @@ export async function respondToTradeOffer(tradeId, action) {
 // =====================================================================
 // API MARCHÉ AUX ENCHÈRES (/api/market)
 // =====================================================================
+
+/**
+ * Récupère l'ensemble des annonces d'enchères et de ventes directes actives.
+ * @returns {Promise<Array<Object>>} Liste des annonces du marché
+ */
 export async function fetchMarketListings() {
   try {
     const res = await fetch('/api/market', { cache: 'no-store' });
@@ -437,6 +584,15 @@ export async function fetchMarketListings() {
   return [];
 }
 
+/**
+ * Met une carte de sa collection en vente sur la salle des marchés.
+ * @param {Object} params
+ * @param {string} params.sellerCode - Code du vendeur
+ * @param {string} params.cardId - Identifiant de la carte mise en vente
+ * @param {number} params.startingBid - Prix de mise à prix de départ
+ * @param {number} params.buyoutPrice - Prix d'achat immédiat direct
+ * @returns {Promise<Object>} Résultat de la publication
+ */
 export async function createMarketListing({
   sellerCode,
   cardId,
@@ -460,6 +616,13 @@ export async function createMarketListing({
   return json;
 }
 
+/**
+ * Exécute une opération sur une annonce du marché (enchérir, acheter, annuler).
+ * @param {string} listingId - Identifiant de l'annonce
+ * @param {'buy'|'bid'|'cancel'|'accept_bid'} action - Type d'action
+ * @param {Object} [payload={}] - Paramètres additionnels (ex: userCode, bidAmount)
+ * @returns {Promise<Object>} Résultat de l'action
+ */
 export async function performMarketAction(listingId, action, payload = {}) {
   // action: 'buy' | 'bid' | 'cancel' | 'accept_bid'
   const res = await fetch(
@@ -480,6 +643,12 @@ export async function performMarketAction(listingId, action, payload = {}) {
 // =====================================================================
 // SUPPRESSION DÉFINITIVE DU COMPTE (/api/users/:code)
 // =====================================================================
+
+/**
+ * Supprime définitivement un compte joueur côté serveur et nettoie le stockage local.
+ * @param {string} code - Code du compte à supprimer
+ * @returns {Promise<boolean>} Vrai après suppression
+ */
 export async function deleteUserAccount(code) {
   const cleanCode = normalizeUserCode(code);
   if (!isValidUserCode(cleanCode)) {

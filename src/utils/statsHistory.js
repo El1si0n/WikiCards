@@ -1,9 +1,40 @@
+/**
+ * @file Rôle : Enregistrement des instantanés de compte et génération dynamique des séries temporelles.
+ * Dépendances : `../config/rarities`, localStorage.
+ * Effets de bord : Lecture/écriture dans localStorage (cloisonné par code utilisateur).
+ */
+
+/**
+ * @typedef {Object} StatsSnapshot
+ * @property {number} timestamp - Horodatage UNIX (ms) de l'instantané
+ * @property {number} [wikithunes] - Solde de monnaie
+ * @property {number} [collectionValue] - Valeur estimée du classeur
+ * @property {number} [uniqueCardsCount] - Articles uniques
+ * @property {number} [totalCardsCount] - Total de cartes
+ * @property {number} [boostersOpened] - Boosters ouverts
+ * @property {number} [totalCardsDrawn] - Cartes tirées
+ * @property {number} [wonCards] - Cartes gagnées aux jeux
+ * @property {number} [lostCards] - Cartes perdues aux jeux
+ * @property {number} [lostMoneyCasino] - Argent perdu
+ * @property {number} [netCasinoGains] - Gains casino
+ * @property {number} [recordStreak] - Série record
+ */
+
+/**
+ * @typedef {Object} TimeSeriesPoint
+ * @property {number} timestamp - Horodatage du point
+ * @property {number} value - Valeur numérique de la métrique
+ * @property {string} label - Libellé formaté pour infobulle / tooltip
+ */
+
 import { getCardRecycleValue, INITIAL_WIKITHUNES } from '../config/rarities';
 
 const LOCAL_SNAPSHOTS_STORAGE_KEY = 'wikicards_stats_timeline_v1';
 
 /**
- * Retourne la clé de stockage des instantanés, optionnellement cloisonnée par utilisateur
+ * Retourne la clé de stockage des instantanés, optionnellement cloisonnée par utilisateur.
+ * @param {string|null} [userCode=null] - Code utilisateur WIKI-XXXX
+ * @returns {string} Clé de localStorage correspondante
  */
 export function getSnapshotStorageKey(userCode = null) {
   if (userCode && typeof userCode === 'string') {
@@ -16,7 +47,9 @@ export function getSnapshotStorageKey(userCode = null) {
 }
 
 /**
- * Récupère les instantanés persistés localement (cloisonnés par utilisateur pour éviter les contaminations)
+ * Récupère les instantanés persistés localement (cloisonnés par utilisateur pour éviter les contaminations).
+ * @param {string|null} [userCode=null] - Code du joueur
+ * @returns {StatsSnapshot[]} Liste chronologique des instantanés
  */
 export function getSavedStatsSnapshots(userCode = null) {
   try {
@@ -115,7 +148,9 @@ export function getSavedStatsSnapshots(userCode = null) {
 }
 
 /**
- * Enregistre un nouvel instantané horodaté de l'état du joueur
+ * Enregistre un nouvel instantané horodaté de l'état du joueur.
+ * @param {Object} [data={}] - Données du compte (collection, stats, solde, code)
+ * @returns {void}
  */
 export function recordStatsSnapshot(data = {}) {
   try {
@@ -270,8 +305,9 @@ function clampMetricValue(metricId, val, safeStats, currentVal) {
  * @param {string} period - '1J' | '1S' | '1M' | 'TOUT'
  * @param {boolean} isLocalUser - Indique s'il s'agit du joueur actif sur cet appareil
  * @param {number|null} createdAt - Horodatage de création du compte (timestamp ms)
- * @param {Array|undefined} snapshots - Liste d'instantanés réels (ex: envoyés par le serveur ou un pair)
- * @param {string|null} userCode - Code d'identification unique du compte
+ * @param {Array<Object>|undefined} [snapshots] - Liste d'instantanés réels (ex: envoyés par le serveur ou un pair)
+ * @param {string|null} [userCode=null] - Code d'identification unique du compte
+ * @returns {TimeSeriesPoint[]} Série de points temporels ordonnés
  */
 export function generateMetricTimeSeries(metricId, {
   collection = [],
