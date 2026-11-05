@@ -37,20 +37,26 @@ export default function AppTabContent({
   showRarityRules,
   searchQuery,
   setSearchQuery,
-  account,
+  account = {},
 }) {
+  const collection = account.collection || [];
+  const favorites = account.favorites || [];
+  const existingCardIds = account.existingCardIds || [];
+  const stats = account.stats || {};
+  const wikithunes = account.wikithunes ?? 0;
+
   if (activeTab === 'booster') {
     return (
       <BoosterTab
         onCardsOpened={account.addCardsToCollection}
-        existingCardIds={account.existingCardIds}
-        favorites={account.favorites}
+        existingCardIds={existingCardIds}
+        favorites={favorites}
         onToggleFavorite={account.toggleFavorite}
         onGoToClasseur={() => setActiveTab('classeur')}
-        wikithunes={account.wikithunes}
+        wikithunes={wikithunes}
         onSpendWikithunes={account.spendWikithunes}
-        freeBoostersCount={account.freeBoostersCount}
-        timeRemainingFreeBoosters={account.timeRemainingFreeBoosters}
+        freeBoostersCount={account.freeBoostersCount ?? 0}
+        timeRemainingFreeBoosters={account.timeRemainingFreeBoosters || ''}
         onUseFreeBooster={account.handleUseFreeBooster}
         showRarityRules={showRarityRules}
       />
@@ -61,16 +67,16 @@ export default function AppTabContent({
     return (
       <Suspense fallback={<TabLoadingFallback />}>
         <WikiSino
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
+          collection={collection}
+          favorites={favorites}
+          wikithunes={wikithunes}
           onSpendWikithunes={account.spendWikithunes}
           onAddWikithunes={account.addWikithunes}
           onConsumeCards={account.consumeCardsFromCollection}
           onCardWon={(wonCard) => account.addCardsToCollection([wonCard], false)}
-          existingCardIds={account.existingCardIds}
+          existingCardIds={existingCardIds}
           onToggleFavorite={account.toggleFavorite}
-          stats={account.stats}
+          stats={stats}
           onUpdateStats={account.handleUpdateStats}
         />
       </Suspense>
@@ -82,10 +88,10 @@ export default function AppTabContent({
       <Suspense fallback={<TabLoadingFallback />}>
         <SocialHub
           userCode={account.userCode}
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
-          stats={account.stats}
+          collection={collection}
+          favorites={favorites}
+          wikithunes={wikithunes}
+          stats={stats}
           userProfile={account.userProfile}
           accountCreatedAt={account.accountCreatedAt}
           onSyncAccountState={account.handleSyncAccountState}
@@ -99,9 +105,9 @@ export default function AppTabContent({
       <Suspense fallback={<TabLoadingFallback />}>
         <AuctionMarket
           userCode={account.userCode}
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
+          collection={collection}
+          favorites={favorites}
+          wikithunes={wikithunes}
           onSyncAccountState={account.handleSyncAccountState}
         />
       </Suspense>
@@ -117,11 +123,11 @@ export default function AppTabContent({
           onUpdateProfile={account.handleUpdateUserProfile}
           onLogout={account.handleLogout}
           onDeleteAccount={account.handleDeleteAccount}
-          collection={account.collection}
-          favorites={account.favorites}
+          collection={collection}
+          favorites={favorites}
           onToggleFavorite={account.toggleFavorite}
-          wikithunes={account.wikithunes}
-          stats={account.stats}
+          wikithunes={wikithunes}
+          stats={stats}
           accountCreatedAt={account.accountCreatedAt}
         />
       </Suspense>
@@ -130,8 +136,8 @@ export default function AppTabContent({
 
   return (
     <Classeur
-      collection={account.collection}
-      favorites={account.favorites}
+      collection={collection}
+      favorites={favorites}
       onToggleFavorite={account.toggleFavorite}
       onRecycleCards={account.recycleCards}
       onGoToBooster={() => setActiveTab('booster')}
