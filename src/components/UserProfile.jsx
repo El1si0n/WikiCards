@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryModal from './StatsHistoryModal';
-import { recordStatsSnapshot } from '../utils/statsHistory';
+
 import { RARITY_TIERS, getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -157,30 +157,6 @@ export default function UserProfile({
       totalCopiesCount,
     ]
   );
-
-  // Enregistre périodiquement un instantané des statistiques pour tracer la courbe Trade Republic
-  useEffect(() => {
-    recordStatsSnapshot({
-      userCode,
-      wikithunes,
-      collectionValue: collectionTotalValue,
-      uniqueCardsCount: collection.length,
-      totalCardsCount: totalCopiesCount,
-      legendaryCount,
-      ultraRareCount,
-      gifCount: gifCardsCount,
-      stats,
-    });
-  }, [
-    wikithunes,
-    collectionTotalValue,
-    collection.length,
-    totalCopiesCount,
-    legendaryCount,
-    ultraRareCount,
-    gifCardsCount,
-    stats,
-  ]);
 
   // Cartes possédées ayant une illustration pour choisir sa photo de profil
   const cardAvatars = useMemo(() => {

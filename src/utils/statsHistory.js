@@ -52,29 +52,65 @@ export function getSnapshotStorageKey(userCode = null) {
  * @returns {StatsSnapshot[]} Liste chronologique des instantanés
  */
 export function getSavedStatsSnapshots(userCode = null) {
-  try {
-    const scopedKey = getSnapshotStorageKey(userCode);
-    let raw = localStorage.getItem(scopedKey);
+  if (!userCode || typeof userCode !== 'string') return [];
+  const cleanCode = userCode.trim().toUpperCase();
+  if (!cleanCode.startsWith('WIKI-')) return [];
 
-    // Rétrocompatibilité : si aucune donnée cloisonnée, lecture du stockage global
-    if (!raw && scopedKey !== LOCAL_SNAPSHOTS_STORAGE_KEY) {
-      raw = localStorage.getItem(LOCAL_SNAPSHOTS_STORAGE_KEY);
-    }
+  try {
+    const scopedKey = `wikicards_stats_timeline_${cleanCode}`;
+    const raw = localStorage.getItem(scopedKey);
 
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
-    // Filtre les éléments valides et trie par chronologie croissante
-    let valid = parsed.filter((s) => s && typeof s.timestamp === 'number');
-
-    // Si un code utilisateur est fourni, exclut les instantanés explicitement étiquetés d'un autre joueur
-    if (userCode && typeof userCode === 'string') {
-      const cleanCode = userCode.trim().toUpperCase();
-      valid = valid.filter((s) => !s.userCode || s.userCode === cleanCode);
-    }
+    // Filtre les éléments valides appartenant STRICTEMENT à ce compte utilisateur
+    let valid = parsed.filter(
+      (s) => s && typeof s.timestamp === 'number' && s.userCode === cleanCode
+    );
 
     valid.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Détection et purge automatique des instantanés parasites générés lors des transitions de déconnexion
+    const cleaned = [];
+    for (let i = 0; i < valid.length; i++) {
+      const s = valid[i];
+      const prev = cleaned[cleaned.length - 1];
+      const next = valid[i + 1];
+
+      // Instantané fantôme réinitialisé à 0 cartes et 3000 ₩ alors que le compte a un historique actif
+      const isGhostReset =
+        prev &&
+        (prev.uniqueCardsCount > 0 || prev.totalCardsDrawn > 0) &&
+        s.uniqueCardsCount === 0 &&
+        s.totalCardsCount === 0 &&
+        (s.wikithunes === 3000 || s.wikithunes === INITIAL_WIKITHUNES) &&
+        (!next || next.uniqueCardsCount > 0 || next.totalCardsDrawn > 0);
+
+      // Instantané fantôme de casino qui retombe à 0 de façon isolée entre deux points actifs
+      const isGhostCasinoZero =
+        prev &&
+        next &&
+        (prev.netCasinoGains > 0 || prev.lostMoneyCasino > 0) &&
+        (next.netCasinoGains > 0 || next.lostMoneyCasino > 0) &&
+        s.netCasinoGains === 0 &&
+        s.lostMoneyCasino === 0 &&
+        s.netCasinoBilan === 0;
+
+      if (!isGhostReset && !isGhostCasinoZero) {
+        cleaned.push(s);
+      }
+    }
+
+    if (cleaned.length !== valid.length) {
+      try {
+        localStorage.setItem(scopedKey, JSON.stringify(cleaned));
+      } catch {
+        // ignore
+      }
+    }
+
+    valid = cleaned;
 
     // Auto-réparation des anomalies et creux aberrants dans l'historique local
     let maxLeg = 0;
@@ -154,8 +190,11 @@ export function getSavedStatsSnapshots(userCode = null) {
  */
 export function recordStatsSnapshot(data = {}) {
   try {
-    const userCode = data.userCode ? String(data.userCode).trim().toUpperCase() : null;
-    const snapshots = getSavedStatsSnapshots(userCode);
+    if (!data.userCode || typeof data.userCode !== 'string') return;
+    const cleanCode = data.userCode.trim().toUpperCase();
+    if (!cleanCode.startsWith('WIKI-')) return;
+
+    const snapshots = getSavedStatsSnapshots(cleanCode);
     const now = Date.now();
     const last = snapshots[snapshots.length - 1];
 
@@ -226,7 +265,7 @@ export function recordStatsSnapshot(data = {}) {
 
     const snap = {
       timestamp: now,
-      userCode: userCode || undefined,
+      userCode: cleanCode,
       wikithunes: Number(data.wikithunes || 0),
       collectionValue: Number(data.collectionValue || 0),
       uniqueCardsCount: Number(data.uniqueCardsCount || 0),
@@ -246,11 +285,8 @@ export function recordStatsSnapshot(data = {}) {
     };
 
     const next = [...snapshots, snap].slice(-500);
-    const storageKey = getSnapshotStorageKey(userCode);
+    const storageKey = `wikicards_stats_timeline_${cleanCode}`;
     localStorage.setItem(storageKey, JSON.stringify(next));
-    if (storageKey !== LOCAL_SNAPSHOTS_STORAGE_KEY) {
-      localStorage.setItem(LOCAL_SNAPSHOTS_STORAGE_KEY, JSON.stringify(next));
-    }
   } catch {
     // ignore storage limit
   }
@@ -734,4 +770,129 @@ export function generateMetricTimeSeries(metricId, {
   }
 
   return points;
+}
+
+/**
+ * Calcule les bornes, repères horizontaux et tracés SVG (Bézier + surface dégradée) d'une série temporelle.
+ * @param {Array<{value: number, timestamp: number}>} points - Points chronologiques
+ * @param {boolean} [isNetMetric=false] - Indique si la métrique représente un bilan net
+ * @param {Object} [options={}] - Dimensions et marges SVG
+ * @returns {Object} Coordonnées, repères et tracés vectoriels
+ */
+export function computeChartPathAndBounds(points = [], isNetMetric = false, options = {}) {
+  const chartWidth = options.chartWidth || 680;
+  const chartHeight = options.chartHeight || 240;
+  const paddingX = options.paddingX || 16;
+  const paddingTop = options.paddingTop || 20;
+  const paddingBottom = options.paddingBottom || 26;
+
+  if (!points || points.length === 0) {
+    return {
+      pathD: '',
+      areaD: '',
+      plottedPoints: [],
+      isNetOrNegative: false,
+      zeroY: null,
+      minY: null,
+      maxY: null,
+      dataMin: 0,
+      dataMax: 0,
+    };
+  }
+
+  const values = points.map((p) => p.value);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const isNetOrNegative = isNetMetric || dataMin < 0;
+
+  let effectiveMin = 0;
+  let effectiveMax = 0;
+
+  if (isNetOrNegative) {
+    if (dataMin === 0 && dataMax === 0) {
+      effectiveMin = -10;
+      effectiveMax = 10;
+    } else if (dataMax <= 0 && dataMin < 0) {
+      const headroom = Math.max(20, Math.abs(dataMin) * 0.15);
+      const bottomPad = Math.max(10, Math.abs(dataMin) * 0.06);
+      effectiveMax = headroom;
+      effectiveMin = dataMin - bottomPad;
+    } else if (dataMin >= 0 && dataMax > 0) {
+      const footroom = Math.max(20, dataMax * 0.15);
+      const topPad = Math.max(10, dataMax * 0.06);
+      effectiveMin = -footroom;
+      effectiveMax = dataMax + topPad;
+    } else {
+      const pad = (dataMax - dataMin) * 0.06;
+      effectiveMin = dataMin - pad;
+      effectiveMax = dataMax + pad;
+    }
+  } else {
+    if (dataMin === dataMax) {
+      effectiveMin = Math.max(0, dataMin - 10);
+      effectiveMax = dataMax + 10;
+    } else {
+      const pad = (dataMax - dataMin) * 0.05;
+      effectiveMin = Math.max(0, dataMin - pad);
+      effectiveMax = dataMax + pad;
+    }
+  }
+
+  const range = effectiveMax - effectiveMin || 1;
+  const innerWidth = chartWidth - paddingX * 2;
+  const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+  const coords = points.map((p, idx) => {
+    const x = paddingX + (idx / Math.max(1, points.length - 1)) * innerWidth;
+    const normalizedY = (p.value - effectiveMin) / range;
+    const y = paddingTop + (1 - normalizedY) * innerHeight;
+    return { ...p, x, y };
+  });
+
+  const zeroY = paddingTop + (1 - (0 - effectiveMin) / range) * innerHeight;
+  const minY = paddingTop + (1 - (dataMin - effectiveMin) / range) * innerHeight;
+  const maxY = paddingTop + (1 - (dataMax - effectiveMin) / range) * innerHeight;
+
+  if (coords.length === 1) {
+    const p = coords[0];
+    return {
+      pathD: `M ${paddingX} ${p.y} L ${chartWidth - paddingX} ${p.y}`,
+      areaD: '',
+      plottedPoints: coords,
+      isNetOrNegative,
+      zeroY,
+      minY,
+      maxY,
+      dataMin,
+      dataMax,
+    };
+  }
+
+  let d = `M ${coords[0].x},${coords[0].y}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const current = coords[i];
+    const next = coords[i + 1];
+    const cpX1 = current.x + (next.x - current.x) * 0.45;
+    const cpY1 = current.y;
+    const cpX2 = next.x - (next.x - current.x) * 0.45;
+    const cpY2 = next.y;
+    d += ` C ${cpX1},${cpY1} ${cpX2},${cpY2} ${next.x},${next.y}`;
+  }
+
+  const baselineY = chartHeight - paddingBottom + 6;
+  const firstX = coords[0].x;
+  const lastX = coords[coords.length - 1].x;
+  const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
+
+  return {
+    pathD: d,
+    areaD: area,
+    plottedPoints: coords,
+    isNetOrNegative,
+    zeroY,
+    minY,
+    maxY,
+    dataMin,
+    dataMax,
+  };
 }

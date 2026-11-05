@@ -126,7 +126,7 @@ export default function App() {
             <NavigationTabs
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              collectionCount={account.collection?.length || 0}
+              collectionCount={account.collection.length}
               isDarkMode={isDarkMode}
               onToggleDarkMode={handleToggleDarkMode}
               isMuted={isMuted}

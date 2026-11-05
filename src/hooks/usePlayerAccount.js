@@ -331,7 +331,12 @@ export function usePlayerAccount({
     } catch {
       // ignore
     }
-    if (typeof wikithunes === 'number') {
+    if (
+      typeof wikithunes === 'number' &&
+      userCode &&
+      typeof userCode === 'string' &&
+      userCode.startsWith('WIKI-')
+    ) {
       try {
         const safeCol = Array.isArray(collection) ? collection : [];
         const legendaryCount = safeCol.filter((c) => c?.rarity === 'L').length;

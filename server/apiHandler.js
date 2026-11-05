@@ -408,6 +408,22 @@ export async function handleApiRequest(req, res) {
                 updatedAt: existing.updatedAt || clientTimestamp || now,
               }
 
+              if (Array.isArray(merged.snapshots)) {
+                merged.snapshots = merged.snapshots
+                  .filter(
+                    (s) =>
+                      s &&
+                      typeof s.timestamp === 'number' &&
+                      (!s.userCode || s.userCode === cleanCode) &&
+                      !(
+                        s.uniqueCardsCount === 0 &&
+                        s.totalCardsCount === 0 &&
+                        (s.wikithunes === 3000 || s.wikithunes === 450)
+                      )
+                  )
+                  .map((s) => ({ ...s, userCode: cleanCode }));
+              }
+
               const prevComparable = JSON.stringify({
                 ...existing,
                 updatedAt: 0,
