@@ -1,5 +1,5 @@
 /**
- * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 55% C, 52% PC, 49% R, 46% SR, 43% UR).
+ * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 54% C, 51% PC, 48% R, 45% SR, 42% UR).
  * Dépendances : React, `lucide-react`, `./WikiCard`, `../config/casino`, `../hooks/useDoubleOrNothing`, `./casino/CasinoCardPicker`.
  * Effets de bord : Consommation de cartes, attribution de doublons, sons procéduraux et animations multi-roues.
  */
@@ -36,7 +36,6 @@ export default function DoubleOrNothingGame({
   onUpdateStats,
 }) {
   const {
-    selectedCardIds,
     spinState,
     isRoundFinished,
     needleRotation,
@@ -49,6 +48,7 @@ export default function DoubleOrNothingGame({
     sortBy,
     setSortBy,
     selectedCountsMap,
+    liveSelectedCards,
     displayedSelectedCards,
     activeTier,
     displayChance,
