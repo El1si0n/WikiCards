@@ -148,6 +148,8 @@ export default function StatsHistoryModal({
   collectionValue = null,
   playerName = 'Mocobanks',
   isLocalUser = false,
+  createdAt = null,
+  snapshots = undefined,
 }) {
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -165,6 +167,8 @@ export default function StatsHistoryModal({
       collectionValue,
       period: selectedPeriod,
       isLocalUser,
+      createdAt,
+      snapshots,
     });
   }, [
     metricId,
@@ -174,6 +178,8 @@ export default function StatsHistoryModal({
     collectionValue,
     selectedPeriod,
     isLocalUser,
+    createdAt,
+    snapshots,
   ]);
 
   // Valeurs remarquables (ATH, ATL, départ, fin)

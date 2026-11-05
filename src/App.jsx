@@ -36,7 +36,7 @@ import {
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
 } from './config/rarities';
-import { recordStatsSnapshot } from './utils/statsHistory';
+import { recordStatsSnapshot, getSavedStatsSnapshots } from './utils/statsHistory';
 import { WIKI_THEMES, detectCardTheme } from './config/themes';
 import { calculatePlayerScore } from './config/playerScore';
 import { soundManager } from './services/sound';
@@ -93,6 +93,7 @@ const STORAGE_KEYS = {
   READ_NOTIFS: 'wikicards_read_notifs_v1',
   DISMISSED_NOTIFS: 'wikicards_dismissed_notifs_v1',
   SHOW_RARITY_RULES: 'wikicards_show_rarity_rules_v1',
+  ACCOUNT_CREATED_AT: 'wikicards_account_created_at_v1',
 };
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
@@ -232,6 +233,8 @@ export default function App() {
             favorites,
             wikithunes,
             stats,
+            createdAt: accountCreatedAt || undefined,
+            snapshots: getSavedStatsSnapshots().slice(-40),
             lastDailyClaimDate,
           }).catch(() => {});
         }
@@ -271,6 +274,14 @@ export default function App() {
       // ignore
     }
     return [];
+  });
+
+  const [accountCreatedAt, setAccountCreatedAt] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.ACCOUNT_CREATED_AT);
+      if (saved && Number(saved) > 0) return Number(saved);
+    } catch {}
+    return null;
   });
 
   const [notifications, setNotifications] = useState([]);
@@ -778,6 +789,15 @@ export default function App() {
         // ignore
       }
     }
+    if (serverAccount.createdAt) {
+      const createdTs = Number(serverAccount.createdAt);
+      if (createdTs > 0) {
+        setAccountCreatedAt(createdTs);
+        try {
+          localStorage.setItem(STORAGE_KEYS.ACCOUNT_CREATED_AT, String(createdTs));
+        } catch {}
+      }
+    }
     if (serverAccount.updatedAt) {
       const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
       setLocalUpdatedAt(syncedTs);
@@ -796,6 +816,7 @@ export default function App() {
     freeBoostersCount,
     lastFreeBoostersResetTime,
     localUpdatedAt,
+    accountCreatedAt,
   });
   useEffect(() => {
     latestAccountRef.current = {
@@ -809,6 +830,7 @@ export default function App() {
       freeBoostersCount,
       lastFreeBoostersResetTime,
       localUpdatedAt,
+      accountCreatedAt,
     };
   }, [
     userCode,
@@ -843,6 +865,8 @@ export default function App() {
         favorites: current.favorites,
         wikithunes: current.wikithunes,
         stats: current.stats,
+        createdAt: current.accountCreatedAt || undefined,
+        snapshots: getSavedStatsSnapshots().slice(-40),
         lastDailyClaimDate: current.lastDailyClaimDate || '',
         freeBoostersCount:
           typeof current.freeBoostersCount === 'number'
@@ -986,6 +1010,15 @@ export default function App() {
     isServerHydratedRef.current = true;
     setLocalUpdatedAt(syncedTs);
     setUserCode(cleanCode);
+    if (account.createdAt) {
+      const cTs = Number(account.createdAt);
+      if (cTs > 0) {
+        setAccountCreatedAt(cTs);
+        try {
+          localStorage.setItem(STORAGE_KEYS.ACCOUNT_CREATED_AT, String(cTs));
+        } catch {}
+      }
+    }
     const nextProf = account.profile || getDefaultProfile(cleanCode);
     setUserProfile(nextProf);
     saveLocalProfile(nextProf, cleanCode);
@@ -1062,6 +1095,10 @@ export default function App() {
   const handleLogout = () => {
     clearStoredUserCode();
     setUserCode(null);
+    setAccountCreatedAt(null);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.ACCOUNT_CREATED_AT);
+    } catch {}
     setIsDarkMode(false);
     setDismissedNotifIds([]);
     try {
@@ -2119,6 +2156,7 @@ export default function App() {
                       wikithunes={wikithunes}
                       stats={stats}
                       userProfile={userProfile}
+                      accountCreatedAt={accountCreatedAt}
                       onSyncAccountState={handleSyncAccountState}
                     />
                   </Suspense>
@@ -2151,6 +2189,7 @@ export default function App() {
                       onToggleFavorite={toggleFavorite}
                       wikithunes={wikithunes}
                       stats={stats}
+                    accountCreatedAt={accountCreatedAt}
                     />
                   </Suspense>
                 ) : (
