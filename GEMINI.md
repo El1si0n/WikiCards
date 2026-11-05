@@ -159,3 +159,24 @@ Tout intervenant, qu'il s'agisse d'une IA ou d'un humain, doit respecter sans ex
 - Le découpage doit toujours se faire par **onglet ou bloc logique cohérent** (sous-vues, modales, formulaires dédiés) afin d'éviter toute sur-fragmentation artificielle qui nuirait à la lisibilité.
 - Les custom hooks (`src/hooks/`), utilitaires et services peuvent dépasser cette limite lorsqu'ils encapsulent un domaine métier complet, des effets de bord asynchrones ou la gestion d'état d'un sous-système.
 - La logique de calcul pure doit être déportée dans `src/utils/` ou `src/config/`.
+
+---
+
+## 4. Workflow de Validation & Auto-Commit Git
+
+À la fin de **CHAQUE** modification ou fonctionnalité demandée par l'utilisateur, respecter obligatoirement le protocole suivant :
+
+1. **Intégrité documentaire** : Vérifier que tous les fichiers créés ou modifiés possèdent leur en-tête de 3 lignes (`Rôle`, `Dépendances`, `Effets de bord`) et leurs annotations JSDoc à jour.
+2. **Contrôle statique (`oxlint`)** : Exécuter obligatoirement `cmd /c npx oxlint` (doit retourner **0 erreur**).
+3. **Compilation de production (`build`)** : Exécuter obligatoirement `cmd /c npm run build` (doit compiler avec succès).
+4. **Intégrité du stockage local** : Vérifier qu'aucun fichier temporaire (`.tmp`) ni aucune donnée ou compte de test parasite ne subsiste dans `data/users/` ou `data/`.
+5. **Auto-commit Git local** :
+   - Si et seulement si `oxlint` et `build` sont 100% verts, localiser le binaire Git de GitHub Desktop :
+     `$gitExe = (Resolve-Path "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" | Select-Object -Last 1).Path`
+   - Exécuter automatiquement :
+     `& $gitExe add -A`
+     `& $gitExe commit -m "<type>: <description claire en français>"` (ex: `feat: ...`, `fix: ...`, `refactor: ...`).
+6. **Contrôle utilisateur sur le Push** :
+   - **Ne JAMAIS exécuter `git push`** en ligne de commande.
+   - L'utilisateur conserve le contrôle exclusif de la synchronisation distante en cliquant sur « Push » dans GitHub Desktop.
+
