@@ -154,7 +154,8 @@ Tout intervenant, qu'il s'agisse d'une IA ou d'un humain, doit respecter sans ex
 - Toute mutation modifiant l'inventaire des cartes, le solde en Wikithunes, les favoris ou les statistiques doit impérativement respecter la parité entre la persistance locale ([`userStorage.js`](file:///c:/Users/elisi/Documents/Projet/WikiCards/src/services/userStorage.js)) et le serveur ([`apiHandler.js`](file:///c:/Users/elisi/Documents/Projet/WikiCards/server/apiHandler.js)).
 - La protection anti-écrasement (`isAccountStateNewer` / vérification des timestamps et des tirages totaux) ne doit jamais être contournée afin d'empêcher qu'un appareil obsolète n'écrase une session plus récente.
 
-### Règle 3 : Modularité et limitation des composants UI à 250 lignes
-- **Aucun fichier composant React (`.jsx`) ne doit dépasser 250 lignes.**
-- Lorsqu'un composant croît en complexité, il doit être décomposé systématiquement en sous-composants dédiés, en composants de présentation ciblés ou en custom hooks (`src/hooks/`).
+### Règle 3 : Modularité et dimensionnement équilibré des composants (Cible 250-350 lignes)
+- **Les composants React (`.jsx`) visent une cible souple de 250 à 350 lignes.**
+- Le découpage doit toujours se faire par **onglet ou bloc logique cohérent** (sous-vues, modales, formulaires dédiés) afin d'éviter toute sur-fragmentation artificielle qui nuirait à la lisibilité.
+- Les custom hooks (`src/hooks/`), utilitaires et services peuvent dépasser cette limite lorsqu'ils encapsulent un domaine métier complet, des effets de bord asynchrones ou la gestion d'état d'un sous-système.
 - La logique de calcul pure doit être déportée dans `src/utils/` ou `src/config/`.
