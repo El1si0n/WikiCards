@@ -439,7 +439,7 @@ export default function SocialHub({
     const netCardsBilan = wonCards - lostCards;
     const totalCardsDrawn = Math.max(
       Number(activeStats.totalCardsDrawn || 0),
-      Number(activeStats.boostersOpened || 0) * 5,
+      Number(activeStats.boostersOpened || 0) * 6,
       totalCopies
     );
 

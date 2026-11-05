@@ -430,12 +430,12 @@ async function fetchPureRandomTitles(limit = 12) {
 }
 
 /**
- * Tire un booster de 5 cartes sur Wikipédia FR.
+ * Tire un booster de 6 cartes sur Wikipédia FR.
  * - Mode standard (isIconic = false) : tirage aléatoire naturel sur Wikipédia FR (~7 % de chance qu'une page .gif s'y glisse).
  * - Mode Booster Iconique (isIconic = true) : garantit strictement MINIMUM 1 Légendaire (L) et MAXIMUM 2 Légendaires (L).
- * Les 5 cartes sont triées par nombre de vues croissant pour garder le suspense jusqu'à la 5e carte.
+ * Les 6 cartes sont triées par nombre de vues croissant pour garder le suspense jusqu'à la 6e carte.
  */
-export async function fetchBoosterPackCards(count = 5, options = {}) {
+export async function fetchBoosterPackCards(count = 6, options = {}) {
   const { isIconic = false } = options;
 
   if (isIconic) {
@@ -483,9 +483,9 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
       let i = 0;
       i < shuffledUrTitles.length &&
       legendaryCards.length + ultraRareCards.length < count;
-      i += 5
+      i += 6
     ) {
-      const batch = shuffledUrTitles.slice(i, i + 5);
+      const batch = shuffledUrTitles.slice(i, i + 6);
       const settled = await Promise.allSettled(
         batch.map((title) => fetchWikiCardByTitle(title))
       );
@@ -524,7 +524,7 @@ export async function fetchBoosterPackCards(count = 5, options = {}) {
   let boosterAttempts = 0;
   while (validCards.length < count && boosterAttempts < 6) {
     boosterAttempts++;
-    const randomTitles = await fetchPureRandomTitles(14);
+    const randomTitles = await fetchPureRandomTitles(16);
     for (const title of randomTitles) {
       if (validCards.length >= count) break;
       if (validCards.some((c) => c.title.toLowerCase() === title.toLowerCase())) continue;

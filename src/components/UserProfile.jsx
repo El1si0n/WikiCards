@@ -124,7 +124,7 @@ export default function UserProfile({
     () =>
       Math.max(
         Number(stats?.totalCardsDrawn || 0),
-        Number(stats?.boostersOpened || 0) * 5,
+        Number(stats?.boostersOpened || 0) * 6,
         totalCopiesCount
       ),
     [stats, totalCopiesCount]

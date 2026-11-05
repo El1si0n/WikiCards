@@ -95,7 +95,7 @@ export default function BoosterOpening({
     if (isPreloadingRef.current || preloadedPackRef.current) return;
     isPreloadingRef.current = true;
     try {
-      const cards = await fetchBoosterPackCards(5, { isIconic: false });
+      const cards = await fetchBoosterPackCards(6, { isIconic: false });
       if (cards && cards.length > 0) {
         preloadedPackRef.current = cards;
       }
@@ -176,7 +176,7 @@ export default function BoosterOpening({
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
-        cards = await fetchBoosterPackCards(5, { isIconic: isPackIconic });
+        cards = await fetchBoosterPackCards(6, { isIconic: isPackIconic });
       } catch {
         setErrorMsg('Impossible de joindre Wikipédia. Veuillez réessayer.');
         setIsFetching(false);
@@ -488,7 +488,7 @@ export default function BoosterOpening({
                       `,
                   }}
                 >
-                  {/* Empreinte en relief des 5 cartes devinées sous l'emballage */}
+                  {/* Empreinte en relief des 6 cartes devinées sous l'emballage */}
                   <div
                     className="absolute inset-x-[22px] inset-y-[18px] rounded-[14px] pointer-events-none"
                     style={{
@@ -643,12 +643,12 @@ export default function BoosterOpening({
               {isFetching ? (
                 <div className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3366cc]">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Tirage des 5 pages sur Wikipédia...</span>
+                  <span>Tirage des 6 pages sur Wikipédia...</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[13px] text-[#54595d]">
-                    Cliquez sur le booster pour l'ouvrir et découvrir vos 5 cartes
+                    Cliquez sur le booster pour l'ouvrir et découvrir vos 6 cartes
                   </span>
                   {isIconicPack && (
                     <button
@@ -672,7 +672,7 @@ export default function BoosterOpening({
         )}
 
         {/* =====================================================================
-            ÉTAPE C : DÉCOUVERTE CARTE PAR CARTE (1/5 -> 5/5)
+            ÉTAPE C : DÉCOUVERTE CARTE PAR CARTE (1/6 -> 6/6)
         ===================================================================== */}
         {stage === 'card_by_card' && currentCard && (
           <motion.div
@@ -826,7 +826,7 @@ export default function BoosterOpening({
         )}
 
         {/* =====================================================================
-            ÉTAPE D : LE RÉSUMÉ DES 5 CARTES OBTENUES
+            ÉTAPE D : LE RÉSUMÉ DES 6 CARTES OBTENUES
         ===================================================================== */}
         {stage === 'summary' && (
           <motion.div
@@ -836,7 +836,7 @@ export default function BoosterOpening({
             transition={{ duration: 0.3 }}
             className="flex flex-col"
           >
-            {/* Grille récapitulative des 5 cartes obtenues (grandes cartes lisibles à taille réelle 284x443) */}
+            {/* Grille récapitulative des 6 cartes obtenues (grandes cartes lisibles à taille réelle 284x443) */}
             <div className="flex flex-wrap justify-center gap-3.5 sm:gap-6 py-2 max-w-[940px] mx-auto">
               {packCards.map((card, index) => (
                 <motion.div
@@ -858,7 +858,7 @@ export default function BoosterOpening({
             {/* Pied d'action sobre sous le résumé */}
             <div className="mt-6 pt-4 border-t border-[#eaecf0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-[13px] text-[#54595d] text-center sm:text-left">
-                Ces 5 cartes ont été ajoutées à votre classeur.
+                Ces 6 cartes ont été ajoutées à votre classeur.
               </span>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">

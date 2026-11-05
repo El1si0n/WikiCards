@@ -47,7 +47,7 @@ La rareté est calculée automatiquement à partir de la somme consolidée des v
 
 ### 1. 📦 L'Ouverture de Booster
 - Sachet métallisé 3D interactif avec encoche *"Déchirer ici"*.
-- Révélation progressive des 5 cartes dans l'ordre croissant de popularité pour réserver la meilleure carte à la fin.
+- Révélation progressive des 6 cartes dans l'ordre croissant de popularité pour réserver la meilleure carte à la fin.
 - Préchargement intelligent du booster suivant pour un enchaînement fluide sans temps d'attente.
 
 ### 2. 📚 Le Classeur & La Gestion de Collection

@@ -350,7 +350,7 @@ class SoundManager {
     }
   }
 
-  // Son de fin d'ouverture (arrivée sur le récapitulatif des 5 cartes)
+  // Son de fin d'ouverture (arrivée sur le récapitulatif des 6 cartes)
   playSummaryFanfare() {
     const ctx = this.initContext();
     if (!ctx) return;

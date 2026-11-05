@@ -82,7 +82,7 @@ export function calculatePlayerScore(playerData = {}) {
   const boostersOpened = Number(stats.boostersOpened || 0);
   const totalCardsDrawn = Math.max(
     Number(playerData.totalCardsDrawn ?? stats.totalCardsDrawn ?? 0),
-    boostersOpened * 5,
+    boostersOpened * 6,
     totalCards
   );
 

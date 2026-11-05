@@ -167,7 +167,7 @@ export function recordStatsSnapshot(data = {}) {
     const totalCardsDrawn = hasExplicitStats
       ? Math.max(
           Number(data.stats.totalCardsDrawn || 0),
-          boostersOpened * 5,
+          boostersOpened * 6,
           Number(data.totalCardsCount || 0)
         )
       : Number(last?.totalCardsDrawn || 0);
@@ -392,7 +392,7 @@ export function generateMetricTimeSeries(metricId, {
       case 'totalCardsDrawn':
         return Math.max(
           Number(safeStats?.totalCardsDrawn || 0),
-          Number(safeStats?.boostersOpened || 0) * 5,
+          Number(safeStats?.boostersOpened || 0) * 6,
           safeCollection.reduce((s, c) => s + (c?.count || 1), 0)
         );
       case 'lostCards':
@@ -530,7 +530,7 @@ export function generateMetricTimeSeries(metricId, {
           const cardsInWindow = safeCollection.filter(
             (c) => Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= now
           ).length;
-          const estimatedCostInWindow = Math.round((cardsInWindow / 5) * 200);
+          const estimatedCostInWindow = Math.round((cardsInWindow / 6) * 200);
           const startBal = Math.max(0, currentVal + estimatedCostInWindow);
 
           const cardsSinceStart = safeCollection.filter(
@@ -649,7 +649,7 @@ export function generateMetricTimeSeries(metricId, {
             const snapVal =
               typeof closestSnap.totalCardsDrawn === 'number'
                 ? closestSnap.totalCardsDrawn
-                : Math.max(Number(closestSnap.totalCardsCount || 0), Number(closestSnap.boostersOpened || 0) * 5);
+                : Math.max(Number(closestSnap.totalCardsCount || 0), Number(closestSnap.boostersOpened || 0) * 6);
             simulatedVal = snapVal;
           } else if (typeof closestSnap[metricId] === 'number') {
             simulatedVal = closestSnap[metricId];
