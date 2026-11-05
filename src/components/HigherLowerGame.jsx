@@ -1,8 +1,15 @@
+/**
+ * @file Rôle : Mini-jeu Plus ou Moins (deviner si l'article suivant a plus ou moins de visiteurs Wikipédia).
+ * Dépendances : React, `lucide-react`, `../services/wikipedia`, `../services/sound`, `../config/casino`.
+ * Effets de bord : Débit/crédit de Wikithunes et mise à jour des statistiques de jeu.
+ */
+
 import React, { useState } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import { fetchRandomDuelCard } from '../services/wikipedia';
 import { soundManager } from '../services/sound';
+import { getMultiplierForStreak } from '../config/casino';
 import {
   TrendingUp,
   TrendingDown,
@@ -13,38 +20,20 @@ import {
   X,
 } from 'lucide-react';
 
-// Multiplicateurs progressifs selon la longueur de la série gagnante
-// Réévalués à la hausse pour récompenser les séries avec la difficulté accrue
-const STREAK_MULTIPLIERS = [
-  1.0, // 0
-  1.5, // 1 bonne réponse (+50% de gain net)
-  2.1, // 2 bonnes réponses (mise plus que doublée)
-  2.9, // 3 bonnes réponses (~triplée)
-  4.0, // 4 bonnes réponses (x4.0)
-  5.5, // 5 bonnes réponses (x5.5)
-  7.5, // 6 bonnes réponses (x7.5)
-  10.2, // 7 bonnes réponses (x10.2)
-  14.0, // 8+ bonnes réponses (x14.0)
-];
-
-function getMultiplierForStreak(streak) {
-  if (streak <= 0) return 1.0;
-  if (streak < STREAK_MULTIPLIERS.length) {
-    return STREAK_MULTIPLIERS[streak];
-  }
-  const extra = streak - (STREAK_MULTIPLIERS.length - 1);
-  return Number(
-    (
-      STREAK_MULTIPLIERS[STREAK_MULTIPLIERS.length - 1] * Math.pow(1.36, extra)
-    ).toFixed(2)
-  );
-}
-
+/**
+ * Jeu de pari sur les visiteurs Wikipédia avec série gagnante et multiplicateurs croissants.
+ * @param {Object} props
+ * @param {number} props.wikithunes - Solde de monnaie
+ * @param {function(number): boolean} props.onSpendWikithunes - Callback de débit de mise
+ * @param {function(number): void} props.onAddWikithunes - Callback de crédit des gains
+ * @param {Object} [props.stats] - Statistiques du joueur
+ * @param {function(Object): void} [props.onUpdateStats] - Callback de mise à jour des stats
+ */
 export default function HigherLowerGame({
   wikithunes,
   onSpendWikithunes,
   onAddWikithunes,
-  stats,
+  stats: _stats,
   onUpdateStats,
 }) {
   // 'idle' | 'loading' | 'playing' | 'won_round' | 'lost_round'
