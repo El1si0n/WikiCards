@@ -119,9 +119,10 @@ export default function App() {
         onClearAllNotifications={handleClearAllNotifications}
       />
 
-      <div className="mw-page-container flex-1 flex flex-col">
-        <div className="mw-page-container-inner flex-1 flex flex-col">
-          <main id="content" className="mw-body flex-1" role="main">
+      {/* mw-page-container : Conteneur officiel Vector 2022 */}
+      <div className="mw-page-container flex-1 w-full max-w-[1440px] mx-auto px-2.5 sm:px-[44px] pt-[12px] sm:pt-[18px] pb-[60px] sm:pb-[82px]">
+        <div className="mw-content-container">
+          <main id="content" className="mw-body">
             <NavigationTabs
               activeTab={activeTab}
               setActiveTab={setActiveTab}
