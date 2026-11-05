@@ -1,11 +1,11 @@
 /**
  * @file Rôle : Hub social MediaWiki (annuaire des joueurs, inspection de profils, propositions et gestion d'échanges).
- * Dépendances : React, `lucide-react`, `../hooks/useSocialHub`, composants sous `src/components/social/`, `StatsHistoryModal`.
+ * Dépendances : React, `lucide-react`, `../hooks/useSocialHub`, sous-composants sous `src/components/social/`, `StatsHistoryModal`.
  * Effets de bord : Synchronisation serveur bidirectionnelle, sons système, ouverture des graphiques Trade Republic.
  */
 
 import React from 'react';
-import { Users, ArrowLeftRight, ArrowLeft } from 'lucide-react';
+import { ArrowLeftRight, ArrowLeft } from 'lucide-react';
 import useSocialHub from '../hooks/useSocialHub';
 import SocialDirectoryTab from './social/SocialDirectoryTab';
 import SocialTradesTab from './social/SocialTradesTab';
@@ -38,6 +38,9 @@ export default function SocialHub({
   const {
     activeSubTab,
     setActiveSubTab,
+    usersList,
+    userSearchQuery,
+    setUserSearchQuery,
     selectedPeer,
     setSelectedPeer,
     isProposingTrade,
@@ -46,8 +49,7 @@ export default function SocialHub({
     setTradeFeedback,
     tradeActionError,
     trades,
-    userSearchQuery,
-    setUserSearchQuery,
+    pendingIncomingCount,
     myRarityFilter,
     setMyRarityFilter,
     peerRarityFilter,
@@ -57,9 +59,8 @@ export default function SocialHub({
     isSubmittingTrade,
     historyModalMetric,
     setHistoryModalMetric,
-    rankedUsers,
-    filteredUsers,
     topPlayerCode,
+    filteredUsers,
     isSelectedPeerMe,
     activePeerProfile,
     peerCollection,
@@ -69,7 +70,7 @@ export default function SocialHub({
     selectedPeerScore,
     offeredCountsMap,
     requestedCountsMap,
-    handleSelectPeer,
+    handleInspectPeer,
     handleToggleMyCardForTrade,
     handleTogglePeerCardForTrade,
     handleSendTradeOffer,
@@ -85,56 +86,49 @@ export default function SocialHub({
   });
 
   return (
-    <div className="space-y-6">
-      <section className="bg-white border border-[#a2a9b1] rounded-[2px] p-4 sm:p-6 shadow-xs">
+    <div className="space-y-5">
+      <section className="accueil_2017_cadre">
         {/* En-tête avec sous-onglets Vector 2022 : Annuaire des joueurs | Propositions d'échange */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#a2a9b1] pb-3 mb-6">
-          <div>
-            <h2 className="wiki-serif text-[24px] sm:text-[28px] font-normal text-[#101418] m-0 leading-tight">
-              {selectedPeer
-                ? activePeerProfile?.username || selectedPeer.code
-                : activeSubTab === 'directory'
-                ? 'Communauté des joueurs'
-                : "Propositions d'échange"}
-            </h2>
-            <p className="text-[13px] text-[#54595d] mt-1 mb-0">
-              {selectedPeer
-                ? 'Consultez la vitrine de cartes et les statistiques de ce joueur Wikipédia.'
-                : activeSubTab === 'directory'
-                ? 'Découvrez les autres joueurs de WikiCards, inspectez leurs collections et proposez des échanges.'
-                : "Gérez vos propositions d'échanges de cartes envoyées et reçues."}
-            </p>
-          </div>
+        <div className="wiki-cadre-header flex flex-wrap items-center justify-between gap-4">
+          <h2 className="wiki-smallcaps m-0">
+            {selectedPeer
+              ? `Profil de ${activePeerProfile?.username || selectedPeer.code}`
+              : activeSubTab === 'directory'
+              ? 'Communauté des joueurs'
+              : "Propositions d'échange"}
+          </h2>
 
-          {/* Onglets style Vector 2022 */}
-          {!selectedPeer && (
-            <div className="vector-menu-tabs shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('directory')}
-                className={`vector-tab ${
-                  activeSubTab === 'directory' ? 'selected' : ''
-                }`}
-              >
-                <Users className="w-4 h-4 mr-1.5" />
-                <span>Joueurs ({rankedUsers.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('trades')}
-                className={`vector-tab ${
-                  activeSubTab === 'trades' ? 'selected' : ''
-                }`}
-              >
-                <ArrowLeftRight className="w-4 h-4 mr-1.5" />
-                <span>
-                  Échanges (
-                  {trades.filter((t) => t.status === 'pending').length} en
-                  attente)
+          <div className="flex items-center gap-5 text-[14px]">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPeer(null);
+                setActiveSubTab('directory');
+              }}
+              className={`vector-tab-link ${
+                activeSubTab === 'directory' ? 'selected' : ''
+              }`}
+            >
+              Joueurs ({usersList.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPeer(null);
+                setActiveSubTab('trades');
+              }}
+              className={`vector-tab-link inline-flex items-center gap-1.5 ${
+                activeSubTab === 'trades' ? 'selected' : ''
+              }`}
+            >
+              <span>Échanges</span>
+              {pendingIncomingCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-[#3366cc] text-white text-[11px] font-bold">
+                  {pendingIncomingCount}
                 </span>
-              </button>
-            </div>
-          )}
+              )}
+            </button>
+          </div>
         </div>
 
         {selectedPeer ? (
@@ -230,7 +224,8 @@ export default function SocialHub({
             userProfile={userProfile}
             collection={collection}
             wikithunes={wikithunes}
-            handleSelectPeer={handleSelectPeer}
+            topPlayerCode={topPlayerCode}
+            handleInspectPeer={handleInspectPeer}
           />
         ) : (
           <SocialTradesTab

@@ -556,6 +556,13 @@ export default function useSocialHub({
     }
   };
 
+  const pendingIncomingCount = useMemo(
+    () =>
+      trades.filter((t) => t.status === 'pending' && t.toCode === userCode)
+        .length,
+    [trades, userCode]
+  );
+
   return {
     activeSubTab,
     setActiveSubTab,
@@ -580,6 +587,7 @@ export default function useSocialHub({
     historyModalMetric,
     setHistoryModalMetric,
     trades,
+    pendingIncomingCount,
     isLoadingTrades,
     tradeActionError,
     rankedUsers,
