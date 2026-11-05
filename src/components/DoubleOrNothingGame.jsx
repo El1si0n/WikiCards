@@ -63,6 +63,41 @@ export default function DoubleOrNothingGame({
     };
   }, []);
 
+  // Résolution automatique en cas d'interruption par rechargement de page
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('wikicards_pending_double');
+      if (!raw) return;
+      sessionStorage.removeItem('wikicards_pending_double');
+      const pending = JSON.parse(raw);
+      if (!pending || !Array.isArray(pending.initialResults)) return;
+
+      const wonResults = pending.initialResults.filter((r) => r.isWin);
+      const lostResults = pending.initialResults.filter((r) => !r.isWin);
+
+      wonResults.forEach((r) => {
+        onCardWon(r.card);
+      });
+
+      if (lostResults.length > 0) {
+        const lostMap = {};
+        lostResults.forEach((r) => {
+          lostMap[r.card.id] = (lostMap[r.card.id] || 0) + 1;
+        });
+        onConsumeCards(lostMap);
+      }
+
+      if (wonResults.length > 0) {
+        onUpdateStats?.({ wonCards: wonResults.length });
+      }
+      if (lostResults.length > 0) {
+        onUpdateStats?.({ lostCards: lostResults.length });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Cartes éligibles au Quitte ou Double : toutes sauf les Légendaires (L)
   const eligibleCollection = useMemo(
     () => collection.filter((c) => c.rarity !== 'L'),
@@ -203,12 +238,31 @@ export default function DoubleOrNothingGame({
     const winPercent = DOUBLE_CHANCE_BY_RARITY[rarity] || 50;
     const winArc = (winPercent / 100) * 360;
 
-    // Retrait des exemplaires misés de la collection
+    // Comptage des exemplaires engagés
     const consumedMap = {};
     lockedCards.forEach((c) => {
       consumedMap[c.id] = (consumedMap[c.id] || 0) + 1;
     });
-    onConsumeCards(consumedMap);
+
+    // Enregistrement de sécurité anti-actualisation
+    try {
+      sessionStorage.setItem(
+        'wikicards_pending_double',
+        JSON.stringify({
+          lockedCards,
+          initialResults: initialResults.map((r) => ({
+            key: r.key,
+            card: r.card,
+            isWin: r.isWin,
+          })),
+          consumedMap,
+          rarity,
+          timestamp: Date.now(),
+        })
+      );
+    } catch {
+      // ignore
+    }
 
     // Tirage indépendant par carte avec angle d'arrêt et durée de rotation dédiés
     const initialResults = lockedCards.map((card, idx) => {
@@ -244,12 +298,7 @@ export default function DoubleOrNothingGame({
     const lostCount = totalCount - wonCount;
     const hasWonAny = wonCount > 0;
 
-    if (lostCount > 0) {
-      onUpdateStats?.({ lostCards: lostCount });
-    }
-    if (wonCount > 0) {
-      onUpdateStats?.({ wonCards: wonCount });
-    }
+    // Les statistiques et consommations seront résolues à l'arrêt complet de la roue
 
     setSpinSnapshot({
       cards: lockedCards,
@@ -282,12 +331,20 @@ export default function DoubleOrNothingGame({
 
       await new Promise((resolve) => setTimeout(resolve, 3600));
 
+      try {
+        sessionStorage.removeItem('wikicards_pending_double');
+      } catch {}
+
       if (initialResults[0].isWin) {
+        // La carte originale est restée dans le compte : on ajoute 1 exemplaire supplémentaire (doublon)
         onCardWon(lockedCards[0]);
-        onCardWon(lockedCards[0]);
+        onUpdateStats?.({ wonCards: 1 });
         setSpinState('won');
         soundManager.playUpgradeWin(rarity);
       } else {
+        // Défaite : retrait définitif de l'exemplaire engagé
+        onConsumeCards(consumedMap);
+        onUpdateStats?.({ lostCards: 1 });
         setSpinState('lost');
         soundManager.playUpgradeLoss();
       }
@@ -350,12 +407,34 @@ export default function DoubleOrNothingGame({
 
     // Fin du round complet une fois toutes les roues arrêtées
     const endTimer = setTimeout(() => {
-      initialResults
-        .filter((r) => r.isWin)
-        .forEach((r) => {
-          onCardWon(r.card);
-          onCardWon(r.card);
+      try {
+        sessionStorage.removeItem('wikicards_pending_double');
+      } catch {}
+
+      const wonResults = initialResults.filter((r) => r.isWin);
+      const lostResults = initialResults.filter((r) => !r.isWin);
+
+      // Pour chaque victoire, on ajoute 1 exemplaire supplémentaire
+      wonResults.forEach((r) => {
+        onCardWon(r.card);
+      });
+
+      // Pour chaque défaite, on débite l'exemplaire engagé
+      if (lostResults.length > 0) {
+        const lostMap = {};
+        lostResults.forEach((r) => {
+          lostMap[r.card.id] = (lostMap[r.card.id] || 0) + 1;
         });
+        onConsumeCards(lostMap);
+      }
+
+      // Mise à jour exacte des statistiques à l'arrêt
+      if (wonResults.length > 0) {
+        onUpdateStats?.({ wonCards: wonResults.length });
+      }
+      if (lostResults.length > 0) {
+        onUpdateStats?.({ lostCards: lostResults.length });
+      }
 
       if (hasWonAny) {
         setSpinState('won');
@@ -1400,12 +1479,18 @@ export default function DoubleOrNothingGame({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 justify-items-center">
             {filteredAndSortedCollection.map((card) => {
               const currentQty = selectedCountsMap[card.id] || 0;
+              const isLockedInSpin = Boolean(
+                spinState === 'spinning' &&
+                  spinSnapshot?.cards?.some((c) => String(c.id) === String(card.id))
+              );
               const maxCopies = getMaxSelectableCopies(card);
               const isFavProtected = maxCopies <= 0;
-              const isSelected = currentQty > 0;
+              const isSelected = currentQty > 0 || isLockedInSpin;
 
               const cardChance = DOUBLE_CHANCE_BY_RARITY[card.rarity] || 50;
-              const badgeText = isFavProtected
+              const badgeText = isLockedInSpin
+                ? 'En jeu'
+                : isFavProtected
                 ? '★ Protégée'
                 : isSelected
                 ? maxCopies > 1

@@ -85,7 +85,7 @@ export const METRIC_DEFINITIONS = {
     title: 'Bilan Cartes (Net)',
     unit: ' cartes',
     isCurrency: false,
-    description: 'Bilan net des cartes au jeu (Cartes gagnées lors des upgrades et quitte ou double − Cartes perdues).',
+    description: 'Bilan net de volume des cartes au jeu (Gains du Quitte ou Double − Cartes détruites aux jeux).',
     icon: Layers,
   },
   totalCardsDrawn: {
@@ -127,7 +127,7 @@ export const METRIC_DEFINITIONS = {
     title: 'Cartes gagnées',
     unit: ' cartes',
     isCurrency: false,
-    description: 'Cartes remportées lors des upgrades et du quitte ou double.',
+    description: 'Cartes supplémentaires gagnées lors du quitte ou double.',
     icon: TrendingUp,
   },
 };

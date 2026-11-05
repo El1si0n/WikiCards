@@ -112,6 +112,38 @@ export default function WikiSino({
     };
   }, []);
 
+  // Résolution automatique en cas d'interruption par actualisation
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('wikicards_pending_upgrade');
+      if (!raw) return;
+      sessionStorage.removeItem('wikicards_pending_upgrade');
+      const pending = JSON.parse(raw);
+      if (!pending || !pending.consumedMap) return;
+
+      if (pending.isWin) {
+        fetchWikiCardByRarity(pending.targetCode, existingCardIds).then((drawnCard) => {
+          if (drawnCard) {
+            onConsumeCards(pending.consumedMap);
+            onCardWon(drawnCard);
+            const netVolumeLoss = (pending.lockedCards?.length || 1) - 1;
+            if (netVolumeLoss > 0) {
+              onUpdateStats?.({ lostCards: netVolumeLoss });
+            }
+          }
+        });
+      } else {
+        onConsumeCards(pending.consumedMap);
+        onUpdateStats?.({
+          lostCards: pending.lockedCards?.length || 1,
+          lostMoneyCasino: pending.spentMoney || 0,
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Collection éligible à l'upgrade (toutes les cartes sauf Légendaire 'L')
   const upgradeableCollection = useMemo(
     () => collection.filter((c) => c.rarity !== 'L' && UPGRADE_RULES[c.rarity]),
@@ -329,10 +361,26 @@ export default function WikiSino({
       moneyCost: spentMoney,
     });
 
-    // 2. On consomme les cartes sacrifiées (y compris les doublons ×2, ×3 engagés) et l'argent investi
-    onConsumeCards(consumedMap);
+    // 2. On débite l'argent investi dans la machine
     if (spentMoney > 0) {
       onSpendWikithunes(spentMoney);
+    }
+
+    // Sauvegarde anti-actualisation
+    try {
+      sessionStorage.setItem(
+        'wikicards_pending_upgrade',
+        JSON.stringify({
+          consumedMap,
+          spentMoney,
+          lockedCards,
+          targetCode,
+          isWin,
+          timestamp: Date.now(),
+        })
+      );
+    } catch {
+      // ignore
     }
 
     setSelectedCardIds([]);
@@ -386,15 +434,30 @@ export default function WikiSino({
       new Promise((resolve) => setTimeout(resolve, 3600)),
     ]);
 
+    try {
+      sessionStorage.removeItem('wikicards_pending_upgrade');
+    } catch {}
+
     if (isWin && drawnCard) {
       setWonCard(drawnCard);
       setSpinState('won');
+      // Remplacement atomique : retrait des cartes engagées et ajout de la carte de rareté supérieure
+      onConsumeCards(consumedMap);
       onCardWon(drawnCard);
       soundManager.playUpgradeWin(targetCode);
-      onUpdateStats?.({ wonCards: 1 });
+
+      // Option A : Bilan Net Réel de volume
+      // 1 pour 1 -> aucun delta de volume (wonCards: 0, lostCards: 0)
+      // N > 1 cartes sacrifiées pour 1 -> perte nette de volume (N - 1)
+      const netVolumeLoss = lockedCards.length - 1;
+      if (netVolumeLoss > 0) {
+        onUpdateStats?.({ lostCards: netVolumeLoss });
+      }
     } else {
       setSpinState('lost');
       soundManager.playUpgradeLoss();
+      // Défaite : retrait effectif des cartes sacrifiées
+      onConsumeCards(consumedMap);
       onUpdateStats?.({
         lostCards: lockedCards.length,
         lostMoneyCasino: spentMoney || 0,
@@ -1171,20 +1234,26 @@ export default function WikiSino({
           {filteredAndSortedCollection.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 justify-items-center">
               {filteredAndSortedCollection.map((card) => {
+                const isLockedInSpin = Boolean(
+                  spinState === 'spinning' &&
+                    spinSnapshot?.cards?.some((c) => String(c.id) === String(card.id))
+                );
                 const selectedQty = selectedCountsMap[card.id] || 0;
                 const maxCopies = getMaxSelectableCopies(card);
-                const isSelected = selectedQty > 0;
+                const isSelected = selectedQty > 0 || isLockedInSpin;
                 const rule = UPGRADE_RULES[card.rarity];
                 const isFavProtected =
                   favorites.includes(card.id) && (card.count || 1) <= 1;
 
-                const badgeText = isFavProtected
+                const badgeText = isLockedInSpin
+                  ? 'En jeu'
+                  : isFavProtected
                   ? '★ Protégée'
                   : isSelected
                   ? maxCopies > 1
-                    ? `${selectedQty}/${maxCopies} (+${selectedQty * rule.chancePerCard} %)`
-                    : `+${rule.chancePerCard} %`
-                  : `+${rule.chancePerCard} %`;
+                    ? `${selectedQty}/${maxCopies} (+ ${selectedQty * rule.chancePerCard} %)`
+                    : `+ ${rule.chancePerCard} %`
+                  : `+ ${rule.chancePerCard} %`;
 
                 return (
                   <WikiCard
