@@ -1,3 +1,9 @@
+/**
+ * @file Rôle : Rendu visuel normalisé d'une carte encyclopédique (284 × 443 px) avec badge, inclinaison 3D, textures et effet holographique.
+ * Dépendances : React, `lucide-react`, `../config/rarities`, `../utils/cardText`, `./WikithuneIcon`, `./card/RarityWavePattern`.
+ * Effets de bord : Aucun (composant de présentation visuelle pur).
+ */
+
 import React, { useState, useRef } from 'react';
 import { Eye, ExternalLink, Star, Check, Sparkles } from 'lucide-react';
 import {
@@ -5,170 +11,30 @@ import {
   getRarityByViews,
   getCardRecycleValue,
 } from '../config/rarities';
+import { formatCompleteExtract } from '../utils/cardText';
 import WikithuneIcon from './WikithuneIcon';
+import RarityWavePattern from './card/RarityWavePattern';
 
 /**
- * Formate l'extrait Wikipédia pour garantir uniquement des phrases complètes
- * (jamais de texte coupé au milieu d'un mot ou d'une phrase avec "...")
- * tout en remplissant élégamment l'espace disponible de la carte sans déborder.
- *
- * @param {string} [rawText=''] - Extrait brut reçu de l'API Wikipédia
- * @param {number} [maxLength=320] - Longueur cible maximale en caractères
- * @returns {string} Extrait propre composé exclusivement de phrases complètes
+ * Composant de présentation normalisé pour une carte Wikipédia.
+ * @param {Object} props
+ * @param {Object} props.card - Données de la carte
+ * @param {function(string): void} [props.onToggleFavorite] - Callback de mise en favori
+ * @param {boolean} [props.isFavorite=false] - Indique si la carte est en favori
+ * @param {number} [props.duplicateCount=1] - Nombre d'exemplaires possédés
+ * @param {boolean} [props.compact=false] - Mode compact (ex: classeur 4 cartes/ligne)
+ * @param {boolean} [props.mini=false] - Mode miniature (ex: Upgrader 6 cartes/ligne)
+ * @param {boolean} [props.trade=false] - Mode proposition d'échanges
+ * @param {boolean} [props.isRecycleMode=false] - Mode recyclage actif
+ * @param {boolean} [props.isSelectedForRecycle=false] - Carte sélectionnée pour recyclage
+ * @param {number} [props.selectedRecycleCount=0] - Exemplaires cochés pour recyclage
+ * @param {function(Object): void} [props.onSelectForRecycle] - Sélection pour recyclage
+ * @param {function(Object): void} [props.onSelectCard] - Sélection standard de la carte
+ * @param {boolean} [props.isSelected=false] - Carte sélectionnée
+ * @param {boolean} [props.isDisabledSelection=false] - Sélection désactivée
+ * @param {string|null} [props.selectionBadgeText=null] - Texte personnalisé du badge de sélection
+ * @param {boolean} [props.hideViewsAndRarity=false] - Masquage pour cartes mystères (ex: Plus ou Moins)
  */
-function formatCompleteExtract(rawText = '', maxLength = 320) {
-  const cleaned = rawText.replace(/\s+/g, ' ').trim();
-  if (!cleaned) {
-    return "Article encyclopédique référencé sur l'édition francophone de Wikipédia.";
-  }
-
-  // Si le texte complet tient déjà dans maxLength, on le retourne directement
-  if (cleaned.length <= maxLength) {
-    return cleaned;
-  }
-
-  // Protection des abréviations françaises courantes pour éviter les faux découpages de phrases
-  const ABBREVS = [
-    { regex: /\bav\.\s+J\.-C\./gi, token: '___AV_JC___' },
-    { regex: /\bJ\.-C\./gi, token: '___JC___' },
-    { regex: /\b(etc|vol|fasc|hab|art|al|cf|env|ref|ex)\./gi, token: '$1___DOT___' },
-    { regex: /\b(M|Mme|Mlle|Dr|Prof|St|Ste)\./gi, token: '$1___DOT___' },
-    { regex: /(\d+)\.(\d+)/g, token: '$1___DECIMAL___$2' },
-  ];
-
-  let masked = cleaned;
-  ABBREVS.forEach(({ regex, token }) => {
-    masked = masked.replace(regex, token);
-  });
-
-  const rawSentences = masked.match(/[^.!?…]+[.!?…]+(?:\s+|$)/g) || [masked];
-  const sentences = rawSentences
-    .map((s) => {
-      let unmasked = s;
-      unmasked = unmasked.replace(/___AV_JC___/g, 'av. J.-C.');
-      unmasked = unmasked.replace(/___JC___/g, 'J.-C.');
-      unmasked = unmasked.replace(/___DOT___/g, '.');
-      unmasked = unmasked.replace(/___DECIMAL___/g, '.');
-      return unmasked.trim();
-    })
-    .filter(Boolean);
-
-  let result = '';
-  for (const sentence of sentences) {
-    const candidate = result ? `${result} ${sentence}` : sentence;
-    if (candidate.length <= maxLength) {
-      result = candidate;
-    } else {
-      break;
-    }
-  }
-
-  // Si la toute première phrase dépasse légèrement maxLength (jusqu'à 420 chars),
-  // on la conserve ENTIÈRE pour respecter la règle de coupure stricte en fin de phrase.
-  if (!result && sentences.length > 0) {
-    if (sentences[0].length <= 420) {
-      return sentences[0];
-    }
-    // Cas exceptionnel d'une phrase monstre sans ponctuation de plus de 420 caractères
-    const sub = sentences[0].slice(0, maxLength - 1);
-    const lastComma = sub.lastIndexOf(',');
-    const lastSpace = sub.lastIndexOf(' ');
-    const cutIndex = lastComma > maxLength * 0.65 ? lastComma : lastSpace;
-    return `${sub.slice(0, cutIndex).trim()}.`;
-  }
-
-  return result.trim();
-}
-
-/**
- * Motif d'ondes organiques / topographiques en arrière-plan selon la rareté
- */
-function RarityWavePattern({ code, waveColor1, waveColor2 }) {
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none select-none opacity-85"
-      viewBox="0 0 400 400"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      {code === 'L' ? (
-        <g>
-          <path
-            d="M-40,40 C60,10 120,110 220,80 C320,50 350,-10 440,30 L440,420 L-40,420 Z"
-            fill={waveColor2}
-          />
-          <path
-            d="M260,-20 C210,70 310,150 250,250 C190,350 290,390 240,440 L440,440 L440,-20 Z"
-            fill={waveColor2}
-          />
-          <path
-            d="M-30,140 C70,90 150,190 260,140 C370,90 390,180 450,150 L450,420 L-30,420 Z"
-            fill={waveColor1}
-            opacity="0.45"
-          />
-          <path
-            d="M60,-20 C120,80 30,190 110,290 C190,390 90,420 140,450"
-            stroke={waveColor1}
-            strokeWidth="26"
-            fill="none"
-            opacity="0.45"
-          />
-          <path
-            d="M310,-20 C260,90 350,200 280,310 C210,420 310,440 270,460"
-            stroke={waveColor2}
-            strokeWidth="22"
-            fill="none"
-            opacity="0.55"
-          />
-        </g>
-      ) : code === 'UR' || code === 'SR' ? (
-        <g>
-          <path
-            d="M-50,60 Q110,-20 240,90 T460,70 L460,420 L-50,420 Z"
-            fill={waveColor1}
-            opacity="0.5"
-          />
-          <path
-            d="M-50,180 Q130,100 260,210 T460,180 L460,420 L-50,420 Z"
-            fill={waveColor2}
-          />
-          <path
-            d="M-40,290 Q140,220 280,310 T460,290 L460,420 L-40,420 Z"
-            fill={waveColor1}
-            opacity="0.4"
-          />
-          <circle
-            cx="340"
-            cy="80"
-            r="150"
-            stroke={waveColor1}
-            strokeWidth="20"
-            fill="none"
-            opacity="0.35"
-          />
-        </g>
-      ) : (
-        <g>
-          <path
-            d="M-40,90 C90,30 220,150 440,70 L440,420 L-40,420 Z"
-            fill={waveColor1}
-            opacity="0.48"
-          />
-          <path
-            d="M-40,210 C120,150 260,270 440,190 L440,420 L-40,420 Z"
-            fill={waveColor2}
-          />
-          <path
-            d="M-40,320 C140,270 280,360 440,300 L440,420 L-40,420 Z"
-            fill={waveColor1}
-            opacity="0.35"
-          />
-        </g>
-      )}
-    </svg>
-  );
-}
-
 export default function WikiCard({
   card,
   onToggleFavorite,
