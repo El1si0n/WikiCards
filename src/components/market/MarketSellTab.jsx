@@ -145,15 +145,15 @@ export default function MarketSellTab({
               Choisissez une carte de votre classeur
             </span>
 
-            <div className="flex flex-wrap gap-1.5">
-              {[...RARITY_TIERS].reverse().map((tier) => {
+            <div className="flex flex-wrap gap-1.5 py-1">
+              {RARITY_TIERS.map((tier) => {
                 const cnt = collection.filter((c) => c.rarity === tier.code).length;
                 return (
                   <button
                     key={tier.code}
                     type="button"
                     onClick={() => setSellRarityFilter(tier.code)}
-                    className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                    className={`my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                       sellRarityFilter === tier.code
                         ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                         : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'

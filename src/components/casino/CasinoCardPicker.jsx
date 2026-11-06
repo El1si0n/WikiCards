@@ -107,7 +107,7 @@ export default function CasinoCardPicker({
 
       {/* Barre de filtres par rareté + Thème + Tri */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none pb-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none py-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
           {eligibleRarityTiers.map((tier) => {
             const count = eligibleCollection.filter(
               (c) => c.rarity === tier.code
@@ -117,7 +117,7 @@ export default function CasinoCardPicker({
                 key={tier.code}
                 type="button"
                 onClick={() => setSelectedRarityFilter(tier.code)}
-                className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                className={`shrink-0 my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                   selectedRarityFilter === tier.code
                     ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                     : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'

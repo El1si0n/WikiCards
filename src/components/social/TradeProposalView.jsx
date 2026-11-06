@@ -86,8 +86,8 @@ export default function TradeProposalView({
             <span className="text-[12.5px] font-bold text-[#202122] uppercase">
               Vos cartes proposées ({offeredCardIds.length}/4)
             </span>
-            <div className="flex flex-wrap gap-1">
-              {[...RARITY_TIERS].reverse().map((t) => {
+            <div className="flex flex-wrap gap-1 py-1">
+              {RARITY_TIERS.map((t) => {
                 const cnt = collection.filter(
                   (c) => c.rarity === t.code
                 ).length;
@@ -96,7 +96,7 @@ export default function TradeProposalView({
                     key={t.code}
                     type="button"
                     onClick={() => setMyRarityFilter(t.code)}
-                    className={`px-2 py-0.5 text-[11px] rounded-[2px] border cursor-pointer ${
+                    className={`my-0.5 px-2 py-0.5 text-[11px] rounded-[2px] border cursor-pointer ${
                       myRarityFilter === t.code
                         ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                         : 'bg-[#f8f9fa] border-[#c8ccd1]'
@@ -149,8 +149,8 @@ export default function TradeProposalView({
               {activePeerProfile?.username || selectedPeer?.code} (
               {requestedCardIds.length}/4)
             </span>
-            <div className="flex flex-wrap gap-1">
-              {[...RARITY_TIERS].reverse().map((t) => {
+            <div className="flex flex-wrap gap-1 py-1">
+              {RARITY_TIERS.map((t) => {
                 const cnt = peerCollection.filter(
                   (c) => c.rarity === t.code
                 ).length;
@@ -159,7 +159,7 @@ export default function TradeProposalView({
                     key={t.code}
                     type="button"
                     onClick={() => setPeerRarityFilter(t.code)}
-                    className={`px-2 py-0.5 text-[11px] rounded-[2px] border cursor-pointer ${
+                    className={`my-0.5 px-2 py-0.5 text-[11px] rounded-[2px] border cursor-pointer ${
                       peerRarityFilter === t.code
                         ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                         : 'bg-[#f8f9fa] border-[#c8ccd1]'

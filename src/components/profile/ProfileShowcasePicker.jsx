@@ -61,11 +61,11 @@ export default function ProfileShowcasePicker({
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 py-1">
           <button
             type="button"
             onClick={() => onSelectRarityFilter('ALL')}
-            className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
+            className={`my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
               selectedRarityFilter === 'ALL'
                 ? 'bg-[#202122] text-white border-[#202122] font-semibold'
                 : 'bg-[#f8f9fa] text-[#202122] border-[#a2a9b1] hover:bg-white'
@@ -74,7 +74,7 @@ export default function ProfileShowcasePicker({
             Toutes ({collection.length})
           </button>
 
-          {[...RARITY_TIERS].reverse().map((tier) => {
+          {RARITY_TIERS.map((tier) => {
             const count = collection.filter(
               (c) => c.rarity === tier.code
             ).length;
@@ -83,7 +83,7 @@ export default function ProfileShowcasePicker({
                 key={tier.code}
                 type="button"
                 onClick={() => onSelectRarityFilter(tier.code)}
-                className={`px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                className={`my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                   selectedRarityFilter === tier.code
                     ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                     : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'

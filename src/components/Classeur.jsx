@@ -61,11 +61,11 @@ export default function Classeur({
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#eaecf0]">
-        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none pb-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none py-1.5 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
           <button
             type="button"
             onClick={() => setSelectedRarityFilter('ALL')}
-            className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
+            className={`shrink-0 my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-colors ${
               selectedRarityFilter === 'ALL'
                 ? 'bg-[#202122] text-white border-[#202122] font-semibold'
                 : 'bg-[#f8f9fa] text-[#202122] border-[#a2a9b1] hover:bg-white'
@@ -74,14 +74,14 @@ export default function Classeur({
             Toutes ({collection.length})
           </button>
 
-          {[...RARITY_TIERS].reverse().map((tier) => {
+          {RARITY_TIERS.map((tier) => {
             const count = collection.filter((c) => c.rarity === tier.code).length;
             return (
               <button
                 key={tier.code}
                 type="button"
                 onClick={() => setSelectedRarityFilter(tier.code)}
-                className={`shrink-0 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
+                className={`shrink-0 my-0.5 px-2.5 py-1 text-[12px] rounded-[2px] border cursor-pointer transition-all flex items-center gap-1.5 ${
                   selectedRarityFilter === tier.code
                     ? 'ring-2 ring-[#3366cc] font-bold bg-white border-[#3366cc]'
                     : 'bg-[#f8f9fa] hover:bg-white border-[#c8ccd1]'
