@@ -1,5 +1,5 @@
 /**
- * @file Rôle : Rendu visuel normalisé d'une carte à collectionner TCG (284 × 443 px) avec châssis physique, biseau, cartouche et lueur de rareté.
+ * @file Rôle : Rendu visuel normalisé d'une carte encyclopédique (284 × 443 px) avec inclinaison 3D, liseré lumineux animé et reflet holographique.
  * Dépendances : React, `../config/rarities`, `../utils/cardText`, sous-composants sous `src/components/card/`.
  * Effets de bord : Aucun (composant de présentation visuelle pur).
  */
@@ -17,7 +17,7 @@ import CardTopActions from './card/CardTopActions';
 import CardFooter from './card/CardFooter';
 
 /**
- * Composant de présentation normalisé pour une carte TCG Wikipédia physique.
+ * Composant de présentation normalisé pour une carte Wikipédia.
  * @param {Object} props
  * @param {Object} props.card - Données de la carte encyclopédique
  * @param {function(string): void} [props.onToggleFavorite] - Callback de mise en favori
@@ -86,9 +86,6 @@ export default function WikiCard({
         textColor: '#0f172a',
         subTextColor: '#1e293b',
         dividerColor: 'rgba(15, 23, 42, 0.16)',
-        frameBorder: '#94a3b8',
-        cartoucheBg: 'linear-gradient(170deg, rgba(255,255,255,0.75) 0%, rgba(241,245,249,0.7) 100%)',
-        illustrationBorder: '#cbd5e1',
       }
     : baseTier;
 
@@ -131,14 +128,15 @@ export default function WikiCard({
   const displayTitle = cleanCardTitle(card.title);
 
   const isPrestige = tier.code === 'L' || tier.code === 'UR';
-  const isMetallicFoil = tier.code === 'R' || tier.code === 'SR';
+  const isHighTier =
+    tier.code === 'L' || tier.code === 'UR' || tier.code === 'SR';
 
   const titleTypography =
     sizeTier === 'small'
-      ? `${isPrestige ? 'font-black' : 'font-bold'} text-[11.5px] leading-[1.22] line-clamp-2 pb-[1px] tracking-tight`
+      ? 'font-bold text-[11.5px] leading-[1.22] line-clamp-2 pb-[1px] tracking-tight'
       : sizeTier === 'medium'
-      ? `${isPrestige ? 'font-black' : 'font-extrabold'} text-[13.5px] leading-[1.22] line-clamp-2 pb-[2px] tracking-tight`
-      : `${isPrestige ? 'font-black' : 'font-extrabold'} text-[15.5px] leading-[1.2] line-clamp-2 pb-[2px] tracking-[-0.01em]`;
+      ? 'font-extrabold text-[13.5px] leading-[1.22] line-clamp-2 pb-[2px] tracking-tight'
+      : 'font-extrabold text-[15.5px] leading-[1.2] line-clamp-2 pb-[2px] tracking-[-0.01em]';
 
   const descriptionTypography =
     sizeTier === 'small'
@@ -152,8 +150,8 @@ export default function WikiCard({
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    const rotateY = (x - 0.5) * 11;
-    const rotateX = (0.5 - y) * 11;
+    const rotateY = (x - 0.5) * 10;
+    const rotateX = (0.5 - y) * 10;
     setTilt({
       rotateX,
       rotateY,
@@ -190,6 +188,15 @@ export default function WikiCard({
     selectedRecycleCount > 0 ? selectedRecycleCount : isSelectedForRecycle ? 1 : 0;
   const showSelectedDim = effectiveRecycleQty > 0 || isSelected;
 
+  // Fin liseré extérieur où la lumière bouge (2px pour UR/L, 2.5px métal pour GIF)
+  const outerFrameClass = isShiny
+    ? 'wiki-shiny-frame p-[2.5px]'
+    : tier.code === 'L'
+    ? 'wiki-prestige-border--l p-[2px]'
+    : tier.code === 'UR'
+    ? 'wiki-prestige-border--ur p-[2px]'
+    : '';
+
   return (
     <div
       onClick={handleCardClick}
@@ -205,75 +212,56 @@ export default function WikiCard({
           : ''
       }`}
       style={{
-        perspective: '1200px',
+        perspective: '1100px',
         containerType: 'inline-size',
         containerName: 'wikicard',
       }}
     >
-      {/* 1. CHÂSSIS PHYSIQUE TCG & EFFET DE RELIEF BISEAUTÉ */}
+      {/* Enveloppe externe : Fin liseré lumineux animé si GIF, UR ou L */}
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className={`wiki-tcg-chassis relative w-full transition-transform duration-200 ease-out rounded-[14px] sm:rounded-[16px] ${
-          isShiny ? 'wiki-shiny-frame' : ''
-        }`}
+        className={`relative w-full transition-transform duration-200 ease-out rounded-[12px] ${outerFrameClass}`}
         style={{
-          background: isShiny
-            ? undefined
-            : isPrestige
-            ? `linear-gradient(135deg, #fff7ed 0%, ${tier.frameBorder} 25%, #78350f 50%, ${tier.frameBorder} 75%, #fff7ed 100%)`
-            : isMetallicFoil
-            ? `linear-gradient(135deg, #ffffff 0%, ${tier.frameBorder} 30%, ${tier.borderColor} 70%, #ffffff 100%)`
-            : `linear-gradient(145deg, #ffffff 0%, ${tier.frameBorder || tier.borderColor} 45%, #94a3b8 100%)`,
           boxShadow: isShiny
             ? tilt.isHovered
-              ? '0 20px 40px -6px rgba(30, 41, 59, 0.5), 0 0 20px rgba(148, 163, 184, 0.5)'
-              : '0 10px 28px -6px rgba(30, 41, 59, 0.35), 0 2px 8px rgba(0,0,0,0.12)'
-            : isPrestige
-            ? tilt.isHovered
-              ? `0 22px 42px -8px ${tier.shadowColor}, 0 0 22px ${tier.shadowColor}`
-              : `0 10px 26px -6px ${tier.shadowColor}, 0 0 14px ${tier.shadowColor}`
+              ? '0 18px 38px -6px rgba(30, 41, 59, 0.45), 0 0 18px rgba(148, 163, 184, 0.45)'
+              : '0 10px 26px -6px rgba(30, 41, 59, 0.32), 0 2px 8px rgba(0,0,0,0.12)'
             : tilt.isHovered
-            ? `0 18px 34px -8px ${tier.shadowColor}, 0 4px 12px rgba(0,0,0,0.12)`
-            : `0 8px 20px -6px ${tier.shadowColor}, 0 2px 6px rgba(0,0,0,0.08)`,
+            ? `0 18px 34px -8px ${tier.shadowColor}, 0 4px 12px rgba(0,0,0,0.10)`
+            : `0 8px 20px -6px ${tier.shadowColor}, 0 2px 6px rgba(0,0,0,0.06)`,
           transform: tilt.isHovered
             ? `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) translateY(-4px)`
             : 'none',
         }}
       >
-        {/* Éclat continu subtil pour les cartes Prestige Collector (UR & L) */}
-        {isPrestige && !isShiny && (
-          <div className="absolute inset-0 rounded-[inherit] pointer-events-none wiki-tcg-foil-shimmer opacity-45" />
-        )}
-
-        {/* 2. CORPS INTÉRIEUR DE LA CARTE TCG */}
         <article
-          className={`wiki-card-item relative w-full aspect-[284/443] rounded-[10px] sm:rounded-[12px] overflow-hidden flex flex-col p-[3px] sm:p-[4px] ${
+          className={`wiki-card-item relative w-full aspect-[284/443] rounded-[11px] overflow-hidden flex flex-col ${
             isShiny && !showSelectedDim ? 'wiki-metal-surface' : ''
           }`}
           style={{
             background: isShiny ? undefined : tier.cardBg,
             border: isShiny
-              ? '1.5px solid rgba(255, 255, 255, 0.9)'
+              ? '1px solid rgba(255, 255, 255, 0.85)'
               : isPrestige
-              ? `1.5px solid ${tier.borderColor}`
-              : `1px solid ${tier.borderColor}`,
+              ? 'none'
+              : `1.5px solid ${tier.borderColor}`,
           }}
         >
-          {/* Voile sombre stylisé lors de la sélection */}
+          {/* Voile sombre lors de la sélection */}
           {showSelectedDim && (
             <div
               className="absolute inset-0 pointer-events-none z-20 rounded-[inherit] transition-opacity duration-200"
               style={{
                 background: isSelected
-                  ? 'linear-gradient(180deg, rgba(51, 102, 204, 0.12) 0%, rgba(15, 23, 42, 0.28) 100%)'
-                  : 'linear-gradient(180deg, rgba(0, 107, 36, 0.10) 0%, rgba(15, 23, 42, 0.28) 100%)',
+                  ? 'linear-gradient(180deg, rgba(51, 102, 204, 0.10) 0%, rgba(15, 23, 42, 0.25) 100%)'
+                  : 'linear-gradient(180deg, rgba(0, 107, 36, 0.08) 0%, rgba(15, 23, 42, 0.25) 100%)',
               }}
             />
           )}
 
-          {/* Badges d'action en haut à droite (doublons, statut sélection/recyclage, favori) */}
+          {/* Actions en haut à droite placées EN DEHORS du filtre grayscale */}
           <CardTopActions
             card={card}
             duplicateCount={duplicateCount}
@@ -288,13 +276,18 @@ export default function WikiCard({
             isFavorite={isFavorite}
           />
 
-          {/* Contenu visuel structuré */}
+          {/* Contenu visuel Full-Bleed de la carte */}
           <div
             className={`w-full flex-1 flex flex-col min-h-0 transition-all duration-200 ${
-              showSelectedDim ? 'grayscale-[85%] opacity-55 contrast-95' : ''
+              showSelectedDim
+                ? 'grayscale-[85%] opacity-55 contrast-95'
+                : ''
             }`}
+            style={{
+              background: isShiny ? undefined : tier.cardBg,
+            }}
           >
-            {/* FENÊTRE D'ILLUSTRATION AVEC BISEAU & BADGES DE RARETÉ */}
+            {/* 1. PARTIE SUPÉRIEURE : IMAGE DE LA PAGE WIKIPÉDIA */}
             <CardIllustration
               card={card}
               tier={tier}
@@ -304,27 +297,63 @@ export default function WikiCard({
               onImgError={() => setImgError(true)}
             />
 
-            {/* CARTOUCHE DE TEXTE TCG ÉLÉGANT & TEXTURÉ */}
+            {/* 2. PARTIE INFÉRIEURE FULL-BLEED : SUR LE DÉGRADÉ DE RARETÉ (SANS BOÎTE BLANCHE) */}
             <div
-              className="wiki-tcg-cartouche relative flex-1 min-h-0 flex flex-col justify-between mt-1 sm:mt-1.5 rounded-[8px] sm:rounded-[10px] border overflow-hidden p-2 sm:p-2.5"
-              style={{
-                background: isShiny
-                  ? 'linear-gradient(170deg, rgba(255, 255, 255, 0.85) 0%, rgba(226, 232, 240, 0.75) 100%)'
-                  : tier.cartoucheBg || 'rgba(255, 255, 255, 0.8)',
-                borderColor: isShiny
-                  ? 'rgba(255, 255, 255, 0.65)'
-                  : tier.dividerColor || 'rgba(0, 0, 0, 0.14)',
-              }}
+              className={`relative flex-1 min-h-0 flex flex-col justify-between ${
+                sizeTier === 'small'
+                  ? 'px-2 pt-1.5 pb-1.5'
+                  : sizeTier === 'medium'
+                  ? 'px-3 pt-2 pb-2'
+                  : 'px-3.5 pt-2.5 pb-2.5'
+              } overflow-hidden`}
             >
-              {/* Motif d'ondes guilloché fin */}
+              {/* Texture d'ondes organiques */}
               <RarityWavePattern
                 code={tier.code}
-                waveColor1={isShiny ? 'rgba(255, 255, 255, 0.65)' : tier.waveColor1}
-                waveColor2={isShiny ? 'rgba(15, 23, 42, 0.12)' : tier.waveColor2}
+                waveColor1={
+                  isShiny ? 'rgba(255, 255, 255, 0.55)' : tier.waveColor1
+                }
+                waveColor2={
+                  isShiny ? 'rgba(15, 23, 42, 0.12)' : tier.waveColor2
+                }
               />
 
-              {/* Reflet Holographique Spéculaire interactif au survol (Metallic Foil & Prestige) */}
-              {(isMetallicFoil || isPrestige) && !isShiny && (
+              {/* Lumière animée en mouvement sur la carte (continue sur UR/L, au survol sur R/SR) */}
+              {!isShiny && (isPrestige || (tilt.isHovered && tier.code !== '?')) && (
+                <div
+                  className="absolute inset-0 pointer-events-none wiki-tcg-foil-shimmer transition-opacity duration-300"
+                  style={{
+                    opacity: tilt.isHovered ? 0.55 : 0.35,
+                    mixBlendMode: 'soft-light',
+                  }}
+                />
+              )}
+
+              {/* Reflet Métal Brossé (style Carte Titane) pour les cartes GIF (.gif) */}
+              {isShiny && (
+                <>
+                  <div
+                    className="absolute inset-x-2 inset-y-1.5 rounded-[8px] pointer-events-none border border-white/45"
+                    style={{
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65)',
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                    style={{
+                      opacity: tilt.isHovered ? 0.9 : 0.65,
+                      background: `
+                        radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.25) 38%, transparent 65%),
+                        linear-gradient(118deg, transparent 18%, rgba(255, 255, 255, 0.55) 44%, rgba(255, 255, 255, 0.88) 50%, rgba(148, 163, 184, 0.35) 56%, transparent 80%)
+                      `,
+                      mixBlendMode: 'soft-light',
+                    }}
+                  />
+                </>
+              )}
+
+              {/* Reflet Holographique / Foil interactif réagissant à la souris */}
+              {isHighTier && !isShiny && (
                 <div
                   className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                   style={{
@@ -332,27 +361,22 @@ export default function WikiCard({
                       ? 0.85
                       : tier.code === 'L'
                       ? 0.35
-                      : tier.code === 'UR'
-                      ? 0.25
-                      : 0.1,
-                    background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.6) 0%, transparent 60%), ${tier.foilGradient}`,
+                      : 0.18,
+                    background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255,255,255,0.55) 0%, transparent 60%), ${tier.foilGradient}`,
                     mixBlendMode: 'soft-light',
                   }}
                 />
               )}
 
-              {/* Titre et description de l'article encyclopédique */}
+              {/* Contenu textuel directement sur le fond de rareté */}
               <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden justify-start">
                 <h3
                   className={`wiki-card-title shrink-0 ${titleTypography}`}
                   style={{
                     color: isShiny ? '#0f172a' : tier.textColor,
-                    textShadow:
-                      isShiny
-                        ? '0 1px 0 rgba(255,255,255,0.65)'
-                        : isPrestige
-                        ? '0 1px 1px rgba(255,255,255,0.8)'
-                        : undefined,
+                    textShadow: isShiny
+                      ? '0 1px 0 rgba(255,255,255,0.65)'
+                      : undefined,
                   }}
                 >
                   {displayTitle}
@@ -366,7 +390,7 @@ export default function WikiCard({
                 </p>
               </div>
 
-              {/* PIED DE CARTE TCG : PILULE DE FRÉQUENTATION & LIEN DÉPOLI */}
+              {/* 3. PIED DE CARTE STYLE WIKIPÉDIA VECTOR */}
               <CardFooter
                 card={card}
                 tier={tier}

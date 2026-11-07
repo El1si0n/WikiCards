@@ -169,8 +169,8 @@ export default function useBoosterOpening({
         origin: { y: 0.55 },
         colors:
           card.rarity === 'L'
-            ? ['#ffea5a', '#deb226', '#ffffff']
-            : ['#ffa73b', '#ffe2b0', '#ffffff'],
+            ? ['#ef4444', '#ffea5a', '#ffffff']
+            : ['#ffea5a', '#deb226', '#ffffff'],
       });
     }
   };
