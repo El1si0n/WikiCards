@@ -1,6 +1,6 @@
 /**
- * @file Rôle : Vue 3D du sachet de booster fermé et animation de déchirure physique du pack avec halo de la plus haute rareté.
- * Dépendances : React, `framer-motion`, `lucide-react`, `../WikithuneIcon`, `../../config/rarities`.
+ * @file Rôle : Vue 3D du sachet de booster fermé et animation de déchirure physique du pack.
+ * Dépendances : React, `framer-motion`, `lucide-react`, `../WikithuneIcon`.
  * Effets de bord : Déclenche l'ouverture du booster au clic.
  */
 
@@ -8,13 +8,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import WikithuneIcon from '../WikithuneIcon';
-import { getBoosterOpeningLight } from '../../config/rarities';
 
 /**
  * Vue interactive de présentation et de déchirure du sachet de booster.
  * @param {Object} props
  * @param {string} props.stage - Étape actuelle ('pack' ou 'tearing')
- * @param {Array<Object>} [props.packCards=[]] - Cartes du booster déterminant la couleur de l'effet de lumière
  * @param {boolean} props.isIconicPack - Indique si le booster est iconique
  * @param {number} props.activePrice - Prix effectif à payer en Wikithunes
  * @param {number} props.freeBoostersCount - Nombre de boosters gratuits disponibles
@@ -31,7 +29,6 @@ import { getBoosterOpeningLight } from '../../config/rarities';
  */
 export default function BoosterPackView({
   stage,
-  packCards = [],
   isIconicPack,
   activePrice,
   freeBoostersCount,
@@ -47,7 +44,6 @@ export default function BoosterPackView({
   errorMsg,
 }) {
   const isLocked = stage !== 'pack' || isOpening || isFetching;
-  const openingLight = getBoosterOpeningLight(packCards, isIconicPack);
 
   return (
     <motion.div
@@ -58,26 +54,13 @@ export default function BoosterPackView({
       transition={{ duration: 0.2 }}
       className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] py-10 px-4 flex flex-col items-center justify-center relative overflow-hidden min-h-[600px]"
     >
-      {/* Halo doré subtil au repos pour booster iconique */}
-      {isIconicPack && stage === 'pack' && (
+      {/* Halo doré subtil pour booster iconique */}
+      {isIconicPack && (
         <div
           className="absolute w-96 h-96 rounded-full pointer-events-none blur-3xl opacity-35"
           style={{
             background:
               'radial-gradient(circle, #ffea5a 0%, #f0b429 55%, transparent 100%)',
-          }}
-        />
-      )}
-
-      {/* Halo de lumière lors de la déchirure (couleur de la plus haute rareté) */}
-      {stage === 'tearing' && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: [0, 0.7, 0.45, 0], scale: [0.8, 1.25, 1.45] }}
-          transition={{ duration: 0.82, ease: 'easeOut' }}
-          className="absolute w-[440px] h-[440px] rounded-full pointer-events-none blur-3xl"
-          style={{
-            background: openingLight.ambientGlow,
           }}
         />
       )}
@@ -140,14 +123,18 @@ export default function BoosterPackView({
                 className="absolute inset-x-[4px] bottom-0 h-full"
                 style={{
                   clipPath: 'polygon(0% 0%, 100% 0%, 98% 100%, 2% 100%)',
-                  background: openingLight.beamGradient,
+                  background: isIconicPack
+                    ? 'linear-gradient(to top, rgba(255, 240, 145, 0.78) 0%, rgba(255, 215, 64, 0.45) 22%, rgba(212, 161, 29, 0.16) 55%, transparent 100%)'
+                    : 'linear-gradient(to top, rgba(191, 227, 255, 0.75) 0%, rgba(96, 165, 250, 0.42) 22%, rgba(51, 102, 204, 0.15) 55%, transparent 100%)',
                   filter: 'blur(4px)',
                 }}
               />
               <div
                 className="absolute -inset-x-[8px] bottom-0 h-full"
                 style={{
-                  background: openingLight.conicRays,
+                  background: isIconicPack
+                    ? 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(255, 240, 138, 0.48) 14deg, transparent 26deg, rgba(255, 250, 205, 0.62) 42deg, transparent 54deg, rgba(255, 234, 90, 0.68) 65deg, transparent 76deg, rgba(255, 250, 205, 0.62) 88deg, transparent 100deg, rgba(255, 240, 138, 0.48) 114deg, transparent 130deg)'
+                    : 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(147, 197, 253, 0.45) 14deg, transparent 26deg, rgba(224, 242, 254, 0.6) 42deg, transparent 54deg, rgba(96, 165, 250, 0.65) 65deg, transparent 76deg, rgba(224, 242, 254, 0.6) 88deg, transparent 100deg, rgba(147, 197, 253, 0.45) 114deg, transparent 130deg)',
                   WebkitMaskImage:
                     'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 45%, transparent 94%)',
                   maskImage:
@@ -158,8 +145,12 @@ export default function BoosterPackView({
               <div
                 className="absolute inset-x-[4px] bottom-[1px] h-[3px] rounded-full"
                 style={{
-                  background: openingLight.slitGradient,
-                  boxShadow: openingLight.slitShadow,
+                  background: isIconicPack
+                    ? 'linear-gradient(90deg, rgba(255,234,90,0.25) 0%, rgba(255,255,255,0.85) 25%, #fffbeb 50%, rgba(255,255,255,0.85) 75%, rgba(255,234,90,0.25) 100%)'
+                    : 'linear-gradient(90deg, rgba(96,165,250,0.25) 0%, rgba(255,255,255,0.85) 25%, #eff6ff 50%, rgba(255,255,255,0.85) 75%, rgba(96,165,250,0.25) 100%)',
+                  boxShadow: isIconicPack
+                    ? '0 -1px 7px 1px rgba(255, 215, 64, 0.65)'
+                    : '0 -1px 7px 1px rgba(59, 130, 246, 0.65)',
                 }}
               />
             </motion.div>
@@ -211,11 +202,11 @@ export default function BoosterPackView({
                 initial={{ width: '0%' }}
                 animate={{ width: '100%' }}
                 transition={{ duration: 0.24 }}
-                className="absolute bottom-0 left-0 h-[3px]"
-                style={{
-                  backgroundColor: openingLight.tearLineColor,
-                  boxShadow: openingLight.tearLineShadow,
-                }}
+                className={`absolute bottom-0 left-0 h-[3px] ${
+                  isIconicPack
+                    ? 'bg-[#d4a11d] shadow-[0_0_14px_#ffea5a]'
+                    : 'bg-[#3366cc] shadow-[0_0_14px_#3366cc]'
+                }`}
               />
             )}
           </motion.div>
