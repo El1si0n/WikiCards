@@ -4,7 +4,7 @@
  * Effets de bord : Polling périodique (8s), lecture/écriture API users et trades.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   fetchAllUsersDirectory,
   fetchUserAccountByCode,
