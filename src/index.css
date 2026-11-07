@@ -615,9 +615,6 @@ html.dark .wiki-range-slider {
 }
 
 @container wikicard (max-width: 184px) {
-  .wiki-tcg-chassis {
-    padding: 4.5px !important;
-  }
   .wiki-card-title {
     font-size: 11.5px !important;
     line-height: 1.22 !important;
@@ -633,9 +630,6 @@ html.dark .wiki-range-slider {
 }
 
 @container wikicard (min-width: 185px) and (max-width: 260px) {
-  .wiki-tcg-chassis {
-    padding: 6px !important;
-  }
   .wiki-card-title {
     font-size: 13.5px !important;
     line-height: 1.22 !important;
@@ -651,9 +645,6 @@ html.dark .wiki-range-slider {
 }
 
 @container wikicard (min-width: 261px) {
-  .wiki-tcg-chassis {
-    padding: 7.5px !important;
-  }
   .wiki-card-title {
     font-size: 15.5px !important;
     line-height: 1.2 !important;
@@ -666,53 +657,6 @@ html.dark .wiki-range-slider {
   .wiki-card-footer {
     font-size: 11.5px !important;
   }
-}
-
-/* Animations et finitions TCG Collector Overhaul */
-@keyframes tcgShimmerContinuous {
-  0% {
-    background-position: -250% 0;
-  }
-  100% {
-    background-position: 250% 0;
-  }
-}
-
-@keyframes tcgPrestigePulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.45));
-  }
-  50% {
-    filter: drop-shadow(0 0 18px rgba(220, 38, 38, 0.6)) drop-shadow(0 0 8px rgba(254, 240, 138, 0.65));
-  }
-}
-
-.wiki-tcg-foil-shimmer {
-  background: linear-gradient(
-    115deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.55) 45%,
-    rgba(254, 240, 138, 0.75) 50%,
-    rgba(255, 255, 255, 0.55) 55%,
-    transparent 80%
-  );
-  background-size: 250% 100%;
-  animation: tcgShimmerContinuous 4s ease-in-out infinite;
-}
-
-.wiki-tcg-chassis {
-  padding: 6px;
-  box-shadow:
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.75),
-    inset 0 -1.5px 2px rgba(0, 0, 0, 0.35),
-    0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.wiki-tcg-cartouche {
-  box-shadow:
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.65),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 
