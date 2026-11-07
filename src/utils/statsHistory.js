@@ -30,6 +30,41 @@
 import { getCardRecycleValue, INITIAL_WIKITHUNES } from '../config/rarities';
 
 const LOCAL_SNAPSHOTS_STORAGE_KEY = 'wikicards_stats_timeline_v1';
+export const MAX_STATS_SNAPSHOTS = 120;
+
+/**
+ * Réduit intelligemment un historique d'instantanés à un nombre maximal de points
+ * en conservant impérativement le point initial (genèse), les 40 points les plus récents
+ * et un échantillonnage régulier des points intermédiaires.
+ *
+ * @param {StatsSnapshot[]} snapshots - Historique ordonné chronologiquement
+ * @param {number} [maxPoints=MAX_STATS_SNAPSHOTS] - Nombre maximal de points autorisés
+ * @returns {StatsSnapshot[]} Historique compacté
+ */
+export function compactSnapshots(snapshots, maxPoints = MAX_STATS_SNAPSHOTS) {
+  if (!Array.isArray(snapshots) || snapshots.length <= maxPoints) {
+    return Array.isArray(snapshots) ? snapshots : [];
+  }
+
+  const first = snapshots[0];
+  const RECENT_KEEP = 40;
+  const recent = snapshots.slice(-RECENT_KEEP);
+  const middle = snapshots.slice(1, -RECENT_KEEP);
+
+  const middleSlots = maxPoints - 1 - recent.length;
+  if (middleSlots <= 0 || middle.length <= middleSlots) {
+    return [first, ...middle, ...recent];
+  }
+
+  const sampledMiddle = [];
+  const step = middle.length / middleSlots;
+  for (let i = 0; i < middleSlots; i++) {
+    const idx = Math.min(middle.length - 1, Math.floor(i * step));
+    sampledMiddle.push(middle[idx]);
+  }
+
+  return [first, ...sampledMiddle, ...recent];
+}
 
 /**
  * Retourne la clé de stockage des instantanés, optionnellement cloisonnée par utilisateur.
@@ -177,6 +212,15 @@ export function getSavedStatsSnapshots(userCode = null) {
       }
     }
 
+    if (valid.length > MAX_STATS_SNAPSHOTS) {
+      valid = compactSnapshots(valid, MAX_STATS_SNAPSHOTS);
+      try {
+        localStorage.setItem(scopedKey, JSON.stringify(valid));
+      } catch {
+        // ignore
+      }
+    }
+
     return valid;
   } catch {
     return [];
@@ -284,7 +328,12 @@ export function recordStatsSnapshot(data = {}) {
       totalCardsDrawn,
     };
 
-    const next = [...snapshots, snap].slice(-500);
+    let next;
+    if (last && now - last.timestamp < 60000) {
+      next = [...snapshots.slice(0, -1), { ...snap, timestamp: last.timestamp }];
+    } else {
+      next = compactSnapshots([...snapshots, snap], MAX_STATS_SNAPSHOTS);
+    }
     const storageKey = `wikicards_stats_timeline_${cleanCode}`;
     localStorage.setItem(storageKey, JSON.stringify(next));
   } catch {

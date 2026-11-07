@@ -1,12 +1,72 @@
 /**
- * @file Rôle : Gestionnaire de persistance JSON atomique, résilient pour Windows et Linux.
+ * @file Rôle : Gestionnaire de persistance JSON atomique, verrous de concurrence en mémoire et invalidation de cache.
  * Dépendances : `node:fs`, `node:path`, `./validators.js`.
- * Effets de bord : Lecture et écriture atomique de fichiers JSON dans `data/` (users, trades, market).
+ * Effets de bord : Lecture et écriture atomique de fichiers JSON dans `data/` (users, trades, market), verrous mémoire.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeCode } from './validators.js';
+
+const memoryLocks = new Map();
+let directoryCacheInvalidator = null;
+
+/**
+ * Enregistre une fonction de rappel appelée lors de la modification d'un profil joueur pour vider le cache d'annuaire.
+ * @param {() => void} fn - Fonction d'invalidation
+ */
+export function registerDirectoryCacheInvalidator(fn) {
+  directoryCacheInvalidator = fn;
+}
+
+/**
+ * Déclenche l'invalidation du cache d'annuaire des utilisateurs.
+ */
+export function triggerDirectoryCacheInvalidation() {
+  if (typeof directoryCacheInvalidator === 'function') {
+    try {
+      directoryCacheInvalidator();
+    } catch {
+      // Ignorer toute erreur d'invalidation
+    }
+  }
+}
+
+/**
+ * Exécute une fonction asynchrone sous un verrou de concurrence exclusif basé sur une clé (file d'attente FIFO).
+ *
+ * @template T
+ * @param {string} lockKey - Clé d'identification du verrou (ex: 'market', 'trades')
+ * @param {() => Promise<T>} asyncFn - Fonction asynchrone à exécuter en exclusion mutuelle
+ * @returns {Promise<T>} Résultat de la fonction asynchrone
+ */
+export async function withLock(lockKey, asyncFn) {
+  const prevPromise = memoryLocks.get(lockKey) || Promise.resolve();
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const currentPromise = prevPromise.then(
+    () => gate,
+    () => gate
+  );
+  memoryLocks.set(lockKey, currentPromise);
+
+  try {
+    await prevPromise;
+  } catch {
+    // Ignorer l'erreur d'une opération précédente dans la file d'attente
+  }
+
+  try {
+    return await asyncFn();
+  } finally {
+    release();
+    if (memoryLocks.get(lockKey) === currentPromise) {
+      memoryLocks.delete(lockKey);
+    }
+  }
+}
 
 export const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
@@ -123,6 +183,7 @@ export function saveUserFile(code, userObj) {
     updatedAt: Date.now(),
   };
   atomicWriteJsonSync(fp, next);
+  triggerDirectoryCacheInvalidation();
   return next;
 }
 

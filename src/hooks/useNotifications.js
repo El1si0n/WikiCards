@@ -4,7 +4,7 @@
  * Effets de bord : Requêtes réseau vers `/api/trades` et `/api/market`, écriture dans localStorage.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchUserTrades,
   fetchMarketListings,
@@ -129,6 +129,7 @@ export function useNotifications({
   const setDismissedNotifIds = setExternalDismissedNotifIds || setInternalDismissedNotifIds;
 
   const [notifications, setNotifications] = useState([]);
+  const isFetchingRef = useRef(false);
 
   // Agrégation dynamique des notifications (échanges, marché, boosters, bourse)
   useEffect(() => {
@@ -139,6 +140,8 @@ export function useNotifications({
 
     let isMounted = true;
     const loadNotifs = async () => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
       try {
         const notifs = [];
 
@@ -315,13 +318,32 @@ export function useNotifications({
         }
       } catch {
         // ignore
+      } finally {
+        isFetchingRef.current = false;
       }
     };
 
     loadNotifs();
-    const interval = setInterval(loadNotifs, 10000);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadNotifs();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+        loadNotifs();
+      }
+    }, 10000);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       clearInterval(interval);
     };
   }, [

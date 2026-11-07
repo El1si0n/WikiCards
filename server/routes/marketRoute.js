@@ -1,7 +1,7 @@
 /**
  * @file Rôle : Contrôleur du marché aux enchères et ventes directes (/api/market).
  * Dépendances : `../utils/jsonStorage.js`, `../utils/validators.js`.
- * Effets de bord : Lecture et écriture atomique dans `data/market.json` et synchronisation financière dans `data/users/`.
+ * Effets de bord : Lecture et écriture atomique dans `data/market.json` sous verrou de concurrence ('market') et synchronisation financière dans `data/users/`.
  */
 
 import {
@@ -13,6 +13,7 @@ import {
   addCardsToUserCollection,
   removeCardsFromUserCollection,
   readJsonBody,
+  withLock,
 } from '../utils/jsonStorage.js';
 import { sanitizeCode } from '../utils/validators.js';
 
@@ -91,85 +92,87 @@ export async function handleMarketRoute(req, res, pathname) {
 
   // 2. Créer une nouvelle annonce : POST /api/market
   if (req.method === 'POST' && pathname === '/api/market') {
-    const body = await readJsonBody(req);
-    const sellerCode = sanitizeCode(body.sellerCode);
-    const cardId = String(body.cardId || '');
-    const buyoutPrice = Math.max(10, Math.round(Number(body.buyoutPrice || 100)));
-    const startingBid = Math.max(
-      5,
-      Math.min(
+    return await withLock('market', async () => {
+      const body = await readJsonBody(req);
+      const sellerCode = sanitizeCode(body.sellerCode);
+      const cardId = String(body.cardId || '');
+      const buyoutPrice = Math.max(10, Math.round(Number(body.buyoutPrice || 100)));
+      const startingBid = Math.max(
+        5,
+        Math.min(
+          buyoutPrice,
+          Math.round(Number(body.startingBid || Math.floor(buyoutPrice * 0.6)))
+        )
+      );
+
+      const seller = loadUserFile(sellerCode);
+      if (!seller) {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ ok: false, error: 'Vendeur introuvable.' }));
+        return true;
+      }
+
+      const cardObj = (seller.collection || []).find(
+        (c) => String(c.id) === cardId
+      );
+      if (!cardObj) {
+        res.statusCode = 400;
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: 'Carte introuvable dans votre classeur.',
+          })
+        );
+        return true;
+      }
+
+      // Retirer 1 exemplaire du classeur du vendeur pour le mettre en vente
+      const rem = removeCardsFromUserCollection(seller.collection || [], [
+        { id: cardId, qty: 1 },
+      ]);
+      if (!rem.ok) {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ ok: false, error: 'Exemplaire indisponible.' }));
+        return true;
+      }
+
+      const updatedSeller = saveUserFile(sellerCode, {
+        ...seller,
+        collection: rem.collection,
+      });
+
+      const listings = loadJsonArrayFile(marketFile);
+      const newListing = {
+        id: `MKT-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+        sellerCode,
+        sellerUsername: seller.profile?.username || sellerCode,
+        sellerAvatar:
+          seller.profile?.avatar ||
+          'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
+        card: { ...cardObj, count: 1 },
+        startingBid,
+        currentBid: startingBid,
+        highestBidderCode: null,
+        highestBidderUsername: null,
+        bidExpiresAt: null,
         buyoutPrice,
-        Math.round(Number(body.startingBid || Math.floor(buyoutPrice * 0.6)))
-      )
-    );
+        status: 'active',
+        createdAt: Date.now(),
+      };
 
-    const seller = loadUserFile(sellerCode);
-    if (!seller) {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ ok: false, error: 'Vendeur introuvable.' }));
-      return true;
-    }
+      listings.unshift(newListing);
+      saveJsonArrayFile(marketFile, listings);
 
-    const cardObj = (seller.collection || []).find(
-      (c) => String(c.id) === cardId
-    );
-    if (!cardObj) {
-      res.statusCode = 400;
+      res.statusCode = 200;
       res.end(
         JSON.stringify({
-          ok: false,
-          error: 'Carte introuvable dans votre classeur.',
+          ok: true,
+          listing: newListing,
+          updatedUser: updatedSeller,
         })
       );
       return true;
-    }
-
-    // Retirer 1 exemplaire du classeur du vendeur pour le mettre en vente
-    const rem = removeCardsFromUserCollection(seller.collection || [], [
-      { id: cardId, qty: 1 },
-    ]);
-    if (!rem.ok) {
-      res.statusCode = 400;
-      res.end(JSON.stringify({ ok: false, error: 'Exemplaire indisponible.' }));
-      return true;
-    }
-
-    const updatedSeller = saveUserFile(sellerCode, {
-      ...seller,
-      collection: rem.collection,
     });
-
-    const listings = loadJsonArrayFile(marketFile);
-    const newListing = {
-      id: `MKT-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      sellerCode,
-      sellerUsername: seller.profile?.username || sellerCode,
-      sellerAvatar:
-        seller.profile?.avatar ||
-        'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
-      card: { ...cardObj, count: 1 },
-      startingBid,
-      currentBid: startingBid,
-      highestBidderCode: null,
-      highestBidderUsername: null,
-      bidExpiresAt: null,
-      buyoutPrice,
-      status: 'active',
-      createdAt: Date.now(),
-    };
-
-    listings.unshift(newListing);
-    saveJsonArrayFile(marketFile, listings);
-
-    res.statusCode = 200;
-    res.end(
-      JSON.stringify({
-        ok: true,
-        listing: newListing,
-        updatedUser: updatedSeller,
-      })
-    );
-    return true;
   }
 
   // 3. Actions sur une annonce : /api/market/:id/(buy|bid|cancel|accept_bid)
@@ -177,7 +180,8 @@ export async function handleMarketRoute(req, res, pathname) {
     /^\/api\/market\/([^/]+)\/(buy|bid|cancel|accept_bid)$/
   );
   if (req.method === 'POST' && marketActionMatch) {
-    const listingId = decodeURIComponent(marketActionMatch[1]);
+    return await withLock('market', async () => {
+      const listingId = decodeURIComponent(marketActionMatch[1]);
     const action = marketActionMatch[2];
     const body = await readJsonBody(req);
     const actorCode = sanitizeCode(body.userCode);
@@ -522,7 +526,10 @@ export async function handleMarketRoute(req, res, pathname) {
       );
       return true;
     }
-  }
+
+    return true;
+  });
+}
 
   return false;
 }

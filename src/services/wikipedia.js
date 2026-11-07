@@ -30,7 +30,7 @@
 
 import { getRarityByViews, getRarityByCode } from '../config/rarities';
 import { detectCardTheme } from '../config/themes';
-import { cleanWikiText, cleanCardTitle } from '../utils/cardText';
+import { cleanWikiText, cleanCardTitle, fitSummaryToCard } from '../utils/cardText';
 
 const WIKI_API_BASE = 'https://fr.wikipedia.org/w/api.php';
 const WIKI_REST_SUMMARY = 'https://fr.wikipedia.org/api/rest_v1/page/summary';
@@ -399,7 +399,7 @@ export async function fetchWikiCardByTitle(title) {
     pageid: summary.pageid,
     title: sanitizedTitle,
     description: cleanWikiText(summary.description || ''),
-    extract: cleanWikiText(summary.extract || ''),
+    extract: fitSummaryToCard(summary.extract || '', 400),
     image: finalImage,
     imageContain: summary.title === 'Wikipédia',
     isGif,

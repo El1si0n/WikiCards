@@ -1,7 +1,7 @@
 /**
- * @file Rôle : Contrôleur des routes utilisateurs (/api/users) : annuaire, consultation, synchronisation et suppression.
+ * @file Rôle : Contrôleur des routes utilisateurs (/api/users) : annuaire mis en cache TTL, consultation, synchronisation et suppression.
  * Dépendances : `node:fs`, `node:path`, `../utils/jsonStorage.js`, `../utils/validators.js`.
- * Effets de bord : Lecture, écriture atomique et suppression des fichiers de compte dans `data/users/`.
+ * Effets de bord : Lecture, écriture atomique et suppression des fichiers de compte dans `data/users/`, cache mémoire d'annuaire.
  */
 
 import fs from 'node:fs';
@@ -16,8 +16,24 @@ import {
   loadJsonArrayFile,
   saveJsonArrayFile,
   readJsonBody,
+  registerDirectoryCacheInvalidator,
 } from '../utils/jsonStorage.js';
-import { sanitizeCode } from '../utils/validators.js';
+import { sanitizeCode, sanitizeUserPayload } from '../utils/validators.js';
+
+let cachedUsersDirectoryJson = null;
+let cachedUsersDirectoryExpiry = 0;
+const DIRECTORY_CACHE_TTL_MS = 5000;
+
+/**
+ * Invalide immédiatement le cache mémoire de l'annuaire des utilisateurs.
+ */
+export function invalidateUsersDirectoryCache() {
+  cachedUsersDirectoryJson = null;
+  cachedUsersDirectoryExpiry = 0;
+}
+
+// Raccorde l'invalidation automatique lors de toute modification par saveUserFile
+registerDirectoryCacheInvalidator(invalidateUsersDirectoryCache);
 
 /**
  * Traite les requêtes HTTP ciblant les routes `/api/users`.
@@ -28,8 +44,16 @@ import { sanitizeCode } from '../utils/validators.js';
  * @returns {Promise<boolean>} Vrai si la requête a été prise en charge
  */
 export async function handleUsersRoute(req, res, pathname) {
-  // 1. Annuaire public des joueurs : GET /api/users
+  // 1. Annuaire public des joueurs : GET /api/users (avec cache mémoire TTL 5s)
   if (req.method === 'GET' && pathname === '/api/users') {
+    const now = Date.now();
+    if (cachedUsersDirectoryJson && now < cachedUsersDirectoryExpiry) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(cachedUsersDirectoryJson);
+      return true;
+    }
+
     ensureDir();
     const files = fs
       .readdirSync(usersDir)
@@ -104,8 +128,13 @@ export async function handleUsersRoute(req, res, pathname) {
     }
 
     users.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const responseBody = JSON.stringify({ ok: true, users });
+    cachedUsersDirectoryJson = responseBody;
+    cachedUsersDirectoryExpiry = Date.now() + DIRECTORY_CACHE_TTL_MS;
+
     res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, users }));
+    res.setHeader('Content-Type', 'application/json');
+    res.end(responseBody);
     return true;
   }
 
@@ -143,7 +172,7 @@ export async function handleUsersRoute(req, res, pathname) {
 
   // POST ou PUT /api/users/:code (synchronisation avec protection anti-écrasement)
   if (req.method === 'POST' || req.method === 'PUT') {
-    const body = await readJsonBody(req);
+    const rawBody = await readJsonBody(req);
     const cleanCode = sanitizeCode(code);
     const fileExists = fs.existsSync(filePath);
     let existing = {};
@@ -155,6 +184,10 @@ export async function handleUsersRoute(req, res, pathname) {
         existing = {};
       }
     }
+
+    const body = sanitizeUserPayload(rawBody, existing);
+    if (rawBody.forceOverwrite !== undefined) body.forceOverwrite = rawBody.forceOverwrite;
+    if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
 
     // Protection anti-écrasement : si un appareil obsolète tente d'écraser une session plus récente
     if (fileExists && existing.code && !body.forceOverwrite) {
@@ -229,6 +262,7 @@ export async function handleUsersRoute(req, res, pathname) {
         ? Math.max(now, clientTimestamp)
         : clientTimestamp || now;
       atomicWriteJsonSync(filePath, merged);
+      invalidateUsersDirectoryCache();
     }
 
     res.statusCode = 200;
@@ -248,6 +282,7 @@ export async function handleUsersRoute(req, res, pathname) {
     if (fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);
+        invalidateUsersDirectoryCache();
       } catch (unlinkErr) {
         console.error('[WikiCards Delete User Error]:', unlinkErr);
         res.statusCode = 500;

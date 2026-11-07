@@ -77,6 +77,7 @@ export function useAuctionMarket({
   // Horloge en direct pour rafraîchir les comptes à rebours de 24h
   const [now, setNow] = useState(Date.now());
   const sellFormRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -94,11 +95,14 @@ export function useAuctionMarket({
   const [isCreatingListing, setIsCreatingListing] = useState(false);
 
   const loadListings = async (silent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     if (!silent) setIsLoading(true);
     try {
       const data = await fetchMarketListings();
       setListings(data);
     } finally {
+      isFetchingRef.current = false;
       if (!silent) setIsLoading(false);
     }
   };
@@ -113,7 +117,11 @@ export function useAuctionMarket({
     };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
-    const interval = setInterval(() => loadListings(true), 8000);
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+        loadListings(true);
+      }
+    }, 8000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);

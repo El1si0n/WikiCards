@@ -189,6 +189,7 @@ export function usePlayerAccount({
   );
   const isServerHydratedRef = useRef(false);
   const skipNextPushRef = useRef(false);
+  const isReconcilingRef = useRef(false);
 
   const bumpLocalUpdatedAt = useCallback(() => {
     const now = setStoredUpdatedAt(Date.now());
@@ -543,59 +544,65 @@ export function usePlayerAccount({
     let isCancelled = false;
 
     const reconcileWithServer = async () => {
-      const current = latestAccountRef.current;
-      if (!current.userCode) return;
+      if (isReconcilingRef.current) return;
+      isReconcilingRef.current = true;
+      try {
+        const current = latestAccountRef.current;
+        if (!current.userCode) return;
 
-      const localSnapshot = {
-        code: current.userCode,
-        profile: current.userProfile,
-        collection: current.collection,
-        favorites: current.favorites,
-        wikithunes: current.wikithunes,
-        stats: current.stats,
-        createdAt: current.accountCreatedAt || undefined,
-        snapshots: getSavedStatsSnapshots(current.userCode).slice(-40),
-        lastDailyClaimDate: current.lastDailyClaimDate || '',
-        freeBoostersCount:
-          typeof current.freeBoostersCount === 'number'
-            ? current.freeBoostersCount
-            : MAX_FREE_BOOSTERS,
-        lastFreeBoostersResetTime:
-          current.lastFreeBoostersResetTime || Date.now(),
-        updatedAt: current.localUpdatedAt,
-        clientUpdatedAt: current.localUpdatedAt,
-      };
+        const localSnapshot = {
+          code: current.userCode,
+          profile: current.userProfile,
+          collection: current.collection,
+          favorites: current.favorites,
+          wikithunes: current.wikithunes,
+          stats: current.stats,
+          createdAt: current.accountCreatedAt || undefined,
+          snapshots: getSavedStatsSnapshots(current.userCode).slice(-40),
+          lastDailyClaimDate: current.lastDailyClaimDate || '',
+          freeBoostersCount:
+            typeof current.freeBoostersCount === 'number'
+              ? current.freeBoostersCount
+              : MAX_FREE_BOOSTERS,
+          lastFreeBoostersResetTime:
+            current.lastFreeBoostersResetTime || Date.now(),
+          updatedAt: current.localUpdatedAt,
+          clientUpdatedAt: current.localUpdatedAt,
+        };
 
-      const res = await fetchServerUserAccount(current.userCode);
-      if (isCancelled) return;
+        const res = await fetchServerUserAccount(current.userCode);
+        if (isCancelled) return;
 
-      if (res.status === 'not_found') {
-        const pushed = await syncUserAccountToServer(
-          current.userCode,
-          localSnapshot,
-          { forceOverwrite: true }
-        );
-        if (!isCancelled && pushed?.user?.updatedAt) {
-          setLocalUpdatedAt(setStoredUpdatedAt(pushed.user.updatedAt));
-        }
-      } else if (res.status === 'ok' && res.user) {
-        if (isAccountStateNewer(res.user, localSnapshot)) {
-          applyServerAccountState(res.user);
-        } else if (isAccountStateNewer(localSnapshot, res.user)) {
+        if (res.status === 'not_found') {
           const pushed = await syncUserAccountToServer(
             current.userCode,
-            localSnapshot
+            localSnapshot,
+            { forceOverwrite: true }
           );
-          if (!isCancelled && pushed?.serverIsNewer && pushed?.user) {
-            applyServerAccountState(pushed.user);
-          } else if (!isCancelled && pushed?.user?.updatedAt) {
+          if (!isCancelled && pushed?.user?.updatedAt) {
             setLocalUpdatedAt(setStoredUpdatedAt(pushed.user.updatedAt));
           }
+        } else if (res.status === 'ok' && res.user) {
+          if (isAccountStateNewer(res.user, localSnapshot)) {
+            applyServerAccountState(res.user);
+          } else if (isAccountStateNewer(localSnapshot, res.user)) {
+            const pushed = await syncUserAccountToServer(
+              current.userCode,
+              localSnapshot
+            );
+            if (!isCancelled && pushed?.serverIsNewer && pushed?.user) {
+              applyServerAccountState(pushed.user);
+            } else if (!isCancelled && pushed?.user?.updatedAt) {
+              setLocalUpdatedAt(setStoredUpdatedAt(pushed.user.updatedAt));
+            }
+          }
         }
-      }
 
-      if (!isCancelled) {
-        isServerHydratedRef.current = true;
+        if (!isCancelled) {
+          isServerHydratedRef.current = true;
+        }
+      } finally {
+        isReconcilingRef.current = false;
       }
     };
 
@@ -609,7 +616,11 @@ export function usePlayerAccount({
 
     window.addEventListener('focus', handleVisibilityOrFocus);
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-    const interval = setInterval(reconcileWithServer, 6000);
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+        reconcileWithServer();
+      }
+    }, 6000);
 
     return () => {
       isCancelled = true;
@@ -941,7 +952,7 @@ export function usePlayerAccount({
       try {
         localStorage.setItem(
           getSnapshotStorageKey(cleanCode),
-          JSON.stringify(account.snapshots.slice(-500))
+          JSON.stringify(account.snapshots.slice(-120))
         );
       } catch {}
     }

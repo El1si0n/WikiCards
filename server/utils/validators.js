@@ -53,3 +53,106 @@ export function isValidCard(card) {
     typeof card.title === 'string'
   );
 }
+
+/**
+ * Assainit et valide la charge utile d'un compte utilisateur reçue par l'API.
+ * Protège le stockage contre l'injection de payloads corrompus ou géants sans entraver les gains légitimes.
+ *
+ * @param {Record<string, any>} payload - Données brutes soumises par le client
+ * @param {Record<string, any>} [existingUser={}] - Données actuelles du joueur si disponibles
+ * @returns {Record<string, any>} Données assainies et sécurisées
+ */
+export function sanitizeUserPayload(payload, existingUser = {}) {
+  if (!payload || typeof payload !== 'object') {
+    return existingUser;
+  }
+
+  const sanitized = { ...payload };
+
+  // 1. Wikithunes : borné à [0, 10_000_000], immunisé contre NaN et Infinity
+  if (typeof payload.wikithunes === 'number') {
+    if (!Number.isFinite(payload.wikithunes) || Number.isNaN(payload.wikithunes)) {
+      sanitized.wikithunes = Number(existingUser.wikithunes) || 0;
+    } else {
+      sanitized.wikithunes = Math.max(
+        0,
+        Math.min(10_000_000, Math.floor(payload.wikithunes))
+      );
+    }
+  } else if (existingUser.wikithunes !== undefined) {
+    sanitized.wikithunes = Math.max(
+      0,
+      Math.min(10_000_000, Math.floor(Number(existingUser.wikithunes) || 0))
+    );
+  }
+
+  // 2. Collection de cartes : count borné [1, 9999], extract tronqué proprement à 450 car max
+  if (Array.isArray(payload.collection)) {
+    sanitized.collection = payload.collection
+      .filter((card) => isValidCard(card))
+      .map((card) => {
+        const count = Math.max(
+          1,
+          Math.min(9999, Math.floor(Number(card.count) || 1))
+        );
+        const extract = typeof card.extract === 'string'
+          ? card.extract.slice(0, 450)
+          : '';
+        const description = typeof card.description === 'string'
+          ? card.description.slice(0, 300)
+          : '';
+
+        return {
+          ...card,
+          id: String(card.id),
+          count,
+          extract,
+          description,
+        };
+      });
+  }
+
+  // 3. Profil public : limitation des longueurs textuelles
+  if (payload.profile && typeof payload.profile === 'object') {
+    sanitized.profile = {
+      ...payload.profile,
+      username: String(payload.profile.username || 'Wikipédien').slice(0, 40),
+      bio: String(payload.profile.bio || '').slice(0, 500),
+      avatar: String(payload.profile.avatar || '').slice(0, 500),
+      showcaseIds: Array.isArray(payload.profile.showcaseIds)
+        ? payload.profile.showcaseIds.slice(0, 4).map(String)
+        : [],
+    };
+  }
+
+  // 4. Statistiques de jeu : préservation intégrale et validation des types
+  if (payload.stats && typeof payload.stats === 'object') {
+    const rawStats = payload.stats;
+    sanitized.stats = {
+      boostersOpened: Math.max(0, Math.floor(Number(rawStats.boostersOpened) || 0)),
+      totalCardsDrawn: Math.max(0, Math.floor(Number(rawStats.totalCardsDrawn) || 0)),
+      wonCards: Math.max(0, Math.floor(Number(rawStats.wonCards) || 0)),
+      lostCards: Math.max(0, Math.floor(Number(rawStats.lostCards) || 0)),
+      lostMoneyCasino: Math.max(0, Math.floor(Number(rawStats.lostMoneyCasino) || 0)),
+      netCasinoGains: Math.max(0, Math.floor(Number(rawStats.netCasinoGains) || 0)),
+      recordStreak: Math.max(0, Math.floor(Number(rawStats.recordStreak) || 0)),
+      duelVictories: Math.max(0, Math.floor(Number(rawStats.duelVictories) || 0)),
+      duelDefeats: Math.max(0, Math.floor(Number(rawStats.duelDefeats) || 0)),
+    };
+  }
+
+  // 5. Favoris
+  if (Array.isArray(payload.favorites)) {
+    sanitized.favorites = payload.favorites.map(String).slice(0, 500);
+  }
+
+  // 6. Boosters gratuits
+  if (payload.freeBoostersCount !== undefined) {
+    sanitized.freeBoostersCount = Math.max(
+      0,
+      Math.min(50, Math.floor(Number(payload.freeBoostersCount) || 0))
+    );
+  }
+
+  return sanitized;
+}

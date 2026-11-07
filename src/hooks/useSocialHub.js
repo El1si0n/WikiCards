@@ -61,8 +61,11 @@ export default function useSocialHub({
   const [trades, setTrades] = useState([]);
   const [isLoadingTrades, setIsLoadingTrades] = useState(false);
   const [tradeActionError, setTradeActionError] = useState(null);
+  const isFetchingRef = useRef(false);
 
   const loadDirectoryAndTrades = useCallback(async (silent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     if (!silent) {
       setIsLoadingUsers(true);
       setIsLoadingTrades(true);
@@ -75,6 +78,7 @@ export default function useSocialHub({
       setUsersList(allUsers);
       setTrades(myTrades);
     } finally {
+      isFetchingRef.current = false;
       if (!silent) {
         setIsLoadingUsers(false);
         setIsLoadingTrades(false);
@@ -92,7 +96,11 @@ export default function useSocialHub({
     };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
-    const interval = setInterval(() => loadDirectoryAndTrades(true), 8000);
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+        loadDirectoryAndTrades(true);
+      }
+    }, 8000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
