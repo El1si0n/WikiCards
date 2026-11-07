@@ -9,7 +9,7 @@ import { X, TrendingUp, TrendingDown } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryChart from './StatsHistoryChart';
 import StatsHistoryOverview from './StatsHistoryOverview';
-import { generateMetricTimeSeries } from '../utils/statsHistory';
+import { generateMetricTimeSeries, calculateEvolutionPct } from '../utils/statsHistory';
 import { METRIC_DEFINITIONS, PERIODS } from '../config/statsMetrics';
 
 /**
@@ -85,12 +85,12 @@ export default function StatsHistoryModal({
     const start = points[0].value;
     const current = points[points.length - 1].value;
     const delta = current - start;
-    const deltaPct = start > 0 ? (delta / start) * 100 : current > 0 ? 100 : 0;
+    const deltaPct = calculateEvolutionPct(current, start, points, def.isCurrency);
     return { min, max, start, current, delta, deltaPct };
-  }, [points]);
+  }, [points, def.isCurrency]);
 
   const activePoint = useMemo(() => {
-    if (!points || points.length === 0) return { timestamp: Date.now(), value: 0 };
+    if (!points || points.length === 0) return { timestamp: 0, value: 0 };
     if (hoverIndex !== null && points[hoverIndex]) {
       return points[hoverIndex];
     }
@@ -101,9 +101,9 @@ export default function StatsHistoryModal({
     if (!points || points.length === 0) return { val: 0, pct: 0 };
     const startVal = points[0].value;
     const diff = activePoint.value - startVal;
-    const pct = startVal > 0 ? (diff / startVal) * 100 : activePoint.value > 0 ? 100 : 0;
+    const pct = calculateEvolutionPct(activePoint.value, startVal, points, def.isCurrency);
     return { val: diff, pct };
-  }, [points, activePoint]);
+  }, [points, activePoint, def.isCurrency]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

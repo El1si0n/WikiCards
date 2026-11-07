@@ -12,6 +12,7 @@ import React from 'react';
  * @property {number} max - Plus haut historique (ATH)
  * @property {number} start - Valeur initiale
  * @property {number} delta - Variation nette sur la période
+ * @property {number} [deltaPct] - Pourcentage d'évolution précis
  */
 
 /**
@@ -68,6 +69,12 @@ export default function StatsHistoryOverview({ overview, unit = '' }) {
           {isPositiveDelta ? '+' : ''}
           {new Intl.NumberFormat('fr-FR').format(overview.delta)}
           {unit}
+          {typeof overview.deltaPct === 'number' && (
+            <span className="text-[11.5px] font-bold ml-1 opacity-80">
+              ({isPositiveDelta ? '+' : ''}
+              {overview.deltaPct.toFixed(1)} %)
+            </span>
+          )}
         </span>
       </div>
     </div>

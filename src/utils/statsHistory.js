@@ -1,5 +1,5 @@
 /**
- * @file Rôle : Enregistrement des instantanés de compte et génération dynamique des séries temporelles.
+ * @file Rôle : Enregistrement des instantanés de compte, calcul des évolutions et génération dynamique des séries temporelles.
  * Dépendances : `../config/rarities`, localStorage.
  * Effets de bord : Lecture/écriture dans localStorage (cloisonné par code utilisateur).
  */
@@ -330,6 +330,50 @@ function clampMetricValue(metricId, val, safeStats, currentVal) {
 }
 
 /**
+ * Calcule avec précision le pourcentage de variation d'une valeur par rapport à une base de départ.
+ * Évite rigoureusement tout plafonnement artificiel à 100 % (supporte fidèlement les hausses de +300 %, +500 %, etc.).
+ *
+ * @param {number} currentVal - Valeur courante ou observée
+ * @param {number} startVal - Valeur initiale de référence (base)
+ * @param {Array<{value: number}>} [allPoints=[]] - Série complète pour retrouver la première base non nulle
+ * @param {boolean} [isCurrency=false] - Indique si la métrique est exprimée en monnaie (Wikithunes)
+ * @returns {number} Pourcentage d'évolution calculé
+ */
+export function calculateEvolutionPct(currentVal, startVal, allPoints = [], isCurrency = false) {
+  const safeCurrent = typeof currentVal === 'number' && !isNaN(currentVal) ? currentVal : 0;
+  const safeStart = typeof startVal === 'number' && !isNaN(startVal) ? startVal : 0;
+
+  // 1. Base de départ non nulle (positive ou négative)
+  if (safeStart !== 0) {
+    const diff = safeCurrent - safeStart;
+    return (diff / Math.abs(safeStart)) * 100;
+  }
+
+  // 2. Si la valeur de départ est 0 et que la valeur actuelle est aussi 0
+  if (safeCurrent === 0) {
+    return 0;
+  }
+
+  // 3. Si la valeur de départ est 0 et que la valeur actuelle est non nulle :
+  // Recherche du premier point non nul dans la série pour établir un socle comparatif
+  const firstNonZero = Array.isArray(allPoints)
+    ? allPoints.find((p) => p && typeof p.value === 'number' && Math.abs(p.value) > 0)?.value
+    : null;
+
+  // Pour une métrique monétaire en ₩ débutant à 0
+  if (isCurrency) {
+    const base = typeof firstNonZero === 'number' && Math.abs(firstNonZero) > 0
+      ? Math.abs(firstNonZero)
+      : 100; // Base étalon par défaut (mise / booster standard)
+    return (safeCurrent / base) * 100;
+  }
+
+  // Pour les compteurs discrets (articles uniques, total cartes, boosters, raretés, victoires) :
+  // Chaque unité acquise correspond à un bond naturel de +100 % (1 = +100 %, 2 = +200 %, 3 = +300 %, etc.)
+  return safeCurrent * 100;
+}
+
+/**
  * Génère une série temporelle réaliste et continue pour une métrique donnée
  * en combinant les horodatages réels d'obtention des cartes (obtainedAt)
  * et les instantanés de session.
@@ -382,8 +426,11 @@ export function generateMetricTimeSeries(metricId, {
     accountStartTs = minCardTs;
   }
 
-  // Âge réel du compte (au moins 1 minute pour le calcul de pas)
-  const realAccountAgeMs = Math.max(60 * 1000, now - accountStartTs);
+  // Date marquant le début réel de l'activité du joueur
+  const activityStartTs = minCardTs && minCardTs <= now ? minCardTs : accountStartTs;
+
+  // Âge réel de l'activité du compte (au moins 1 minute pour le calcul de pas)
+  const realAccountAgeMs = Math.max(60 * 1000, now - activityStartTs);
 
   let targetWindowMs = dayMs * 30; // 1M par défaut
   let sampleCount = 30;
@@ -403,15 +450,13 @@ export function generateMetricTimeSeries(metricId, {
       break;
     case 'TOUT':
     default:
-      targetWindowMs = realAccountAgeMs + 60 * 1000;
+      targetWindowMs = realAccountAgeMs;
       sampleCount = 35;
       break;
   }
 
-  // Si le compte est plus récent que la fenêtre cible (ex: créé il y a 2h mais on consulte '1M', '1S' ou '1J') :
-  // La série débute exactement au début du compte (avec 1 min de marge pour capter l'état initial),
-  // sans jamais reculer dans le temps avant la création de l'utilisateur.
-  const windowMs = Math.min(targetWindowMs, realAccountAgeMs + 60 * 1000);
+  // La fenêtre temporelle ne recule pas au-delà du début effectif de l'activité du compte
+  const windowMs = Math.min(targetWindowMs, realAccountAgeMs);
   const startTime = now - windowMs;
   const timeStep = windowMs / Math.max(1, sampleCount - 1);
 
@@ -420,9 +465,9 @@ export function generateMetricTimeSeries(metricId, {
     : isLocalUser
     ? getSavedStatsSnapshots(userCode)
     : [];
-  // On ne garde que les snapshots valides postérieurs au début du compte
+  // On ne garde que les snapshots valides postérieurs au début de l'activité
   const savedSnapshots = rawSnapshots.filter(
-    (s) => s && typeof s.timestamp === 'number' && s.timestamp >= accountStartTs - 60 * 1000
+    (s) => s && typeof s.timestamp === 'number' && s.timestamp >= activityStartTs - 60 * 1000
   );
 
   // Calcule la valeur finale actuelle de la métrique
@@ -493,7 +538,7 @@ export function generateMetricTimeSeries(metricId, {
 
   for (let i = 0; i < sampleCount; i++) {
     const t = i === sampleCount - 1 ? now : startTime + i * timeStep;
-    const isBeforeAccount = t < accountStartTs;
+    const isBeforeAccount = t < activityStartTs;
 
     if (isCollectionMetric) {
       if (isBeforeAccount) {
@@ -535,11 +580,25 @@ export function generateMetricTimeSeries(metricId, {
           val = 0;
       }
 
-      // Si aucune carte n'était enregistrée avec un horodatage ancien mais qu'on a un classeur actuel,
-      // on applique une courbe de croissance naturelle jusqu'à la valeur actuelle (sauf au point initial t0 = 0)
-      if (val === 0 && currentVal > 0 && i > 0 && collection.length > 0) {
-        const progressRatio = Math.pow(i / (sampleCount - 1), 1.4);
-        val = Math.round(currentVal * progressRatio);
+      // Si aucune carte n'était enregistrée avec un horodatage ancien mais qu'on a un classeur actuel :
+      // On calcule le palier initial (premier booster d'environ 6 cartes) pour une base de progression réaliste
+      if (val === 0 && currentVal > 0 && collection.length > 0) {
+        const baseUnits = Math.max(1, safeStats?.boostersOpened || Math.ceil(collection.length / 6));
+        let initialBase = 1;
+        if (metricId === 'collectionValue') {
+          initialBase = Math.max(10, Math.round(currentVal / baseUnits));
+        } else if (metricId === 'uniqueCardsCount' || metricId === 'totalCardsCount') {
+          initialBase = Math.min(currentVal, Math.max(1, Math.round(currentVal / baseUnits)));
+        } else if (metricId === 'legendaryCount' || metricId === 'ultraRareCount' || metricId === 'gifCount') {
+          initialBase = currentVal > 0 ? 1 : 0;
+        }
+
+        if (i === 0) {
+          val = initialBase;
+        } else {
+          const progressRatio = Math.pow(i / (sampleCount - 1), 1.4);
+          val = Math.round(initialBase + (currentVal - initialBase) * progressRatio);
+        }
       }
 
       // Si un instantané réel a été sauvegardé pour cette métrique
@@ -650,18 +709,22 @@ export function generateMetricTimeSeries(metricId, {
           simulatedVal = Math.round(currentVal * Math.pow(cardProgress, 1.05));
         }
       } else if (metricId === 'totalCardsDrawn') {
-        if (i === 0 && startTime <= accountStartTs) {
-          simulatedVal = Math.min(currentVal, safeCollection.length > 0 ? 5 : 0);
+        const baseDrawn = safeCollection.length > 0 ? Math.min(currentVal, 6) : 0;
+        if (i === 0 && startTime <= activityStartTs) {
+          simulatedVal = baseDrawn;
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
           const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
           const totalColCount = safeCollection.length || 1;
           const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
-          simulatedVal = Math.min(currentVal, Math.floor(currentVal * Math.pow(cardProgress, 1.0)));
+          simulatedVal = Math.min(
+            currentVal,
+            Math.floor(baseDrawn + (currentVal - baseDrawn) * Math.pow(cardProgress, 1.0))
+          );
         }
       } else if (metricId === 'recordStreak') {
-        if (i === 0 && startTime <= accountStartTs) {
+        if (i === 0 && startTime <= activityStartTs) {
           simulatedVal = 0;
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
@@ -676,8 +739,9 @@ export function generateMetricTimeSeries(metricId, {
           metricId
         )
       ) {
-        if (i === 0 && startTime <= accountStartTs) {
-          simulatedVal = 0;
+        const minBase = metricId === 'boostersOpened' && currentVal > 0 ? 1 : 0;
+        if (i === 0 && startTime <= activityStartTs) {
+          simulatedVal = minBase;
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
@@ -686,7 +750,7 @@ export function generateMetricTimeSeries(metricId, {
           const cardProgress = safeCollection.length > 0
             ? cardsAtT.length / totalColCount
             : Math.pow(ratio, 1.3);
-          simulatedVal = Math.round(currentVal * cardProgress);
+          simulatedVal = Math.round(minBase + (currentVal - minBase) * cardProgress);
         }
       } else {
         simulatedVal = Math.round(currentVal * ratio);
