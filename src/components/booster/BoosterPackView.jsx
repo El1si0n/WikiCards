@@ -14,6 +14,8 @@ import WikithuneIcon from '../WikithuneIcon';
  * @param {Object} props
  * @param {string} props.stage - Étape actuelle ('pack' ou 'tearing')
  * @param {boolean} props.isIconicPack - Indique si le booster est iconique
+ * @param {string} [props.highestRarityKey='C'] - Code de rareté la plus élevée contenue dans le booster
+ * @param {Object|null} [props.highestRarityConfig=null] - Configuration de la rareté la plus élevée
  * @param {number} props.activePrice - Prix effectif à payer en Wikithunes
  * @param {number} props.freeBoostersCount - Nombre de boosters gratuits disponibles
  * @param {number} props.boosterPrice - Prix standard du booster
@@ -30,6 +32,8 @@ import WikithuneIcon from '../WikithuneIcon';
 export default function BoosterPackView({
   stage,
   isIconicPack,
+  highestRarityKey = 'C',
+  highestRarityConfig = null,
   activePrice,
   freeBoostersCount,
   boosterPrice,
@@ -44,6 +48,16 @@ export default function BoosterPackView({
   errorMsg,
 }) {
   const isLocked = stage !== 'pack' || isOpening || isFetching;
+
+  // Lueur de Walkout personnalisée selon la plus haute rareté contenue dans le booster
+  const walkout = highestRarityConfig?.walkout || {
+    beam: 'linear-gradient(to top, rgba(191, 227, 255, 0.75) 0%, rgba(96, 165, 250, 0.42) 22%, rgba(51, 102, 204, 0.15) 55%, transparent 100%)',
+    ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(147, 197, 253, 0.45) 14deg, transparent 26deg, rgba(224, 242, 254, 0.6) 42deg, transparent 54deg, rgba(96, 165, 250, 0.65) 65deg, transparent 76deg, rgba(224, 242, 254, 0.6) 88deg, transparent 100deg, rgba(147, 197, 253, 0.45) 114deg, transparent 130deg)',
+    crackLine: 'linear-gradient(90deg, rgba(96,165,250,0.25) 0%, rgba(255,255,255,0.85) 25%, #eff6ff 50%, rgba(255,255,255,0.85) 75%, rgba(96,165,250,0.25) 100%)',
+    shadow: '0 -1px 7px 1px rgba(59, 130, 246, 0.65)',
+    tearBarBg: '#3366cc',
+    tearBarShadow: '0 0 14px #3366cc',
+  };
 
   return (
     <motion.div
@@ -103,56 +117,76 @@ export default function BoosterPackView({
           }
           className="relative w-[284px] flex flex-col items-center"
         >
-          {/* Effet de lumière interne lors de la déchirure */}
+          {/* Effet de lumière Walkout Glow interne lors de la déchirure */}
           {stage === 'tearing' && (
             <motion.div
               initial={{ opacity: 0, scaleY: 0.08 }}
               animate={{
-                opacity: [0, 0.58, 0.45, 0],
-                scaleY: [0.08, 0.85, 0.96, 1],
+                opacity:
+                  highestRarityKey === 'L'
+                    ? [0, 0.95, 0.82, 0]
+                    : highestRarityKey === 'UR'
+                    ? [0, 0.8, 0.65, 0]
+                    : [0, 0.62, 0.48, 0],
+                scaleY: [0.08, 0.9, 1, 1.05],
               }}
-              transition={{ duration: 0.78, ease: 'easeOut' }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
               className="absolute inset-x-0 pointer-events-none z-10 overflow-visible"
               style={{
-                top: '-50px',
-                height: '88px',
+                top: '-55px',
+                height: highestRarityKey === 'L' ? '112px' : '92px',
                 transformOrigin: '50% 100%',
               }}
             >
               <div
-                className="absolute inset-x-[4px] bottom-0 h-full"
+                className="absolute inset-x-[2px] bottom-0 h-full"
                 style={{
                   clipPath: 'polygon(0% 0%, 100% 0%, 98% 100%, 2% 100%)',
-                  background: isIconicPack
-                    ? 'linear-gradient(to top, rgba(255, 240, 145, 0.78) 0%, rgba(255, 215, 64, 0.45) 22%, rgba(212, 161, 29, 0.16) 55%, transparent 100%)'
-                    : 'linear-gradient(to top, rgba(191, 227, 255, 0.75) 0%, rgba(96, 165, 250, 0.42) 22%, rgba(51, 102, 204, 0.15) 55%, transparent 100%)',
-                  filter: 'blur(4px)',
+                  background: walkout.beam,
+                  filter: highestRarityKey === 'L' ? 'blur(5px)' : 'blur(4px)',
                 }}
               />
               <div
-                className="absolute -inset-x-[8px] bottom-0 h-full"
+                className="absolute -inset-x-[12px] bottom-0 h-full"
                 style={{
-                  background: isIconicPack
-                    ? 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(255, 240, 138, 0.48) 14deg, transparent 26deg, rgba(255, 250, 205, 0.62) 42deg, transparent 54deg, rgba(255, 234, 90, 0.68) 65deg, transparent 76deg, rgba(255, 250, 205, 0.62) 88deg, transparent 100deg, rgba(255, 240, 138, 0.48) 114deg, transparent 130deg)'
-                    : 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(147, 197, 253, 0.45) 14deg, transparent 26deg, rgba(224, 242, 254, 0.6) 42deg, transparent 54deg, rgba(96, 165, 250, 0.65) 65deg, transparent 76deg, rgba(224, 242, 254, 0.6) 88deg, transparent 100deg, rgba(147, 197, 253, 0.45) 114deg, transparent 130deg)',
+                  background: walkout.ray,
                   WebkitMaskImage:
-                    'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 45%, transparent 94%)',
+                    'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.5) 45%, transparent 95%)',
                   maskImage:
-                    'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 45%, transparent 94%)',
+                    'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.5) 45%, transparent 95%)',
                   filter: 'blur(2px)',
                 }}
               />
               <div
-                className="absolute inset-x-[4px] bottom-[1px] h-[3px] rounded-full"
+                className="absolute inset-x-[2px] bottom-[1px] h-[3.5px] rounded-full"
                 style={{
-                  background: isIconicPack
-                    ? 'linear-gradient(90deg, rgba(255,234,90,0.25) 0%, rgba(255,255,255,0.85) 25%, #fffbeb 50%, rgba(255,255,255,0.85) 75%, rgba(255,234,90,0.25) 100%)'
-                    : 'linear-gradient(90deg, rgba(96,165,250,0.25) 0%, rgba(255,255,255,0.85) 25%, #eff6ff 50%, rgba(255,255,255,0.85) 75%, rgba(96,165,250,0.25) 100%)',
-                  boxShadow: isIconicPack
-                    ? '0 -1px 7px 1px rgba(255, 215, 64, 0.65)'
-                    : '0 -1px 7px 1px rgba(59, 130, 246, 0.65)',
+                  background: walkout.crackLine,
+                  boxShadow: walkout.shadow,
                 }}
               />
+              {/* Particules et éclats jaillissants pour UR et L */}
+              {(highestRarityKey === 'UR' || highestRarityKey === 'L') && (
+                <div className="absolute inset-x-0 bottom-0 flex justify-around pointer-events-none">
+                  {[-24, -12, 0, 12, 24].map((offset, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 0, scale: 0.5 }}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        y: [-8, -50 - i * 8],
+                        x: [0, offset],
+                        scale: [0.5, 1.3, 0.2],
+                      }}
+                      transition={{ duration: 0.72, delay: i * 0.04, ease: 'easeOut' }}
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{
+                        backgroundColor: highestRarityKey === 'L' ? '#ffea5a' : '#ffffff',
+                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#ef4444' : '#f59e0b'}`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -202,11 +236,11 @@ export default function BoosterPackView({
                 initial={{ width: '0%' }}
                 animate={{ width: '100%' }}
                 transition={{ duration: 0.24 }}
-                className={`absolute bottom-0 left-0 h-[3px] ${
-                  isIconicPack
-                    ? 'bg-[#d4a11d] shadow-[0_0_14px_#ffea5a]'
-                    : 'bg-[#3366cc] shadow-[0_0_14px_#3366cc]'
-                }`}
+                className="absolute bottom-0 left-0 h-[3px]"
+                style={{
+                  backgroundColor: walkout.tearBarBg,
+                  boxShadow: walkout.tearBarShadow,
+                }}
               />
             )}
           </motion.div>
