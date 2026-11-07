@@ -80,6 +80,7 @@ export default function BoosterOpening({
         {stage === 'pack' || stage === 'tearing' ? (
           <BoosterPackView
             stage={stage}
+            packCards={packCards}
             isIconicPack={isIconicPack}
             activePrice={activePrice}
             freeBoostersCount={freeBoostersCount}

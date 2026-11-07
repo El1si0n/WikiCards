@@ -192,3 +192,125 @@ export function getCardRecycleValue(card) {
 }
 
 export const DEMO_CARDS = [];
+
+export const RARITY_ORDER = ['C', 'PC', 'R', 'SR', 'UR', 'L'];
+
+/**
+ * Configurations des effets de lumière lors de l'ouverture d'un booster, indexées par code de rareté.
+ */
+export const BOOSTER_LIGHT_EFFECTS = {
+  C: {
+    beamGradient:
+      'linear-gradient(to top, rgba(217, 250, 236, 0.78) 0%, rgba(110, 231, 183, 0.45) 22%, rgba(16, 185, 129, 0.16) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(167, 243, 208, 0.45) 14deg, transparent 26deg, rgba(236, 253, 245, 0.6) 42deg, transparent 54deg, rgba(52, 211, 153, 0.65) 65deg, transparent 76deg, rgba(236, 253, 245, 0.6) 88deg, transparent 100deg, rgba(167, 243, 208, 0.45) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(52,211,153,0.25) 0%, rgba(255,255,255,0.85) 25%, #ecfdf5 50%, rgba(255,255,255,0.85) 75%, rgba(52,211,153,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(16, 185, 129, 0.65)',
+    tearLineColor: '#10b981',
+    tearLineShadow: '0 0 14px #34d399',
+    ambientGlow:
+      'radial-gradient(circle, #6ee7b7 0%, #10b981 55%, transparent 100%)',
+  },
+  PC: {
+    beamGradient:
+      'linear-gradient(to top, rgba(191, 227, 255, 0.75) 0%, rgba(96, 165, 250, 0.42) 22%, rgba(51, 102, 204, 0.15) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(147, 197, 253, 0.45) 14deg, transparent 26deg, rgba(224, 242, 254, 0.6) 42deg, transparent 54deg, rgba(96, 165, 250, 0.65) 65deg, transparent 76deg, rgba(224, 242, 254, 0.6) 88deg, transparent 100deg, rgba(147, 197, 253, 0.45) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(96,165,250,0.25) 0%, rgba(255,255,255,0.85) 25%, #eff6ff 50%, rgba(255,255,255,0.85) 75%, rgba(96,165,250,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(59, 130, 246, 0.65)',
+    tearLineColor: '#3366cc',
+    tearLineShadow: '0 0 14px #3366cc',
+    ambientGlow:
+      'radial-gradient(circle, #60a5fa 0%, #3b82f6 55%, transparent 100%)',
+  },
+  R: {
+    beamGradient:
+      'linear-gradient(to top, rgba(233, 213, 255, 0.78) 0%, rgba(192, 132, 252, 0.45) 22%, rgba(147, 51, 234, 0.16) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(216, 180, 254, 0.45) 14deg, transparent 26deg, rgba(250, 245, 255, 0.6) 42deg, transparent 54deg, rgba(168, 85, 247, 0.65) 65deg, transparent 76deg, rgba(250, 245, 255, 0.6) 88deg, transparent 100deg, rgba(216, 180, 254, 0.45) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(168,85,247,0.25) 0%, rgba(255,255,255,0.85) 25%, #faf5ff 50%, rgba(255,255,255,0.85) 75%, rgba(168,85,247,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(168, 85, 247, 0.65)',
+    tearLineColor: '#9333ea',
+    tearLineShadow: '0 0 14px #c084fc',
+    ambientGlow:
+      'radial-gradient(circle, #c084fc 0%, #9333ea 55%, transparent 100%)',
+  },
+  SR: {
+    beamGradient:
+      'linear-gradient(to top, rgba(251, 207, 232, 0.78) 0%, rgba(244, 114, 182, 0.45) 22%, rgba(219, 39, 119, 0.16) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(249, 168, 212, 0.45) 14deg, transparent 26deg, rgba(253, 242, 248, 0.6) 42deg, transparent 54deg, rgba(236, 72, 153, 0.65) 65deg, transparent 76deg, rgba(253, 242, 248, 0.6) 88deg, transparent 100deg, rgba(249, 168, 212, 0.45) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(236,72,153,0.25) 0%, rgba(255,255,255,0.85) 25%, #fdf2f8 50%, rgba(255,255,255,0.85) 75%, rgba(236,72,153,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(236, 72, 153, 0.65)',
+    tearLineColor: '#db2777',
+    tearLineShadow: '0 0 14px #f472b6',
+    ambientGlow:
+      'radial-gradient(circle, #f472b6 0%, #db2777 55%, transparent 100%)',
+  },
+  UR: {
+    beamGradient:
+      'linear-gradient(to top, rgba(254, 215, 170, 0.78) 0%, rgba(251, 146, 60, 0.48) 22%, rgba(234, 88, 12, 0.18) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(253, 186, 116, 0.45) 14deg, transparent 26deg, rgba(255, 247, 237, 0.6) 42deg, transparent 54deg, rgba(249, 115, 22, 0.68) 65deg, transparent 76deg, rgba(255, 247, 237, 0.6) 88deg, transparent 100deg, rgba(253, 186, 116, 0.45) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(249,115,22,0.25) 0%, rgba(255,255,255,0.85) 25%, #fff7ed 50%, rgba(255,255,255,0.85) 75%, rgba(249,115,22,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(249, 115, 22, 0.70)',
+    tearLineColor: '#ea580c',
+    tearLineShadow: '0 0 14px #fb923c',
+    ambientGlow:
+      'radial-gradient(circle, #fb923c 0%, #ea580c 55%, transparent 100%)',
+  },
+  L: {
+    beamGradient:
+      'linear-gradient(to top, rgba(255, 240, 145, 0.78) 0%, rgba(255, 215, 64, 0.45) 22%, rgba(212, 161, 29, 0.16) 55%, transparent 100%)',
+    conicRays:
+      'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(255, 240, 138, 0.48) 14deg, transparent 26deg, rgba(255, 250, 205, 0.62) 42deg, transparent 54deg, rgba(255, 234, 90, 0.68) 65deg, transparent 76deg, rgba(255, 250, 205, 0.62) 88deg, transparent 100deg, rgba(255, 240, 138, 0.48) 114deg, transparent 130deg)',
+    slitGradient:
+      'linear-gradient(90deg, rgba(255,234,90,0.25) 0%, rgba(255,255,255,0.85) 25%, #fffbeb 50%, rgba(255,255,255,0.85) 75%, rgba(255,234,90,0.25) 100%)',
+    slitShadow: '0 -1px 7px 1px rgba(255, 215, 64, 0.65)',
+    tearLineColor: '#d4a11d',
+    tearLineShadow: '0 0 14px #ffea5a',
+    ambientGlow:
+      'radial-gradient(circle, #ffea5a 0%, #f0b429 55%, transparent 100%)',
+  },
+};
+
+/**
+ * Trouve le palier de rareté le plus élevé parmi une liste de cartes.
+ * @param {Array<{ rarity?: string }>} [cards=[]] - Liste des cartes
+ * @returns {RarityTier} Objet palier de rareté le plus élevé
+ */
+export function getHighestRarityTier(cards = []) {
+  if (!cards || cards.length === 0) return RARITY_TIERS[0];
+  let maxRank = -1;
+  let highestTier = RARITY_TIERS[0];
+
+  for (const card of cards) {
+    if (!card || !card.rarity) continue;
+    const rank = RARITY_ORDER.indexOf(card.rarity);
+    if (rank > maxRank) {
+      maxRank = rank;
+      highestTier = getRarityByCode(card.rarity);
+    }
+  }
+
+  return highestTier;
+}
+
+/**
+ * Récupère la configuration d'effet de lumière d'ouverture adaptée à la plus haute rareté du booster.
+ * @param {Array<{ rarity?: string }>} [cards=[]] - Liste des cartes du booster
+ * @param {boolean} [isIconic=false] - Indique si le booster est iconique
+ * @returns {Object} Configuration CSS de l'effet de lumière
+ */
+export function getBoosterOpeningLight(cards = [], isIconic = false) {
+  if (!cards || cards.length === 0) {
+    return isIconic ? BOOSTER_LIGHT_EFFECTS.L : BOOSTER_LIGHT_EFFECTS.C;
+  }
+  const highest = getHighestRarityTier(cards);
+  return BOOSTER_LIGHT_EFFECTS[highest.code] || BOOSTER_LIGHT_EFFECTS.C;
+}
