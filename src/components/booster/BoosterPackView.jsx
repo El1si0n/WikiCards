@@ -24,6 +24,7 @@ import WikithuneIcon from '../WikithuneIcon';
  * @param {function(): void} props.handleOpenPack - Callback d'ouverture du booster
  * @param {function(): void} props.handleSkipIconicToStandard - Callback pour forcer un booster normal
  * @param {boolean} props.isFetching - Indicateur de chargement réseau
+ * @param {boolean} [props.isOpening=false] - Indicateur d'ouverture en cours
  * @param {string|null} props.errorMsg - Message d'erreur éventuel
  */
 export default function BoosterPackView({
@@ -39,8 +40,11 @@ export default function BoosterPackView({
   handleOpenPack,
   handleSkipIconicToStandard,
   isFetching,
+  isOpening = false,
   errorMsg,
 }) {
+  const isLocked = stage !== 'pack' || isOpening || isFetching;
+
   return (
     <motion.div
       key="booster-pack-front"
@@ -64,10 +68,21 @@ export default function BoosterPackView({
       {/* Sachet de booster bien de face */}
       <div
         ref={packRef}
-        onMouseMove={handlePackMouseMove}
-        onMouseLeave={handlePackMouseLeave}
-        onClick={() => handleOpenPack()}
-        className="relative cursor-pointer select-none z-10 flex flex-col items-center"
+        onMouseMove={!isLocked ? handlePackMouseMove : undefined}
+        onMouseLeave={!isLocked ? handlePackMouseLeave : undefined}
+        onClick={!isLocked ? () => handleOpenPack() : undefined}
+        onKeyDown={(e) => {
+          if (!isLocked && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            handleOpenPack();
+          }
+        }}
+        role="button"
+        tabIndex={!isLocked ? 0 : -1}
+        aria-disabled={isLocked}
+        className={`relative select-none z-10 flex flex-col items-center outline-none ${
+          !isLocked ? 'cursor-pointer' : 'cursor-default pointer-events-none'
+        }`}
       >
         <motion.div
           animate={
@@ -369,10 +384,14 @@ export default function BoosterPackView({
 
       {/* Texte d'instruction sous le sachet */}
       <div className="mt-9 flex flex-col items-center gap-2 z-10 text-center">
-        {isFetching ? (
+        {isFetching || (isOpening && stage === 'pack') ? (
           <div className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3366cc]">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Tirage des 6 pages sur Wikipédia...</span>
+          </div>
+        ) : stage === 'tearing' ? (
+          <div className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3366cc]">
+            <span>Ouverture du booster en cours...</span>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
@@ -383,7 +402,8 @@ export default function BoosterPackView({
               <button
                 type="button"
                 onClick={handleSkipIconicToStandard}
-                className="wiki-link text-[12px]"
+                disabled={isLocked}
+                className="wiki-link text-[12px] disabled:opacity-50 disabled:pointer-events-none"
               >
                 Passer au booster standard ({freeBoostersCount > 0 ? 0 : boosterPrice} ₩)
               </button>

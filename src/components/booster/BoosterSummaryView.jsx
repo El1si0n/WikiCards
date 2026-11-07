@@ -17,6 +17,7 @@ import WikiCard from '../WikiCard';
  * @param {function(string): void} [props.onToggleFavorite] - Bascule favori
  * @param {function(): void} props.handleReopenBooster - Callback de réouverture immédiate
  * @param {boolean} props.isFetching - Indicateur de tirage réseau en cours
+ * @param {boolean} [props.isOpening=false] - Indicateur d'ouverture en cours
  * @param {function(): void} [props.onGoToClasseur] - Callback pour naviguer vers le classeur
  * @param {function(): void} props.handleResetToNewPack - Callback pour clore et revenir au sachet
  */
@@ -26,9 +27,12 @@ export default function BoosterSummaryView({
   onToggleFavorite,
   handleReopenBooster,
   isFetching,
+  isOpening = false,
   onGoToClasseur,
   handleResetToNewPack,
 }) {
+  const isBusy = isFetching || isOpening;
+
   return (
     <motion.div
       key="booster-summary"
@@ -66,12 +70,12 @@ export default function BoosterSummaryView({
           <button
             type="button"
             onClick={handleReopenBooster}
-            disabled={isFetching}
-            className="order-1 sm:order-2 inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs w-full sm:w-auto"
+            disabled={isBusy}
+            className="order-1 sm:order-2 inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#006b24] hover:bg-[#00802b] active:bg-[#00571d] disabled:bg-[#c8ccd1] disabled:cursor-not-allowed disabled:pointer-events-none text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors shadow-2xs w-full sm:w-auto"
             title="Ouvrir immédiatement un nouveau booster"
           >
             <RotateCw
-              className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
+              className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`}
             />
             <span>Réouvrir un booster</span>
           </button>
@@ -80,7 +84,8 @@ export default function BoosterSummaryView({
             <button
               type="button"
               onClick={onGoToClasseur}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#f8f9fa] hover:bg-white text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
+              disabled={isBusy}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#f8f9fa] hover:bg-white disabled:opacity-50 disabled:pointer-events-none text-[#202122] font-bold text-[13px] border border-[#a2a9b1] rounded-[2px] cursor-pointer transition-colors"
             >
               <BookOpen className="w-4 h-4 text-[#3366cc] shrink-0" />
               <span className="truncate">Classeur</span>
@@ -89,7 +94,8 @@ export default function BoosterSummaryView({
             <button
               type="button"
               onClick={handleResetToNewPack}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#3366cc] hover:bg-[#447ff5] text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
+              disabled={isBusy}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 bg-[#3366cc] hover:bg-[#447ff5] disabled:bg-[#a2a9b1] disabled:cursor-not-allowed disabled:pointer-events-none text-white font-bold text-[13px] rounded-[2px] cursor-pointer transition-colors"
             >
               <span>Terminer</span>
             </button>

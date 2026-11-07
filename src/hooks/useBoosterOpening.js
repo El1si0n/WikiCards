@@ -71,6 +71,7 @@ export default function useBoosterOpening({
   const [packCards, setPackCards] = useState([]);
   const [currentCardIdx, setCurrentCardIdx] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
   const [isIconicRoll, setIsIconicRoll] = useState(() =>
@@ -91,6 +92,23 @@ export default function useBoosterOpening({
   const preloadedPackRef = useRef(null);
   const isPreloadingRef = useRef(false);
   const tearTimerRef = useRef(null);
+  const isOpeningRef = useRef(false);
+  const stageRef = useRef(stage);
+  const pendingCardsRef = useRef(null);
+  const onCardsOpenedRef = useRef(onCardsOpened);
+
+  useEffect(() => {
+    onCardsOpenedRef.current = onCardsOpened;
+  }, [onCardsOpened]);
+
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
+
+  const updateStage = (newStage) => {
+    stageRef.current = newStage;
+    setStage(newStage);
+  };
 
   const preloadNextBooster = async () => {
     if (isPreloadingRef.current || preloadedPackRef.current) return;
@@ -113,6 +131,11 @@ export default function useBoosterOpening({
       if (tearTimerRef.current) {
         clearTimeout(tearTimerRef.current);
       }
+      if (pendingCardsRef.current && onCardsOpenedRef.current) {
+        onCardsOpenedRef.current(pendingCardsRef.current);
+        pendingCardsRef.current = null;
+      }
+      isOpeningRef.current = false;
     };
   }, []);
 
@@ -151,7 +174,16 @@ export default function useBoosterOpening({
   };
 
   const handleOpenPack = async (overrideIsIconic = null) => {
-    if (isFetching) return;
+    // Sécurité stricte : bloque tout double-clic ou tentative d'ouverture concurrente
+    if (
+      isOpeningRef.current ||
+      isFetching ||
+      (stageRef.current !== 'pack' && stageRef.current !== 'summary')
+    ) {
+      return;
+    }
+    isOpeningRef.current = true;
+    setIsOpening(true);
     setErrorMsg(null);
 
     const isPackIconic =
@@ -165,8 +197,10 @@ export default function useBoosterOpening({
 
     if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
-      setStage('pack');
+      updateStage('pack');
       setErrorMsg("Vous n'avez pas assez de Wikithunes");
+      isOpeningRef.current = false;
+      setIsOpening(false);
       return;
     }
 
@@ -184,7 +218,9 @@ export default function useBoosterOpening({
       } catch {
         setErrorMsg('Impossible de joindre Wikipédia. Veuillez réessayer.');
         setIsFetching(false);
-        setStage('pack');
+        updateStage('pack');
+        isOpeningRef.current = false;
+        setIsOpening(false);
         return;
       }
       setIsFetching(false);
@@ -192,7 +228,9 @@ export default function useBoosterOpening({
 
     if (!cards || cards.length === 0) {
       setErrorMsg('Aucun article récupéré. Veuillez réessayer.');
-      setStage('pack');
+      updateStage('pack');
+      isOpeningRef.current = false;
+      setIsOpening(false);
       return;
     }
 
@@ -219,21 +257,29 @@ export default function useBoosterOpening({
 
     setPackCards(annotatedCards);
     setCurrentCardIdx(0);
-    setStage('tearing');
+    updateStage('tearing');
+    pendingCardsRef.current = annotatedCards;
 
     preloadNextBooster();
 
+    if (tearTimerRef.current) {
+      clearTimeout(tearTimerRef.current);
+    }
     tearTimerRef.current = setTimeout(() => {
-      setStage('card_by_card');
-      if (onCardsOpened) {
-        onCardsOpened(annotatedCards);
+      updateStage('card_by_card');
+      if (onCardsOpenedRef.current && pendingCardsRef.current) {
+        onCardsOpenedRef.current(pendingCardsRef.current);
+        pendingCardsRef.current = null;
       }
       soundManager.playRarityReveal(annotatedCards[0]?.rarity);
       triggerCardConfettiIfRare(annotatedCards[0]);
+      isOpeningRef.current = false;
+      setIsOpening(false);
     }, 850);
   };
 
   const handleReopenBooster = () => {
+    if (isOpeningRef.current || isFetching) return;
     const nextIsIconic = getOrRollNextBoosterIsIconic();
     setIsIconicRoll(nextIsIconic);
     handleOpenPack(nextIsIconic);
@@ -249,25 +295,27 @@ export default function useBoosterOpening({
     } else {
       soundManager.playCardSlide();
       soundManager.playSummaryFanfare();
-      setStage('summary');
+      updateStage('summary');
     }
   };
 
   const handleSkipToSummary = () => {
     soundManager.playSummaryFanfare();
-    setStage('summary');
+    updateStage('summary');
   };
 
   const handleResetToNewPack = () => {
+    if (isOpeningRef.current || isFetching) return;
     soundManager.playBoosterCharge();
     setIsIconicRoll(getOrRollNextBoosterIsIconic());
-    setStage('pack');
+    updateStage('pack');
     setPackCards([]);
     setCurrentCardIdx(0);
     preloadNextBooster();
   };
 
   const handleSkipIconicToStandard = () => {
+    if (isOpeningRef.current || isFetching || stageRef.current !== 'pack') return;
     setErrorMsg(null);
     setIsIconicRoll(false);
     try {
@@ -289,6 +337,7 @@ export default function useBoosterOpening({
     packCards,
     currentCardIdx,
     isFetching,
+    isOpening,
     errorMsg,
     isIconicPack,
     isFreeStandardPack,

@@ -47,6 +47,7 @@ export default function BoosterOpening({
     packCards,
     currentCardIdx,
     isFetching,
+    isOpening,
     errorMsg,
     isIconicPack,
     activePrice,
@@ -90,6 +91,7 @@ export default function BoosterOpening({
             handleOpenPack={handleOpenPack}
             handleSkipIconicToStandard={handleSkipIconicToStandard}
             isFetching={isFetching}
+            isOpening={isOpening}
             errorMsg={errorMsg}
           />
         ) : stage === 'card_by_card' && currentCard ? (
@@ -110,6 +112,7 @@ export default function BoosterOpening({
             onToggleFavorite={onToggleFavorite}
             handleReopenBooster={handleReopenBooster}
             isFetching={isFetching}
+            isOpening={isOpening}
             onGoToClasseur={onGoToClasseur}
             handleResetToNewPack={handleResetToNewPack}
           />
