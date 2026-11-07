@@ -12,6 +12,18 @@ import StatsHistoryOverview from './StatsHistoryOverview';
 import { generateMetricTimeSeries, calculateEvolutionPct } from '../utils/statsHistory';
 import { METRIC_DEFINITIONS, PERIODS } from '../config/statsMetrics';
 
+const CASINO_MONEY_SUBTABS = [
+  { id: 'netCasinoBilan', label: 'Bilan Net' },
+  { id: 'netCasinoGains', label: 'Gains bruts' },
+  { id: 'lostMoneyCasino', label: 'Mises perdues' },
+];
+
+const CARDS_BILAN_SUBTABS = [
+  { id: 'netCardsBilan', label: 'Bilan Net' },
+  { id: 'wonCards', label: 'Cartes gagnées' },
+  { id: 'lostCards', label: 'Cartes perdues' },
+];
+
 /**
  * Modale de consultation historique d'une métrique de jeu.
  * @param {Object} props
@@ -43,15 +55,33 @@ export default function StatsHistoryModal({
   snapshots = undefined,
   userCode = null,
 }) {
+  const [subMetricOverride, setSubMetricOverride] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
 
-  const def = METRIC_DEFINITIONS[metricId] || METRIC_DEFINITIONS.collectionValue;
+  const subTabs = useMemo(() => {
+    if (['netCasinoBilan', 'netCasinoGains', 'lostMoneyCasino'].includes(metricId)) {
+      return CASINO_MONEY_SUBTABS;
+    }
+    if (['netCardsBilan', 'wonCards', 'lostCards'].includes(metricId)) {
+      return CARDS_BILAN_SUBTABS;
+    }
+    return null;
+  }, [metricId]);
+
+  const activeMetricId = useMemo(() => {
+    if (subTabs && subMetricOverride && subTabs.some((t) => t.id === subMetricOverride)) {
+      return subMetricOverride;
+    }
+    return metricId;
+  }, [metricId, subTabs, subMetricOverride]);
+
+  const def = METRIC_DEFINITIONS[activeMetricId] || METRIC_DEFINITIONS.collectionValue;
   const MetricIcon = def.icon;
-  const isNetMetric = metricId === 'netCasinoBilan' || metricId === 'netCardsBilan';
+  const isNetMetric = activeMetricId === 'netCasinoBilan' || activeMetricId === 'netCardsBilan';
 
   const points = useMemo(() => {
-    return generateMetricTimeSeries(metricId, {
+    return generateMetricTimeSeries(activeMetricId, {
       collection,
       stats,
       wikithunes,
@@ -63,7 +93,7 @@ export default function StatsHistoryModal({
       userCode,
     });
   }, [
-    metricId,
+    activeMetricId,
     collection,
     stats,
     wikithunes,
@@ -117,8 +147,21 @@ export default function StatsHistoryModal({
 
   if (!isOpen) return null;
 
-  const isPositive = activeDelta.val >= 0;
+  const isLossMetric = activeMetricId === 'lostMoneyCasino' || activeMetricId === 'lostCards';
+  const isPositive = isLossMetric ? activeDelta.val <= 0 : activeDelta.val >= 0;
   const isZero = activeDelta.val === 0;
+
+  const trendTone = isNetMetric
+    ? activePoint.value > 0
+      ? 'positive'
+      : activePoint.value < 0
+      ? 'negative'
+      : 'neutral'
+    : isZero
+    ? 'neutral'
+    : isPositive
+    ? 'positive'
+    : 'negative';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-xs animate-in fade-in duration-200">
@@ -156,7 +199,33 @@ export default function StatsHistoryModal({
           </button>
         </div>
 
-        <div className="px-5 sm:px-7 pt-5 pb-2">
+        {/* Sous-onglets rapides pour explorer les composantes détaillées des bilans (Gains vs Pertes) */}
+        {subTabs && (
+          <div className="flex items-center gap-1.5 px-5 py-2 border-b border-[#eaecf0] dark:border-[#30363d] bg-[#fcfcfd] dark:bg-[#151a21] overflow-x-auto">
+            {subTabs.map((tab) => {
+              const isSelected = activeMetricId === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setSubMetricOverride(tab.id);
+                    setHoverIndex(null);
+                  }}
+                  className={`px-2.5 py-1 rounded-[2px] text-[12px] font-bold cursor-pointer transition-colors whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-[#eaf3ff] dark:bg-[#1f2937] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc]/40'
+                      : 'text-[#54595d] dark:text-[#8b949e] hover:bg-[#eaecf0]/60 dark:hover:bg-[#21262d]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="px-5 sm:px-7 pt-4 pb-2">
           <div className="flex flex-wrap items-baseline gap-2.5">
             <span className="text-[36px] sm:text-[44px] font-black tracking-tight leading-none text-[#101418] dark:text-white">
               {new Intl.NumberFormat('fr-FR').format(activePoint.value)}
@@ -170,6 +239,10 @@ export default function StatsHistoryModal({
             )}
           </div>
 
+          <p className="text-[12px] text-[#72777d] dark:text-[#8b949e] m-0 mt-1">
+            {def.description}
+          </p>
+
           <div className="flex flex-wrap items-center gap-2 mt-2 text-[13px]">
             <span
               className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-[2px] ${
@@ -180,15 +253,15 @@ export default function StatsHistoryModal({
                   : 'bg-[#ffe9e5] text-[#b32424] dark:bg-[#401818] dark:text-[#ff7875]'
               }`}
             >
-              {isPositive && !isZero ? (
+              {activeDelta.val > 0 ? (
                 <TrendingUp className="w-3.5 h-3.5" />
-              ) : !isZero ? (
+              ) : activeDelta.val < 0 ? (
                 <TrendingDown className="w-3.5 h-3.5" />
               ) : null}
               <span>
-                {isPositive && !isZero ? '+' : ''}
+                {activeDelta.val > 0 ? '+' : ''}
                 {new Intl.NumberFormat('fr-FR').format(activeDelta.val)}
-                {def.unit} ({isPositive && !isZero ? '+' : ''}
+                {def.unit} ({activeDelta.val > 0 ? '+' : ''}
                 {activeDelta.pct.toFixed(1)} %)
               </span>
             </span>
@@ -210,6 +283,8 @@ export default function StatsHistoryModal({
         <StatsHistoryChart
           points={points}
           isNetMetric={isNetMetric}
+          trendTone={trendTone}
+          period={selectedPeriod}
           hoverIndex={hoverIndex}
           onHoverIndexChange={setHoverIndex}
         />

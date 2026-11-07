@@ -1,12 +1,13 @@
 /**
  * @file Rôle : Onglet de l'annuaire communautaire affichant la liste ordonnée et le classement des joueurs.
- * Dépendances : React, `lucide-react`, `../WikithuneIcon`.
+ * Dépendances : React, `lucide-react`, `../WikithuneIcon`, `../../utils/statsHistory`.
  * Effets de bord : Sélection d'un profil joueur pour inspection.
  */
 
 import React from 'react';
 import { Search, Crown } from 'lucide-react';
 import WikithuneIcon from '../WikithuneIcon';
+import { countRarityCopies, countGifCopies } from '../../utils/statsHistory';
 
 /**
  * Sous-composant affichant l'annuaire de tous les joueurs inscrits.
@@ -60,16 +61,13 @@ export default function SocialDirectoryTab({
               ? collection.reduce((s, c) => s + (c.count || 1), 0)
               : u.totalCardsCount || 0;
             const displayLegendaryCount = isMe
-              ? collection.filter((c) => c.rarity === 'L').length
+              ? countRarityCopies(collection, 'L')
               : u.legendaryCount || 0;
             const displayUltraRareCount = isMe
-              ? collection.filter((c) => c.rarity === 'UR').length
+              ? countRarityCopies(collection, 'UR')
               : u.ultraRareCount || 0;
             const displayGifCount = isMe
-              ? collection.filter(
-                  (c) =>
-                    Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-                ).length
+              ? countGifCopies(collection)
               : u.gifCount || 0;
             const displayWikifeet = isMe ? wikithunes : u.wikithunes || 0;
 

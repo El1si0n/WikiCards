@@ -12,6 +12,7 @@ import {
   KeyRound,
   LogOut,
   Trash2,
+  TrendingUp,
 } from 'lucide-react';
 
 /**
@@ -30,6 +31,7 @@ import {
  * @param {function(): void} props.onCancelEditIdentity - Annulation de l'édition
  * @param {function(React.FormEvent): void} props.onSaveIdentity - Sauvegarde de l'identité
  * @param {function(): void} props.onToggleAvatarPicker - Ouverture/fermeture du choix d'avatar
+ * @param {function(string): void} [props.onSelectMetric] - Ouverture de la modale d'historique pour une métrique (ex: playerScore)
  * @param {function(): void} [props.onLogout] - Déconnexion de la session
  * @param {function(): void} [props.onOpenDeleteConfirm] - Ouverture de la modale de suppression
  */
@@ -47,6 +49,7 @@ export default function ProfileHeader({
   onCancelEditIdentity,
   onSaveIdentity,
   onToggleAvatarPicker,
+  onSelectMetric,
   onLogout,
   onOpenDeleteConfirm,
 }) {
@@ -101,12 +104,20 @@ export default function ProfileHeader({
                   {profile.username}
                 </h3>
                 {typeof playerScore === 'number' && (
-                  <span
-                    className="text-[13px] font-medium text-[#72777d] dark:text-[#8b949e]"
-                    title="Votre score d'accomplissement"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectMetric?.('playerScore');
+                    }}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] text-[13px] font-medium text-[#72777d] dark:text-[#8b949e] hover:bg-[#eaf3ff] dark:hover:bg-[#1f2937] hover:text-[#3366cc] dark:hover:text-[#6699ff] cursor-pointer transition-colors"
+                    title="Cliquer pour afficher le graphique d'évolution du score d'accomplissement"
                   >
-                    {new Intl.NumberFormat('fr-FR').format(playerScore)} pts
-                  </span>
+                    <span>
+                      {new Intl.NumberFormat('fr-FR').format(playerScore)} pts
+                    </span>
+                    <TrendingUp className="w-3 h-3 opacity-70" />
+                  </button>
                 )}
                 <Pencil className="w-3.5 h-3.5 text-[#72777d] opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>

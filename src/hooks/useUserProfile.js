@@ -1,6 +1,6 @@
 /**
  * @file Rôle : Custom hook encapsulant l'état réactif, les calculs de statistiques et les actions du profil joueur.
- * Dépendances : React, `../config/rarities`, `../config/themes`, `../config/playerScore`, `../services/sound`.
+ * Dépendances : React, `../config/rarities`, `../config/themes`, `../config/playerScore`, `../utils/statsHistory`, `../services/sound`.
  * Effets de bord : Mise à jour du profil utilisateur, copie dans le presse-papier, audio procédural.
  */
 
@@ -8,6 +8,7 @@ import { useState, useMemo } from 'react';
 import { getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
+import { countRarityCopies, countGifCopies } from '../utils/statsHistory';
 import { soundManager } from '../services/sound';
 
 const RARITY_ORDER = {
@@ -83,25 +84,22 @@ export default function useUserProfile({
   );
 
   const legendaryCount = useMemo(
-    () => collection.filter((c) => c.rarity === 'L').length,
+    () => countRarityCopies(collection, 'L'),
     [collection]
   );
 
   const ultraRareCount = useMemo(
-    () => collection.filter((c) => c.rarity === 'UR').length,
+    () => countRarityCopies(collection, 'UR'),
     [collection]
   );
 
   const superRareCount = useMemo(
-    () => collection.filter((c) => c.rarity === 'SR').length,
+    () => countRarityCopies(collection, 'SR'),
     [collection]
   );
 
   const gifCardsCount = useMemo(
-    () =>
-      collection.filter((c) =>
-        Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-      ).length,
+    () => countGifCopies(collection),
     [collection]
   );
 

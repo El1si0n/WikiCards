@@ -1,6 +1,8 @@
-// Rôle : Définition des métriques de statistiques et des périodes de visualisation (Trade Republic).
-// Dépendances : Lucide-react (Coins, Layers, Package, Crown, Sparkles, BookOpen, Flame, TrendingDown, TrendingUp).
-// Effets de bord : Aucun (configuration pure).
+/**
+ * @file Rôle : Définition des métriques de statistiques et des périodes de visualisation (Trade Republic).
+ * Dépendances : Lucide-react (Coins, Layers, Package, Crown, Sparkles, BookOpen, Flame, TrendingDown, TrendingUp, Trophy).
+ * Effets de bord : Aucun (configuration pure).
+ */
 
 import {
   Coins,
@@ -12,12 +14,21 @@ import {
   Flame,
   TrendingDown,
   TrendingUp,
+  Trophy,
 } from 'lucide-react';
 
 /**
- * Définition complète des 16 métriques observables dans l'historique du joueur.
+ * Définition complète des 17 métriques observables dans l'historique du joueur.
  */
 export const METRIC_DEFINITIONS = {
+  playerScore: {
+    title: "Score d'accomplissement",
+    unit: ' pts',
+    isCurrency: false,
+    description:
+      'Évolution du score global du collectionneur (raretés, diversité, économie et prouesses au jeu).',
+    icon: Trophy,
+  },
   collectionValue: {
     title: 'Valeur du classeur',
     unit: ' ₩',

@@ -150,15 +150,18 @@ export function calculatePlayerScore(playerData = {}) {
       cCount * RARITY_SCORE_WEIGHTS.C;
   }
 
-  // 8. Cartes GIF / Métal (holographiques ou animées)
+  // 8. Cartes GIF / Métal (holographiques ou animées, en volume d'exemplaires)
   const gifCards = Number(
     playerData.gifCount ??
       playerData.gifCardsCount ??
       playerData.gifs ??
       (Array.isArray(playerData.collection)
-        ? playerData.collection.filter((c) =>
-            Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-          ).length
+        ? playerData.collection.reduce((sum, c) => {
+            const isGifCard = Boolean(
+              c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || '')
+            );
+            return isGifCard ? sum + (Number(c?.count) || 1) : sum;
+          }, 0)
         : 0)
   );
 

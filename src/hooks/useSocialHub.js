@@ -1,6 +1,6 @@
 /**
  * @file Rôle : Custom hook gérant la communauté des joueurs, l'annuaire, le classement, les profils pairs et les échanges.
- * Dépendances : React, `../services/userStorage`, `../services/sound`, `../config/playerScore`, `../config/rarities`.
+ * Dépendances : React, `../services/userStorage`, `../services/sound`, `../config/playerScore`, `../config/rarities`, `../utils/statsHistory`.
  * Effets de bord : Polling périodique (8s), lecture/écriture API users et trades.
  */
 
@@ -15,6 +15,7 @@ import {
 import { soundManager } from '../services/sound';
 import { calculatePlayerScore } from '../config/playerScore';
 import { getCardRecycleValue } from '../config/rarities';
+import { countRarityCopies, countGifCopies } from '../utils/statsHistory';
 
 /**
  * Hook personnalisé encapsulant toutes les interactions sociales et d'échange de cartes.
@@ -200,27 +201,25 @@ export default function useSocialHub({
         ? collection.reduce((s, c) => s + (c.count || 1), 0)
         : u.totalCardsCount || uColCount;
       const uLegCount = isMe
-        ? collection.filter((c) => c.rarity === 'L').length
+        ? countRarityCopies(collection, 'L')
         : u.legendaryCount || 0;
       const uUrCount = isMe
-        ? collection.filter((c) => c.rarity === 'UR').length
+        ? countRarityCopies(collection, 'UR')
         : u.ultraRareCount || 0;
       const uSrCount = isMe
-        ? collection.filter((c) => c.rarity === 'SR').reduce((s, c) => s + (c.count || 1), 0)
+        ? countRarityCopies(collection, 'SR')
         : u.superRareCount || 0;
       const uRCount = isMe
-        ? collection.filter((c) => c.rarity === 'R').reduce((s, c) => s + (c.count || 1), 0)
+        ? countRarityCopies(collection, 'R')
         : u.rareCount || 0;
       const uPcCount = isMe
-        ? collection.filter((c) => c.rarity === 'PC').reduce((s, c) => s + (c.count || 1), 0)
+        ? countRarityCopies(collection, 'PC')
         : u.uncommonCount || 0;
       const uCCount = isMe
-        ? collection.filter((c) => c.rarity === 'C').reduce((s, c) => s + (c.count || 1), 0)
+        ? countRarityCopies(collection, 'C')
         : u.commonCount || 0;
       const uGifCount = isMe
-        ? collection.filter((c) =>
-            Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-          ).length
+        ? countGifCopies(collection)
         : u.gifCount || 0;
       const uColVal = isMe
         ? collection.reduce((s, c) => s + getCardRecycleValue(c) * (c.count || 1), 0)
@@ -323,37 +322,33 @@ export default function useSocialHub({
 
     const totalCopies = isSelectedPeerMe
       ? collection.reduce((s, c) => s + (c.count || 1), 0)
-      : typeof selectedPeer?.totalCardsCount === 'number'
-      ? selectedPeer.totalCardsCount
-      : peerCollection.reduce((s, c) => s + (c.count || 1), 0);
+      : peerCollection.length > 0
+      ? peerCollection.reduce((s, c) => s + (c.count || 1), 0)
+      : Number(selectedPeer?.totalCardsCount || 0);
 
     const totalVal = isSelectedPeerMe
       ? collection.reduce((s, c) => s + getCardRecycleValue(c) * (c.count || 1), 0)
-      : typeof selectedPeer?.collectionValue === 'number'
-      ? selectedPeer.collectionValue
-      : peerCollection.reduce((s, c) => s + getCardRecycleValue(c) * (c.count || 1), 0);
+      : peerCollection.length > 0
+      ? peerCollection.reduce((s, c) => s + getCardRecycleValue(c) * (c.count || 1), 0)
+      : Number(selectedPeer?.collectionValue || 0);
 
     const legendaries = isSelectedPeerMe
-      ? collection.filter((c) => c.rarity === 'L').length
-      : typeof selectedPeer?.legendaryCount === 'number'
-      ? selectedPeer.legendaryCount
-      : peerCollection.filter((c) => c.rarity === 'L').length;
+      ? countRarityCopies(collection, 'L')
+      : peerCollection.length > 0
+      ? countRarityCopies(peerCollection, 'L')
+      : Number(selectedPeer?.legendaryCount || 0);
 
     const ultraRares = isSelectedPeerMe
-      ? collection.filter((c) => c.rarity === 'UR').length
-      : typeof selectedPeer?.ultraRareCount === 'number'
-      ? selectedPeer.ultraRareCount
-      : peerCollection.filter((c) => c.rarity === 'UR').length;
+      ? countRarityCopies(collection, 'UR')
+      : peerCollection.length > 0
+      ? countRarityCopies(peerCollection, 'UR')
+      : Number(selectedPeer?.ultraRareCount || 0);
 
     const gifs = isSelectedPeerMe
-      ? collection.filter((c) =>
-          Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-        ).length
-      : typeof selectedPeer?.gifCount === 'number'
-      ? selectedPeer.gifCount
-      : peerCollection.filter((c) =>
-          Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-        ).length;
+      ? countGifCopies(collection)
+      : peerCollection.length > 0
+      ? countGifCopies(peerCollection)
+      : Number(selectedPeer?.gifCount || 0);
 
     const boostersOpened = Number(raw.boostersOpened || 0);
     const lostMoneyCasino = Number(raw.lostMoneyCasino || 0);

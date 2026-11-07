@@ -8,6 +8,18 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import WikithuneIcon from '../WikithuneIcon';
 
+const TILE_CLASS =
+  'bg-[#f8f9fa] dark:bg-[#161a20] hover:bg-[#eaf3ff] dark:hover:bg-[#1f2937] border border-[#eaecf0] dark:border-[#2d3542] hover:border-[#3366cc] dark:hover:border-[#6699ff] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative';
+
+const LABEL_CLASS =
+  'block text-[11.5px] text-[#54595d] dark:text-[#a2a9b1] group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] uppercase font-bold truncate transition-colors';
+
+const ICON_CLASS =
+  'w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] dark:group-hover:text-[#6699ff] opacity-0 group-hover:opacity-100 transition-opacity shrink-0';
+
+const VALUE_CLASS =
+  'text-[18px] font-extrabold text-[#202122] dark:text-[#eaecf0] mt-1';
+
 /**
  * Composant de la grille des 12 statistiques du joueur.
  * @param {Object} props
@@ -24,6 +36,7 @@ import WikithuneIcon from '../WikithuneIcon';
  * @param {number} props.netCardsBilan - Bilan net des cartes (gagnées - perdues)
  * @param {number} props.totalCardsDrawn - Cumul total de cartes tirées depuis l'inscription
  * @param {function(string): void} props.onSelectMetric - Callback d'ouverture de l'historique Trade Republic
+ * @returns {JSX.Element} Grille réactive des 12 métriques
  */
 export default function ProfileStatsGrid({
   collectionLength,
@@ -46,17 +59,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('uniqueCardsCount')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Articles uniques
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Articles uniques</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {collectionLength}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(collectionLength)}
         </div>
       </button>
 
@@ -64,17 +75,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('totalCardsCount')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Total de cartes
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Total de cartes</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {totalCopiesCount}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(totalCopiesCount)}
         </div>
       </button>
 
@@ -82,16 +91,14 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('wikithunes')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Solde actuel
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Solde actuel</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
+        <div className={`${VALUE_CLASS} inline-flex items-center gap-1`}>
           <span>{new Intl.NumberFormat('fr-FR').format(wikithunes)}</span>
           <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
         </div>
@@ -101,16 +108,14 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('collectionValue')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Valeur du classeur
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Valeur du classeur</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
+        <div className={`${VALUE_CLASS} inline-flex items-center gap-1`}>
           <span>
             {new Intl.NumberFormat('fr-FR').format(collectionTotalValue)}
           </span>
@@ -122,17 +127,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('boostersOpened')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Boosters ouverts
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Boosters ouverts</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {boostersOpened}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(boostersOpened)}
         </div>
       </button>
 
@@ -140,17 +143,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('legendaryCount')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Légendaires (L)
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Légendaires (L)</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {legendaryCount}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(legendaryCount)}
         </div>
       </button>
 
@@ -158,17 +159,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('ultraRareCount')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Ultra Rares (UR)
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Ultra Rares (UR)</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {ultraRareCount}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(ultraRareCount)}
         </div>
       </button>
 
@@ -176,17 +175,15 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('gifCount')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
-          <span className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold transition-colors">
-            Cartes GIF (Métal)
-          </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex items-center justify-between gap-1">
+          <span className={LABEL_CLASS}>Cartes GIF (Métal)</span>
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
-          {gifCardsCount}
+        <div className={VALUE_CLASS}>
+          {new Intl.NumberFormat('fr-FR').format(gifCardsCount)}
         </div>
       </button>
 
@@ -194,20 +191,21 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('netCasinoBilan')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher la courbe P&L d'évolution Trade Republic (Gains − Pertes)"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1">
           <span
-            className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+            className={LABEL_CLASS}
             title="Bilan financier net au jeu Plus ou Moins (Bénéfices nets empochés − Mises perdues)"
           >
             Bilan Casino (Net)
           </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1 inline-flex items-center gap-1">
+        <div className={`${VALUE_CLASS} inline-flex items-center gap-1`}>
           <span>
+            {casinoBilan > 0 ? '+' : ''}
             {new Intl.NumberFormat('fr-FR').format(casinoBilan)}
           </span>
           <WikithuneIcon className="w-4 h-4 text-[#3366cc]" />
@@ -218,19 +216,19 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('recordStreak')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1">
           <span
-            className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+            className={LABEL_CLASS}
             title="Plus longue série ininterrompue de bonnes réponses au jeu Plus ou Moins"
           >
             Série record
           </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+        <div className={VALUE_CLASS}>
           {new Intl.NumberFormat('fr-FR').format(recordStreak)}
         </div>
       </button>
@@ -239,19 +237,20 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('netCardsBilan')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher la courbe d'évolution Trade Republic (Cartes gagnées − Cartes perdues)"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1">
           <span
-            className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+            className={LABEL_CLASS}
             title="Bilan net des cartes au jeu (Cartes gagnées lors des upgrades et quitte ou double − Cartes perdues)"
           >
             Bilan Cartes (Net)
           </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+        <div className={VALUE_CLASS}>
+          {netCardsBilan > 0 ? '+' : ''}
           {new Intl.NumberFormat('fr-FR').format(netCardsBilan)}
         </div>
       </button>
@@ -260,19 +259,19 @@ export default function ProfileStatsGrid({
       <button
         type="button"
         onClick={() => onSelectMetric('totalCardsDrawn')}
-        className="bg-[#f8f9fa] hover:bg-[#eaf3ff] border border-[#eaecf0] hover:border-[#3366cc] rounded-[2px] p-3 text-left cursor-pointer transition-all group relative"
+        className={TILE_CLASS}
         title="Cliquer pour afficher le graphique d'évolution Trade Republic"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1">
           <span
-            className="block text-[11.5px] text-[#54595d] group-hover:text-[#3366cc] uppercase font-bold truncate transition-colors"
+            className={LABEL_CLASS}
             title="Cumul total de toutes les cartes piochées dans l'histoire de votre compte (Volume exploré)"
           >
             Cartes tirées au total
           </span>
-          <TrendingUp className="w-3.5 h-3.5 text-[#a2a9b1] group-hover:text-[#3366cc] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <TrendingUp className={ICON_CLASS} />
         </div>
-        <div className="text-[18px] font-extrabold text-[#202122] mt-1">
+        <div className={VALUE_CLASS}>
           {new Intl.NumberFormat('fr-FR').format(totalCardsDrawn)}
         </div>
       </button>

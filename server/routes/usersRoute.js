@@ -103,13 +103,15 @@ export async function handleUsersRoute(req, res, pathname) {
           commonCount: col
             .filter((c) => c.rarity === 'C')
             .reduce((s, c) => s + (c.count || 1), 0),
-          gifCount: col.filter(
-            (c) =>
+          gifCount: col.reduce((s, c) => {
+            const isGifCard = Boolean(
               c.isFoil ||
-              c.isShiny ||
-              c.isGif ||
-              (typeof c.image === 'string' && c.image.toLowerCase().includes('.gif'))
-          ).length,
+                c.isShiny ||
+                c.isGif ||
+                (typeof c.image === 'string' && c.image.toLowerCase().includes('.gif'))
+            );
+            return isGifCard ? s + (c.count || 1) : s;
+          }, 0),
           collectionValue: col.reduce((s, c) => {
             const baseMap = { C: 10, PC: 35, R: 125, SR: 420, UR: 710, L: 2100 };
             const base = baseMap[c.rarity] || 10;

@@ -117,6 +117,7 @@ export default function UserProfile({
           onCancelEditIdentity={handleCancelEditIdentity}
           onSaveIdentity={handleSaveIdentity}
           onToggleAvatarPicker={() => setIsPickingAvatar((prev) => !prev)}
+          onSelectMetric={(metricKey) => setHistoryModalMetric(metricKey)}
           onLogout={onLogout}
           onOpenDeleteConfirm={() => setIsConfirmingDelete(true)}
         />

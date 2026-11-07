@@ -31,6 +31,8 @@ import {
   recordStatsSnapshot,
   getSavedStatsSnapshots,
   getSnapshotStorageKey,
+  countRarityCopies,
+  countGifCopies,
 } from '../utils/statsHistory';
 import { soundManager } from '../services/sound';
 
@@ -340,13 +342,12 @@ export function usePlayerAccount({
     ) {
       try {
         const safeCol = Array.isArray(collection) ? collection : [];
-        const legendaryCount = safeCol.filter((c) => c?.rarity === 'L').length;
-        const ultraRareCount = safeCol.filter((c) => c?.rarity === 'UR').length;
-        const gifCount = safeCol.filter((c) =>
-          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
-        ).length;
+        const legendaryCount = countRarityCopies(safeCol, 'L');
+        const ultraRareCount = countRarityCopies(safeCol, 'UR');
+        const gifCount = countGifCopies(safeCol);
         recordStatsSnapshot({
           userCode,
+          playerScore,
           wikithunes,
           collectionValue: safeCol.reduce(
             (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
@@ -364,7 +365,7 @@ export function usePlayerAccount({
         console.warn('[WikiCards stats snapshot error]:', snapErr);
       }
     }
-  }, [wikithunes, collection, stats, userCode]);
+  }, [wikithunes, collection, stats, userCode, playerScore]);
 
   useEffect(() => {
     try {
@@ -645,6 +646,8 @@ export function usePlayerAccount({
         favorites,
         wikithunes,
         stats,
+        createdAt: accountCreatedAt || undefined,
+        snapshots: getSavedStatsSnapshots(userCode).slice(-40),
         lastDailyClaimDate,
         freeBoostersCount,
         lastFreeBoostersResetTime,
@@ -670,6 +673,7 @@ export function usePlayerAccount({
     readNotifIds,
     dismissedNotifIds,
     localUpdatedAt,
+    accountCreatedAt,
     applyServerAccountState,
   ]);
 
@@ -691,11 +695,9 @@ export function usePlayerAccount({
 
     try {
       const safeCol = Array.isArray(collection) ? collection : [];
-      const legendaryCount = safeCol.filter((c) => c?.rarity === 'L').length;
-      const ultraRareCount = safeCol.filter((c) => c?.rarity === 'UR').length;
-      const gifCount = safeCol.filter((c) =>
-        Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
-      ).length;
+      const legendaryCount = countRarityCopies(safeCol, 'L');
+      const ultraRareCount = countRarityCopies(safeCol, 'UR');
+      const gifCount = countGifCopies(safeCol);
       recordStatsSnapshot({
         userCode,
         wikithunes: nextWikithunes,
@@ -722,6 +724,8 @@ export function usePlayerAccount({
         favorites,
         wikithunes: nextWikithunes,
         stats,
+        createdAt: accountCreatedAt || undefined,
+        snapshots: getSavedStatsSnapshots(userCode).slice(-40),
         lastDailyClaimDate: nowKey,
         clientUpdatedAt: now,
       });
@@ -752,6 +756,7 @@ export function usePlayerAccount({
     userCode,
     userProfile,
     favorites,
+    accountCreatedAt,
   ]);
 
   const toggleFavorite = useCallback((cardId) => {
@@ -816,6 +821,8 @@ export function usePlayerAccount({
             theme: existing.theme || resolvedTheme,
             isShiny: Boolean(existing.isShiny || card.isShiny),
             count: (existing.count || 1) + 1,
+            firstObtainedAt:
+              existing.firstObtainedAt || existing.obtainedAt || now + idx,
             obtainedAt: now + idx,
           });
         } else {
@@ -823,6 +830,7 @@ export function usePlayerAccount({
             ...card,
             theme: resolvedTheme,
             count: 1,
+            firstObtainedAt: now + idx,
             obtainedAt: now + idx,
           });
         }

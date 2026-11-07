@@ -1,12 +1,13 @@
 /**
  * @file Rôle : Enregistrement des instantanés de compte, calcul des évolutions et génération dynamique des séries temporelles.
- * Dépendances : `../config/rarities`, localStorage.
+ * Dépendances : `../config/rarities`, `../config/playerScore`, localStorage.
  * Effets de bord : Lecture/écriture dans localStorage (cloisonné par code utilisateur).
  */
 
 /**
  * @typedef {Object} StatsSnapshot
  * @property {number} timestamp - Horodatage UNIX (ms) de l'instantané
+ * @property {number} [playerScore] - Score d'accomplissement global
  * @property {number} [wikithunes] - Solde de monnaie
  * @property {number} [collectionValue] - Valeur estimée du classeur
  * @property {number} [uniqueCardsCount] - Articles uniques
@@ -24,13 +25,50 @@
  * @typedef {Object} TimeSeriesPoint
  * @property {number} timestamp - Horodatage du point
  * @property {number} value - Valeur numérique de la métrique
- * @property {string} label - Libellé formaté pour infobulle / tooltip
+ * @property {string} [label] - Libellé formaté pour infobulle / tooltip
  */
 
 import { getCardRecycleValue, INITIAL_WIKITHUNES } from '../config/rarities';
+import { calculatePlayerScore } from '../config/playerScore';
 
 const LOCAL_SNAPSHOTS_STORAGE_KEY = 'wikicards_stats_timeline_v1';
 export const MAX_STATS_SNAPSHOTS = 120;
+
+/**
+ * Vérifie si une carte est une carte GIF / Métal holographique.
+ * @param {Object|null} c - Carte à analyser
+ * @returns {boolean} Vrai si la carte est animée ou holographique
+ */
+export function isGifOrShinyCard(c) {
+  return Boolean(c?.isShiny || c?.isGif || c?.isFoil || /\.gif(\?|$|\/)/i.test(c?.image || ''));
+}
+
+/**
+ * Compte le volume total d'exemplaires d'une rareté donnée dans une collection.
+ * @param {Array<Object>} collection - Liste des cartes
+ * @param {string} rarityCode - Code de rareté ('L', 'UR', 'SR', 'R', 'PC', 'C')
+ * @returns {number} Nombre total d'exemplaires
+ */
+export function countRarityCopies(collection = [], rarityCode) {
+  if (!Array.isArray(collection)) return 0;
+  return collection.reduce(
+    (sum, c) => (c?.rarity === rarityCode ? sum + (Number(c?.count) || 1) : sum),
+    0
+  );
+}
+
+/**
+ * Compte le volume total d'exemplaires de cartes GIF / Métal dans une collection.
+ * @param {Array<Object>} collection - Liste des cartes
+ * @returns {number} Nombre total d'exemplaires GIF / Métal
+ */
+export function countGifCopies(collection = []) {
+  if (!Array.isArray(collection)) return 0;
+  return collection.reduce(
+    (sum, c) => (isGifOrShinyCard(c) ? sum + (Number(c?.count) || 1) : sum),
+    0
+  );
+}
 
 /**
  * Réduit intelligemment un historique d'instantanés à un nombre maximal de points
@@ -147,10 +185,7 @@ export function getSavedStatsSnapshots(userCode = null) {
 
     valid = cleaned;
 
-    // Auto-réparation des anomalies et creux aberrants dans l'historique local
-    let maxLeg = 0;
-    let maxUR = 0;
-    let maxGif = 0;
+    // Auto-réparation uniquement sur les compteurs cumulatifs stricts (qui ne régressent jamais dans le temps)
     let maxBoosters = 0;
     let maxStreak = 0;
     let maxDraws = 0;
@@ -158,21 +193,6 @@ export function getSavedStatsSnapshots(userCode = null) {
     let maxLost = 0;
 
     for (const s of valid) {
-      // Réparation des creux à 0 sur raretés et gifs dus aux anciens snapshots incomplets
-      if (typeof s.legendaryCount === 'number') {
-        if (s.legendaryCount === 0 && maxLeg > 0) s.legendaryCount = maxLeg;
-        else maxLeg = Math.max(maxLeg, s.legendaryCount);
-      }
-      if (typeof s.ultraRareCount === 'number') {
-        if (s.ultraRareCount === 0 && maxUR > 0) s.ultraRareCount = maxUR;
-        else maxUR = Math.max(maxUR, s.ultraRareCount);
-      }
-      if (typeof s.gifCount === 'number') {
-        if (s.gifCount === 0 && maxGif > 0) s.gifCount = maxGif;
-        else maxGif = Math.max(maxGif, s.gifCount);
-      }
-
-      // Réparation des compteurs cumulatifs (ne régressent jamais dans le temps)
       if (typeof s.boostersOpened === 'number') {
         if (s.boostersOpened < maxBoosters) s.boostersOpened = maxBoosters;
         else maxBoosters = s.boostersOpened;
@@ -243,23 +263,26 @@ export function recordStatsSnapshot(data = {}) {
     const last = snapshots[snapshots.length - 1];
 
     const safeCol = Array.isArray(data.collection) ? data.collection : [];
-    const legendaryCount = typeof data.legendaryCount === 'number'
-      ? data.legendaryCount
-      : safeCol.length > 0
-      ? safeCol.filter((c) => c?.rarity === 'L').length
-      : last?.legendaryCount || 0;
-    const ultraRareCount = typeof data.ultraRareCount === 'number'
-      ? data.ultraRareCount
-      : safeCol.length > 0
-      ? safeCol.filter((c) => c?.rarity === 'UR').length
-      : last?.ultraRareCount || 0;
-    const gifCount = typeof data.gifCount === 'number'
-      ? data.gifCount
-      : safeCol.length > 0
-      ? safeCol.filter((c) =>
-          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
-        ).length
-      : last?.gifCount || 0;
+    const hasExplicitCollection = Array.isArray(data.collection);
+
+    const legendaryCount =
+      typeof data.legendaryCount === 'number'
+        ? data.legendaryCount
+        : hasExplicitCollection
+        ? countRarityCopies(safeCol, 'L')
+        : last?.legendaryCount || 0;
+    const ultraRareCount =
+      typeof data.ultraRareCount === 'number'
+        ? data.ultraRareCount
+        : hasExplicitCollection
+        ? countRarityCopies(safeCol, 'UR')
+        : last?.ultraRareCount || 0;
+    const gifCount =
+      typeof data.gifCount === 'number'
+        ? data.gifCount
+        : hasExplicitCollection
+        ? countGifCopies(safeCol)
+        : last?.gifCount || 0;
 
     // Si data.stats est explicitement fourni, on respecte fidèlement les valeurs réelles du compte actuel
     const hasExplicitStats = Boolean(data.stats && typeof data.stats === 'object');
@@ -282,27 +305,74 @@ export function recordStatsSnapshot(data = {}) {
     const wonCards = hasExplicitStats
       ? Number(data.stats.wonCards || 0)
       : Number(last?.wonCards || 0);
+
+    const resolvedTotalCardsCount =
+      typeof data.totalCardsCount === 'number'
+        ? data.totalCardsCount
+        : safeCol.reduce((sum, c) => sum + (Number(c?.count) || 1), 0);
+
     const totalCardsDrawn = hasExplicitStats
       ? Math.max(
           Number(data.stats.totalCardsDrawn || 0),
           boostersOpened * 6,
-          Number(data.totalCardsCount || 0)
+          resolvedTotalCardsCount
         )
       : Number(last?.totalCardsDrawn || 0);
 
-    // Évite de spammer si le dernier snapshot date de moins de 30 secondes et que les valeurs n'ont pas bougé
+    const resolvedCollectionValue =
+      typeof data.collectionValue === 'number'
+        ? data.collectionValue
+        : safeCol.reduce(
+            (sum, c) => sum + (c ? getCardRecycleValue(c) * (Number(c.count) || 1) : 0),
+            0
+          );
+
+    const resolvedUniqueCardsCount =
+      typeof data.uniqueCardsCount === 'number'
+        ? data.uniqueCardsCount
+        : safeCol.length;
+
+    const playerScore =
+      typeof data.playerScore === 'number'
+        ? data.playerScore
+        : calculatePlayerScore({
+            collection: safeCol,
+            uniqueCardsCount: resolvedUniqueCardsCount,
+            totalCardsCount: resolvedTotalCardsCount,
+            legendaryCount,
+            ultraRareCount,
+            gifCount,
+            collectionValue: resolvedCollectionValue,
+            wikithunes: Number(data.wikithunes || 0),
+            totalCardsDrawn,
+            stats: {
+              boostersOpened,
+              totalCardsDrawn,
+              wonCards,
+              lostCards,
+              lostMoneyCasino,
+              netCasinoGains,
+              recordStreak,
+            },
+          });
+
+    // Évite de spammer si le dernier snapshot date de moins de 30 secondes et qu'aucune métrique n'a bougé
     if (
       last &&
       now - last.timestamp < 30000 &&
-      last.wikithunes === data.wikithunes &&
-      last.collectionValue === data.collectionValue &&
-      last.uniqueCardsCount === data.uniqueCardsCount &&
+      last.playerScore === playerScore &&
+      last.wikithunes === Number(data.wikithunes || 0) &&
+      last.collectionValue === resolvedCollectionValue &&
+      last.uniqueCardsCount === resolvedUniqueCardsCount &&
+      last.totalCardsCount === resolvedTotalCardsCount &&
       last.boostersOpened === boostersOpened &&
       last.recordStreak === recordStreak &&
+      last.legendaryCount === legendaryCount &&
       last.ultraRareCount === ultraRareCount &&
       last.gifCount === gifCount &&
-      last.netCasinoBilan === (netCasinoGains - lostMoneyCasino) &&
-      last.netCardsBilan === (wonCards - lostCards)
+      last.totalCardsDrawn === totalCardsDrawn &&
+      last.netCasinoBilan === netCasinoGains - lostMoneyCasino &&
+      last.netCardsBilan === wonCards - lostCards
     ) {
       return;
     }
@@ -310,10 +380,11 @@ export function recordStatsSnapshot(data = {}) {
     const snap = {
       timestamp: now,
       userCode: cleanCode,
+      playerScore,
       wikithunes: Number(data.wikithunes || 0),
-      collectionValue: Number(data.collectionValue || 0),
-      uniqueCardsCount: Number(data.uniqueCardsCount || 0),
-      totalCardsCount: Number(data.totalCardsCount || 0),
+      collectionValue: resolvedCollectionValue,
+      uniqueCardsCount: resolvedUniqueCardsCount,
+      totalCardsCount: resolvedTotalCardsCount,
       boostersOpened,
       legendaryCount,
       ultraRareCount,
@@ -329,8 +400,8 @@ export function recordStatsSnapshot(data = {}) {
     };
 
     let next;
-    if (last && now - last.timestamp < 60000) {
-      next = [...snapshots.slice(0, -1), { ...snap, timestamp: last.timestamp }];
+    if (last && now - last.timestamp < 45000) {
+      next = [...snapshots.slice(0, -1), { ...snap, timestamp: now }];
     } else {
       next = compactSnapshots([...snapshots, snap], MAX_STATS_SNAPSHOTS);
     }
@@ -342,7 +413,12 @@ export function recordStatsSnapshot(data = {}) {
 }
 
 /**
- * Assure le bornage mathématique strict d'une métrique pour éviter toute valeur absurde ou fictive
+ * Assure le bornage mathématique strict d'une métrique pour éviter toute valeur absurde ou fictive.
+ * @param {string} metricId - Identifiant de la métrique
+ * @param {number} val - Valeur brute
+ * @param {Object} safeStats - Statistiques du compte
+ * @param {number} currentVal - Valeur actuelle finale
+ * @returns {number} Valeur bornée
  */
 function clampMetricValue(metricId, val, safeStats, currentVal) {
   if (typeof val !== 'number' || isNaN(val)) return 0;
@@ -374,7 +450,7 @@ function clampMetricValue(metricId, val, safeStats, currentVal) {
     case 'totalCardsDrawn':
       return Math.max(0, Math.min(currentVal, val));
     default:
-      return val;
+      return Math.max(0, val);
   }
 }
 
@@ -411,56 +487,96 @@ export function calculateEvolutionPct(currentVal, startVal, allPoints = [], isCu
 
   // Pour une métrique monétaire en ₩ débutant à 0
   if (isCurrency) {
-    const base = typeof firstNonZero === 'number' && Math.abs(firstNonZero) > 0
-      ? Math.abs(firstNonZero)
-      : 100; // Base étalon par défaut (mise / booster standard)
+    const base =
+      typeof firstNonZero === 'number' && Math.abs(firstNonZero) > 0
+        ? Math.abs(firstNonZero)
+        : 100; // Base étalon par défaut (mise / booster standard)
     return (safeCurrent / base) * 100;
   }
 
   // Pour les compteurs discrets (articles uniques, total cartes, boosters, raretés, victoires) :
-  // Chaque unité acquise correspond à un bond naturel de +100 % (1 = +100 %, 2 = +200 %, 3 = +300 %, etc.)
+  // Si un premier socle non nul existe, on l'utilise si la valeur dépasse 10 (ex: score ou cartes tirées)
+  if (typeof firstNonZero === 'number' && Math.abs(firstNonZero) > 10) {
+    return ((safeCurrent - firstNonZero) / Math.abs(firstNonZero)) * 100;
+  }
+
   return safeCurrent * 100;
 }
 
 /**
+ * Calcule ou reconstitue le score joueur d'un instantané historique.
+ * @param {Object} s - Instantané de statistiques
+ * @returns {number} Score calculé pour cet instantané
+ */
+function resolveSnapshotPlayerScore(s) {
+  if (!s) return 0;
+  if (typeof s.playerScore === 'number' && s.playerScore >= 0) {
+    return s.playerScore;
+  }
+  return calculatePlayerScore({
+    uniqueCardsCount: Number(s.uniqueCardsCount || 0),
+    totalCardsCount: Number(s.totalCardsCount || 0),
+    legendaryCount: Number(s.legendaryCount || 0),
+    ultraRareCount: Number(s.ultraRareCount || 0),
+    gifCount: Number(s.gifCount || 0),
+    collectionValue: Number(s.collectionValue || 0),
+    wikithunes: Number(s.wikithunes || 0),
+    totalCardsDrawn: Number(s.totalCardsDrawn || 0),
+    stats: {
+      boostersOpened: Number(s.boostersOpened || 0),
+      totalCardsDrawn: Number(s.totalCardsDrawn || 0),
+      wonCards: Number(s.wonCards || 0),
+      lostCards: Number(s.lostCards || 0),
+      lostMoneyCasino: Number(s.lostMoneyCasino || 0),
+      netCasinoGains: Number(s.netCasinoGains || 0),
+      recordStreak: Number(s.recordStreak || 0),
+    },
+  });
+}
+
+/**
  * Génère une série temporelle réaliste et continue pour une métrique donnée
- * en combinant les horodatages réels d'obtention des cartes (obtainedAt)
+ * en combinant les horodatages réels d'obtention des cartes (firstObtainedAt / obtainedAt)
  * et les instantanés de session.
  *
  * @param {string} metricId - Identifiant de la métrique (ex: 'collectionValue', 'wikithunes', etc.)
- * @param {Array} collection - Liste des cartes possédées avec obtainedAt
- * @param {object} stats - Statistiques de jeu (boosters, casino, etc.)
- * @param {number} wikithunes - Solde actuel
- * @param {string} period - '1J' | '1S' | '1M' | 'TOUT'
- * @param {boolean} isLocalUser - Indique s'il s'agit du joueur actif sur cet appareil
- * @param {number|null} createdAt - Horodatage de création du compte (timestamp ms)
- * @param {Array<Object>|undefined} [snapshots] - Liste d'instantanés réels (ex: envoyés par le serveur ou un pair)
- * @param {string|null} [userCode=null] - Code d'identification unique du compte
+ * @param {Object} params - Paramètres de génération
+ * @param {Array} [params.collection=[]] - Liste des cartes possédées avec obtainedAt
+ * @param {object} [params.stats={}] - Statistiques de jeu (boosters, casino, etc.)
+ * @param {number} [params.wikithunes=0] - Solde actuel
+ * @param {number|null} [params.collectionValue=null] - Valeur actuelle calculée
+ * @param {string} [params.period='TOUT'] - '1J' | '1S' | '1M' | 'TOUT'
+ * @param {boolean} [params.isLocalUser=false] - Indique s'il s'agit du joueur actif sur cet appareil
+ * @param {number|null} [params.createdAt=null] - Horodatage de création du compte (timestamp ms)
+ * @param {Array<Object>|undefined} [params.snapshots] - Liste d'instantanés réels
+ * @param {string|null} [params.userCode=null] - Code d'identification unique du compte
  * @returns {TimeSeriesPoint[]} Série de points temporels ordonnés
  */
-export function generateMetricTimeSeries(metricId, {
-  collection = [],
-  stats = {},
-  wikithunes = 0,
-  collectionValue = null,
-  period = 'TOUT',
-  isLocalUser = false,
-  createdAt = null,
-  snapshots = undefined,
-  userCode = null,
-}) {
+export function generateMetricTimeSeries(
+  metricId,
+  {
+    collection = [],
+    stats = {},
+    wikithunes = 0,
+    collectionValue = null,
+    period = 'TOUT',
+    isLocalUser = false,
+    createdAt = null,
+    snapshots = undefined,
+    userCode = null,
+  }
+) {
   const safeCollection = Array.isArray(collection) ? collection.filter(Boolean) : [];
   const safeStats = stats || {};
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
 
-  // Trouve la date de la première carte obtenue (moment où le joueur a commencé à jouer)
+  // Trouve la date de la première carte obtenue (en privilégiant firstObtainedAt)
   const collectionCardDates = safeCollection
-    .map((c) => Number(c?.obtainedAt || 0))
+    .map((c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0))
     .filter((ts) => ts > 0 && ts <= now);
-  const minCardTs = collectionCardDates.length > 0
-    ? Math.min(...collectionCardDates)
-    : null;
+  const minCardTs =
+    collectionCardDates.length > 0 ? Math.min(...collectionCardDates) : null;
 
   const parsedCreatedAt = Number(
     createdAt || safeStats?.accountCreatedAt || safeStats?.createdAt || 0
@@ -509,42 +625,54 @@ export function generateMetricTimeSeries(metricId, {
   const startTime = now - windowMs;
   const timeStep = windowMs / Math.max(1, sampleCount - 1);
 
-  const rawSnapshots = Array.isArray(snapshots) && snapshots.length > 0
-    ? snapshots
-    : isLocalUser
-    ? getSavedStatsSnapshots(userCode)
-    : [];
+  const rawSnapshots =
+    Array.isArray(snapshots) && snapshots.length > 0
+      ? snapshots
+      : isLocalUser
+      ? getSavedStatsSnapshots(userCode)
+      : [];
   // On ne garde que les snapshots valides postérieurs au début de l'activité
   const savedSnapshots = rawSnapshots.filter(
     (s) => s && typeof s.timestamp === 'number' && s.timestamp >= activityStartTs - 60 * 1000
   );
 
-  // Calcule la valeur finale actuelle de la métrique
+  // Calcule la valeur finale actuelle de la métrique (100% alignée avec l'affichage des tuiles)
   const calcCurrentValue = () => {
     switch (metricId) {
+      case 'playerScore':
+        return calculatePlayerScore({
+          collection: safeCollection,
+          wikithunes,
+          collectionValue:
+            typeof collectionValue === 'number'
+              ? collectionValue
+              : safeCollection.reduce(
+                  (sum, c) => sum + (c ? getCardRecycleValue(c) * (Number(c.count) || 1) : 0),
+                  0
+                ),
+          stats: safeStats,
+        });
       case 'wikithunes':
         return typeof wikithunes === 'number' ? wikithunes : 0;
       case 'collectionValue':
         return typeof collectionValue === 'number'
           ? collectionValue
           : safeCollection.reduce(
-              (sum, c) => sum + (c ? getCardRecycleValue(c) * (c.count || 1) : 0),
+              (sum, c) => sum + (c ? getCardRecycleValue(c) * (Number(c.count) || 1) : 0),
               0
             );
       case 'uniqueCardsCount':
         return safeCollection.length;
       case 'totalCardsCount':
-        return safeCollection.reduce((sum, c) => sum + (c?.count || 1), 0);
+        return safeCollection.reduce((sum, c) => sum + (Number(c?.count) || 1), 0);
       case 'boostersOpened':
         return Number(safeStats?.boostersOpened || 0);
       case 'legendaryCount':
-        return safeCollection.filter((c) => c?.rarity === 'L').length;
+        return countRarityCopies(safeCollection, 'L');
       case 'ultraRareCount':
-        return safeCollection.filter((c) => c?.rarity === 'UR').length;
+        return countRarityCopies(safeCollection, 'UR');
       case 'gifCount':
-        return safeCollection.filter((c) =>
-          Boolean(c?.isShiny || c?.isGif || /\.gif(\?|$|\/)/i.test(c?.image || ''))
-        ).length;
+        return countGifCopies(safeCollection);
       case 'lostMoneyCasino':
         return Number(safeStats?.lostMoneyCasino || 0);
       case 'netCasinoGains':
@@ -559,7 +687,7 @@ export function generateMetricTimeSeries(metricId, {
         return Math.max(
           Number(safeStats?.totalCardsDrawn || 0),
           Number(safeStats?.boostersOpened || 0) * 6,
-          safeCollection.reduce((s, c) => s + (c?.count || 1), 0)
+          safeCollection.reduce((s, c) => s + (Number(c?.count) || 1), 0)
         );
       case 'lostCards':
         return Number(safeStats?.lostCards || 0);
@@ -572,9 +700,9 @@ export function generateMetricTimeSeries(metricId, {
 
   const currentVal = calcCurrentValue();
 
-  // Pour les métriques basées sur le classeur (valeur, uniques, total, raretés, gifs) :
-  // On peut reconstruire l'historique exact à chaque instant t en filtrant les cartes obtenues <= t
+  // Métriques basées sur le classeur (valeur, uniques, total, raretés, gifs, score)
   const isCollectionMetric = [
+    'playerScore',
     'collectionValue',
     'uniqueCardsCount',
     'totalCardsCount',
@@ -593,18 +721,42 @@ export function generateMetricTimeSeries(metricId, {
       if (isBeforeAccount) {
         points.push({
           timestamp: t,
-          value: 0,
+          value: metricId === 'playerScore' ? Math.floor(INITIAL_WIKITHUNES / 50) : 0,
         });
         continue;
       }
 
-      const cardsAtT = collection.filter((c) => Number(c.obtainedAt || 0) <= t);
+      const cardsAtT = safeCollection.filter(
+        (c) => Number(c.firstObtainedAt || c.obtainedAt || 0) <= t
+      );
 
       let val = 0;
       switch (metricId) {
+        case 'playerScore': {
+          const cardRatio =
+            safeCollection.length > 0
+              ? cardsAtT.length / safeCollection.length
+              : i / Math.max(1, sampleCount - 1);
+          val = calculatePlayerScore({
+            collection: cardsAtT,
+            wikithunes: Math.round(
+              INITIAL_WIKITHUNES + (wikithunes - INITIAL_WIKITHUNES) * cardRatio
+            ),
+            stats: {
+              boostersOpened: Math.round(Number(safeStats?.boostersOpened || 0) * cardRatio),
+              totalCardsDrawn: Math.round(Number(safeStats?.totalCardsDrawn || 0) * cardRatio),
+              wonCards: Math.round(Number(safeStats?.wonCards || 0) * cardRatio),
+              lostCards: Math.round(Number(safeStats?.lostCards || 0) * cardRatio),
+              lostMoneyCasino: Math.round(Number(safeStats?.lostMoneyCasino || 0) * cardRatio),
+              netCasinoGains: Math.round(Number(safeStats?.netCasinoGains || 0) * cardRatio),
+              recordStreak: Math.round(Number(safeStats?.recordStreak || 0) * cardRatio),
+            },
+          });
+          break;
+        }
         case 'collectionValue':
           val = cardsAtT.reduce(
-            (sum, c) => sum + getCardRecycleValue(c) * (c.count || 1),
+            (sum, c) => sum + getCardRecycleValue(c) * (Number(c.count) || 1),
             0
           );
           break;
@@ -612,33 +764,37 @@ export function generateMetricTimeSeries(metricId, {
           val = cardsAtT.length;
           break;
         case 'totalCardsCount':
-          val = cardsAtT.reduce((sum, c) => sum + (c.count || 1), 0);
+          val = cardsAtT.reduce((sum, c) => sum + (Number(c.count) || 1), 0);
           break;
         case 'legendaryCount':
-          val = cardsAtT.filter((c) => c.rarity === 'L').length;
+          val = countRarityCopies(cardsAtT, 'L');
           break;
         case 'ultraRareCount':
-          val = cardsAtT.filter((c) => c.rarity === 'UR').length;
+          val = countRarityCopies(cardsAtT, 'UR');
           break;
         case 'gifCount':
-          val = cardsAtT.filter((c) =>
-            Boolean(c.isShiny || c.isGif || /\.gif(\?|$|\/)/i.test(c.image || ''))
-          ).length;
+          val = countGifCopies(cardsAtT);
           break;
         default:
           val = 0;
       }
 
       // Si aucune carte n'était enregistrée avec un horodatage ancien mais qu'on a un classeur actuel :
-      // On calcule le palier initial (premier booster d'environ 6 cartes) pour une base de progression réaliste
-      if (val === 0 && currentVal > 0 && collection.length > 0) {
-        const baseUnits = Math.max(1, safeStats?.boostersOpened || Math.ceil(collection.length / 6));
+      if (val === 0 && currentVal > 0 && safeCollection.length > 0) {
+        const baseUnits = Math.max(
+          1,
+          safeStats?.boostersOpened || Math.ceil(safeCollection.length / 6)
+        );
         let initialBase = 1;
-        if (metricId === 'collectionValue') {
+        if (metricId === 'collectionValue' || metricId === 'playerScore') {
           initialBase = Math.max(10, Math.round(currentVal / baseUnits));
         } else if (metricId === 'uniqueCardsCount' || metricId === 'totalCardsCount') {
           initialBase = Math.min(currentVal, Math.max(1, Math.round(currentVal / baseUnits)));
-        } else if (metricId === 'legendaryCount' || metricId === 'ultraRareCount' || metricId === 'gifCount') {
+        } else if (
+          metricId === 'legendaryCount' ||
+          metricId === 'ultraRareCount' ||
+          metricId === 'gifCount'
+        ) {
           initialBase = currentVal > 0 ? 1 : 0;
         }
 
@@ -650,7 +806,8 @@ export function generateMetricTimeSeries(metricId, {
         }
       }
 
-      // Si un instantané réel a été sauvegardé pour cette métrique
+      // Si un instantané réel a été sauvegardé pour cette métrique, on utilise sa vraie valeur
+      // (permet d'afficher fidèlement les pics historiques ATH avant un recyclage ou un pari)
       if (savedSnapshots.length > 0 && i > 0 && i < sampleCount - 1) {
         let closestSnap = null;
         let minDiff = Infinity;
@@ -662,9 +819,13 @@ export function generateMetricTimeSeries(metricId, {
             closestSnap = s;
           }
         }
-        if (closestSnap && typeof closestSnap[metricId] === 'number') {
-          // Ne remplace jamais un comptage réel par 0 (évite les trous de données accidentels)
-          if (closestSnap[metricId] > 0 || val === 0) {
+        if (closestSnap) {
+          if (metricId === 'playerScore') {
+            const snapScore = resolveSnapshotPlayerScore(closestSnap);
+            if (snapScore > 0 || val === 0) {
+              val = snapScore;
+            }
+          } else if (typeof closestSnap[metricId] === 'number') {
             val = closestSnap[metricId];
           }
         }
@@ -673,7 +834,7 @@ export function generateMetricTimeSeries(metricId, {
       const finalVal = i === sampleCount - 1 ? currentVal : val;
       points.push({
         timestamp: t,
-        value: Math.max(0, Math.min(currentVal, finalVal)),
+        value: Math.max(0, finalVal),
       });
     } else {
       // Pour les métriques de statistiques (solde, boosters, casino) :
@@ -681,7 +842,6 @@ export function generateMetricTimeSeries(metricId, {
       let simulatedVal = 0;
 
       if (isBeforeAccount) {
-        // Avant l'existence du compte : strictement 0 (ou solde de bienvenue à l'ouverture)
         simulatedVal = metricId === 'wikithunes' ? INITIAL_WIKITHUNES : 0;
       } else if (metricId === 'wikithunes') {
         const isAccountStartInWindow = startTime <= accountStartTs;
@@ -694,34 +854,33 @@ export function generateMetricTimeSeries(metricId, {
           } else if (i === sampleCount - 1) {
             simulatedVal = currentVal;
           } else {
-            // Reconstitution proportionnelle au rythme d'ouverture des boosters et cartes
-            const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+            const cardsAtT = safeCollection.filter(
+              (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+            );
             const totalColCount = safeCollection.length || 1;
-            const cardProgress = safeCollection.length > 0
-              ? cardsAtT.length / totalColCount
-              : ratio;
+            const cardProgress =
+              safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
 
-            // Décroissance naturelle de 3 000 ₩ vers le solde actuel au fur et à mesure des achats (sans oscillations artificielles)
             const baseEst = initialBal + (currentVal - initialBal) * Math.pow(cardProgress, 0.9);
             simulatedVal = Math.max(0, Math.round(baseEst));
           }
         } else {
-          // Fenêtre plus courte (ex: 1J alors que le compte est plus ancien) :
           const cardsInWindow = safeCollection.filter(
-            (c) => Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= now
+            (c) =>
+              Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= now
           ).length;
           const estimatedCostInWindow = Math.round((cardsInWindow / 6) * 200);
           const startBal = Math.max(0, currentVal + estimatedCostInWindow);
 
           const cardsSinceStart = safeCollection.filter(
-            (c) => Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= t
+            (c) =>
+              Number(c?.obtainedAt || 0) >= startTime && Number(c?.obtainedAt || 0) <= t
           ).length;
           const windowRatio = cardsInWindow > 0 ? cardsSinceStart / cardsInWindow : ratio;
           const baseEst = startBal + (currentVal - startBal) * windowRatio;
           simulatedVal = Math.max(0, Math.round(baseEst));
         }
       } else if (metricId === 'netCasinoBilan') {
-        // Courbe P&L boursière du casino :
         if (i === 0 && startTime <= accountStartTs) {
           simulatedVal = 0;
         } else if (i === sampleCount - 1) {
@@ -731,13 +890,14 @@ export function generateMetricTimeSeries(metricId, {
           Number(safeStats?.lostMoneyCasino || 0) === 0 &&
           Number(safeStats?.netCasinoGains || 0) === 0
         ) {
-          // Si le joueur n'a jamais joué au casino : solde strictement plat à 0 ₩
           simulatedVal = 0;
         } else {
-          // Reconstitution basée sur le rythme d'activité du compte, sans faux pics/creux synthétiques
-          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const cardsAtT = safeCollection.filter(
+            (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+          );
           const totalColCount = safeCollection.length || 1;
-          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          const cardProgress =
+            safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
           simulatedVal = Math.round(currentVal * Math.pow(cardProgress, 1.05));
         }
       } else if (metricId === 'netCardsBilan') {
@@ -752,9 +912,12 @@ export function generateMetricTimeSeries(metricId, {
         ) {
           simulatedVal = 0;
         } else {
-          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const cardsAtT = safeCollection.filter(
+            (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+          );
           const totalColCount = safeCollection.length || 1;
-          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          const cardProgress =
+            safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
           simulatedVal = Math.round(currentVal * Math.pow(cardProgress, 1.05));
         }
       } else if (metricId === 'totalCardsDrawn') {
@@ -764,9 +927,12 @@ export function generateMetricTimeSeries(metricId, {
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
-          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const cardsAtT = safeCollection.filter(
+            (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+          );
           const totalColCount = safeCollection.length || 1;
-          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          const cardProgress =
+            safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
           simulatedVal = Math.min(
             currentVal,
             Math.floor(baseDrawn + (currentVal - baseDrawn) * Math.pow(cardProgress, 1.0))
@@ -778,10 +944,16 @@ export function generateMetricTimeSeries(metricId, {
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
-          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const cardsAtT = safeCollection.filter(
+            (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+          );
           const totalColCount = safeCollection.length || 1;
-          const cardProgress = safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
-          simulatedVal = Math.min(currentVal, Math.floor(currentVal * Math.pow(cardProgress, 1.3)));
+          const cardProgress =
+            safeCollection.length > 0 ? cardsAtT.length / totalColCount : ratio;
+          simulatedVal = Math.min(
+            currentVal,
+            Math.floor(currentVal * Math.pow(cardProgress, 1.3))
+          );
         }
       } else if (
         ['boostersOpened', 'wonCards', 'lostCards', 'lostMoneyCasino', 'netCasinoGains'].includes(
@@ -794,11 +966,12 @@ export function generateMetricTimeSeries(metricId, {
         } else if (i === sampleCount - 1) {
           simulatedVal = currentVal;
         } else {
-          const cardsAtT = safeCollection.filter((c) => Number(c?.obtainedAt || 0) <= t);
+          const cardsAtT = safeCollection.filter(
+            (c) => Number(c?.firstObtainedAt || c?.obtainedAt || 0) <= t
+          );
           const totalColCount = safeCollection.length || 1;
-          const cardProgress = safeCollection.length > 0
-            ? cardsAtT.length / totalColCount
-            : Math.pow(ratio, 1.3);
+          const cardProgress =
+            safeCollection.length > 0 ? cardsAtT.length / totalColCount : Math.pow(ratio, 1.3);
           simulatedVal = Math.round(minBase + (currentVal - minBase) * cardProgress);
         }
       } else {
@@ -822,7 +995,8 @@ export function generateMetricTimeSeries(metricId, {
             const snapVal =
               typeof closestSnap.netCasinoBilan === 'number'
                 ? closestSnap.netCasinoBilan
-                : Number(closestSnap.netCasinoGains || 0) - Number(closestSnap.lostMoneyCasino || 0);
+                : Number(closestSnap.netCasinoGains || 0) -
+                  Number(closestSnap.lostMoneyCasino || 0);
             simulatedVal = snapVal;
           } else if (metricId === 'netCardsBilan') {
             const snapVal =
@@ -834,7 +1008,10 @@ export function generateMetricTimeSeries(metricId, {
             const snapVal =
               typeof closestSnap.totalCardsDrawn === 'number'
                 ? closestSnap.totalCardsDrawn
-                : Math.max(Number(closestSnap.totalCardsCount || 0), Number(closestSnap.boostersOpened || 0) * 6);
+                : Math.max(
+                    Number(closestSnap.totalCardsCount || 0),
+                    Number(closestSnap.boostersOpened || 0) * 6
+                  );
             simulatedVal = snapVal;
           } else if (typeof closestSnap[metricId] === 'number') {
             simulatedVal = closestSnap[metricId];
@@ -850,8 +1027,9 @@ export function generateMetricTimeSeries(metricId, {
     }
   }
 
-  // Sécurité anti-régressions pour les métriques de progression et d'inventaire cumulatif
-  const isMonotonic = [
+  // Sécurité anti-régressions uniquement pour les compteurs cumulatifs strictement croissants
+  // (Les métriques d'inventaire comme totalCardsCount, collectionValue ou raretés peuvent fluctuer lors des recyclages/échanges)
+  const isStrictlyCumulative = [
     'boostersOpened',
     'recordStreak',
     'totalCardsDrawn',
@@ -859,14 +1037,9 @@ export function generateMetricTimeSeries(metricId, {
     'lostCards',
     'lostMoneyCasino',
     'netCasinoGains',
-    'uniqueCardsCount',
-    'totalCardsCount',
-    'legendaryCount',
-    'ultraRareCount',
-    'gifCount',
   ].includes(metricId);
 
-  if (isMonotonic && points.length > 1) {
+  if (isStrictlyCumulative && points.length > 1) {
     let runningMax = 0;
     for (let i = 0; i < points.length; i++) {
       if (i === points.length - 1) {
@@ -992,7 +1165,9 @@ export function computeChartPathAndBounds(points = [], isNetMetric = false, opti
     d += ` C ${cpX1},${cpY1} ${cpX2},${cpY2} ${next.x},${next.y}`;
   }
 
-  const baselineY = chartHeight - paddingBottom + 6;
+  const baselineY = isNetOrNegative
+    ? Math.max(paddingTop, Math.min(chartHeight - paddingBottom + 6, zeroY))
+    : chartHeight - paddingBottom + 6;
   const firstX = coords[0].x;
   const lastX = coords[coords.length - 1].x;
   const area = `${d} L ${lastX},${baselineY} L ${firstX},${baselineY} Z`;
