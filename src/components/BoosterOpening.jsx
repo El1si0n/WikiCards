@@ -39,12 +39,14 @@ export default function BoosterOpening({
   iconicBoosterPrice = ICONIC_BOOSTER_PRICE,
   onSpendWikithunes,
   freeBoostersCount = 0,
-  timeRemainingFreeBoosters = '',
+  _timeRemainingFreeBoosters = '',
   onUseFreeBooster,
 }) {
   const {
     stage,
     packCards,
+    highestRarityKey,
+    highestRarityConfig,
     currentCardIdx,
     isFetching,
     isOpening,
@@ -81,6 +83,8 @@ export default function BoosterOpening({
           <BoosterPackView
             stage={stage}
             isIconicPack={isIconicPack}
+            highestRarityKey={highestRarityKey}
+            highestRarityConfig={highestRarityConfig}
             activePrice={activePrice}
             freeBoostersCount={freeBoostersCount}
             boosterPrice={boosterPrice}

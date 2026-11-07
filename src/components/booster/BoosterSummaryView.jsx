@@ -41,15 +41,15 @@ export default function BoosterSummaryView({
       transition={{ duration: 0.3 }}
       className="flex flex-col"
     >
-      {/* Grille récapitulative des 6 cartes obtenues */}
-      <div className="flex flex-wrap justify-center gap-3.5 sm:gap-6 py-2 max-w-[940px] mx-auto">
+      {/* Grille récapitulative des 6 cartes obtenues (2 colonnes sur mobile, 3 sur tablette/desktop) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6 py-2 max-w-[940px] mx-auto justify-items-center w-full">
         {packCards.map((card, index) => (
           <motion.div
             key={card.id}
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: index * 0.05 }}
-            className="w-[calc(50%-7px)] sm:w-[calc(50%-12px)] md:w-[calc(33.333%-16px)] max-w-[284px] flex justify-center"
+            className="w-full max-w-[284px] flex justify-center"
           >
             <WikiCard
               card={card}

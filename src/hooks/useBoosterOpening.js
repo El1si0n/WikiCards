@@ -4,13 +4,15 @@
  * Effets de bord : Lecture/écriture localStorage pour booster iconique, audio procédural, confettis de rareté, requêtes Wikipédia.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { fetchBoosterPackCards } from '../services/wikipedia';
 import {
   BOOSTER_PRICE,
   ICONIC_BOOSTER_PRICE,
   ICONIC_PACK_CHANCE,
+  RARITY_ORDER,
+  RARITIES,
 } from '../config/rarities';
 import { soundManager } from '../services/sound';
 
@@ -331,10 +333,26 @@ export default function useBoosterOpening({
       ? packCards[currentCardIdx + 1]
       : null;
 
+  // Calcul dynamique de la plus haute rareté pour l'effet "Walkout Glow" à la déchirure
+  const highestRarityKey = useMemo(() => {
+    if (!packCards || packCards.length === 0) return 'C';
+    return packCards.reduce((highest, card) => {
+      const code = card?.rarity || 'C';
+      const rank = RARITY_ORDER[code] || 1;
+      const highestRank = RARITY_ORDER[highest] || 1;
+      return rank > highestRank ? code : highest;
+    }, 'C');
+  }, [packCards]);
+
+  const highestRarityConfig =
+    RARITIES[highestRarityKey] || RARITIES.C;
+
   return {
     stage,
     setStage,
     packCards,
+    highestRarityKey,
+    highestRarityConfig,
     currentCardIdx,
     isFetching,
     isOpening,

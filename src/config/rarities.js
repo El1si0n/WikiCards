@@ -53,6 +53,20 @@ export const RARITY_TIERS = [
     textColor: '#102a20',
     subTextColor: '#1c4032',
     dividerColor: 'rgba(16, 42, 32, 0.16)',
+    gemBg: 'linear-gradient(135deg, #34d399 0%, #059669 50%, #064e3b 100%)',
+    gemBorder: '#6ee7b7',
+    gemText: '#ffffff',
+    frameBorder: '#7fd4b0',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.76) 0%, rgba(236, 253, 245, 0.65) 100%)',
+    illustrationBorder: '#6ee7b7',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(167, 243, 208, 0.82) 0%, rgba(52, 211, 153, 0.48) 25%, rgba(16, 185, 129, 0.18) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(110, 231, 183, 0.45) 14deg, transparent 26deg, rgba(209, 250, 229, 0.6) 42deg, transparent 54deg, rgba(52, 211, 153, 0.68) 65deg, transparent 76deg, rgba(209, 250, 229, 0.6) 88deg, transparent 100deg, rgba(110, 231, 183, 0.45) 114deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(52,211,153,0.3) 0%, rgba(255,255,255,0.95) 25%, #d1fae5 50%, rgba(255,255,255,0.95) 75%, rgba(52,211,153,0.3) 100%)',
+      shadow: '0 -1px 9px 2px rgba(16, 185, 129, 0.75)',
+      tearBarBg: '#059669',
+      tearBarShadow: '0 0 14px #34d399',
+    },
   },
   {
     code: 'PC',
@@ -73,6 +87,20 @@ export const RARITY_TIERS = [
     textColor: '#10243b',
     subTextColor: '#1c3757',
     dividerColor: 'rgba(16, 36, 59, 0.16)',
+    gemBg: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 50%, #1e3a8a 100%)',
+    gemBorder: '#93c5fd',
+    gemText: '#ffffff',
+    frameBorder: '#72a8de',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.76) 0%, rgba(239, 246, 255, 0.65) 100%)',
+    illustrationBorder: '#93c5fd',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(191, 219, 254, 0.85) 0%, rgba(96, 165, 250, 0.48) 25%, rgba(37, 99, 235, 0.18) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(147, 197, 253, 0.45) 14deg, transparent 26deg, rgba(224, 242, 254, 0.6) 42deg, transparent 54deg, rgba(96, 165, 250, 0.65) 65deg, transparent 76deg, rgba(224, 242, 254, 0.6) 88deg, transparent 100deg, rgba(147, 197, 253, 0.45) 114deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(96,165,250,0.3) 0%, rgba(255,255,255,0.95) 25%, #eff6ff 50%, rgba(255,255,255,0.95) 75%, rgba(96,165,250,0.3) 100%)',
+      shadow: '0 -1px 9px 2px rgba(59, 130, 246, 0.75)',
+      tearBarBg: '#2563eb',
+      tearBarShadow: '0 0 14px #60a5fa',
+    },
   },
   {
     code: 'R',
@@ -93,6 +121,20 @@ export const RARITY_TIERS = [
     textColor: '#1d1036',
     subTextColor: '#2c1b4f',
     dividerColor: 'rgba(29, 16, 54, 0.18)',
+    gemBg: 'linear-gradient(135deg, #c084fc 0%, #9333ea 50%, #581c87 100%)',
+    gemBorder: '#e9d5ff',
+    gemText: '#ffffff',
+    frameBorder: '#a855f7',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.78) 0%, rgba(250, 245, 255, 0.68) 100%)',
+    illustrationBorder: '#d8b4fe',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(233, 213, 255, 0.88) 0%, rgba(168, 85, 247, 0.52) 25%, rgba(126, 34, 206, 0.2) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(192, 132, 252, 0.45) 14deg, transparent 26deg, rgba(243, 232, 255, 0.62) 42deg, transparent 54deg, rgba(168, 85, 247, 0.7) 65deg, transparent 76deg, rgba(243, 232, 255, 0.62) 88deg, transparent 100deg, rgba(192, 132, 252, 0.45) 114deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(168,85,247,0.3) 0%, rgba(255,255,255,0.95) 25%, #faf5ff 50%, rgba(255,255,255,0.95) 75%, rgba(168,85,247,0.3) 100%)',
+      shadow: '0 -1px 11px 2px rgba(147, 51, 234, 0.8)',
+      tearBarBg: '#9333ea',
+      tearBarShadow: '0 0 14px #c084fc',
+    },
   },
   {
     code: 'SR',
@@ -113,6 +155,20 @@ export const RARITY_TIERS = [
     textColor: '#2b0b1b',
     subTextColor: '#3d1429',
     dividerColor: 'rgba(43, 11, 27, 0.18)',
+    gemBg: 'linear-gradient(135deg, #f472b6 0%, #db2777 50%, #831843 100%)',
+    gemBorder: '#fbcfe8',
+    gemText: '#ffffff',
+    frameBorder: '#ec4899',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.8) 0%, rgba(253, 242, 248, 0.7) 100%)',
+    illustrationBorder: '#f472b6',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(251, 207, 232, 0.9) 0%, rgba(244, 114, 182, 0.55) 25%, rgba(219, 39, 119, 0.22) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(244, 114, 182, 0.48) 14deg, transparent 26deg, rgba(253, 242, 248, 0.65) 42deg, transparent 54deg, rgba(236, 72, 153, 0.75) 65deg, transparent 76deg, rgba(253, 242, 248, 0.65) 88deg, transparent 100deg, rgba(244, 114, 182, 0.48) 114deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(244,114,182,0.35) 0%, rgba(255,255,255,0.95) 25%, #fdf2f8 50%, rgba(255,255,255,0.95) 75%, rgba(244,114,182,0.35) 100%)',
+      shadow: '0 -1px 12px 3px rgba(219, 39, 119, 0.85)',
+      tearBarBg: '#db2777',
+      tearBarShadow: '0 0 14px #f472b6',
+    },
   },
   {
     code: 'UR',
@@ -133,6 +189,20 @@ export const RARITY_TIERS = [
     textColor: '#291400',
     subTextColor: '#3d2004',
     dividerColor: 'rgba(41, 20, 0, 0.18)',
+    gemBg: 'linear-gradient(135deg, #fde047 0%, #eab308 30%, #ca8a04 70%, #713f12 100%)',
+    gemBorder: '#fef08a',
+    gemText: '#422006',
+    frameBorder: '#f59e0b',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.84) 0%, rgba(254, 249, 195, 0.74) 100%)',
+    illustrationBorder: '#eab308',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(254, 240, 138, 0.95) 0%, rgba(251, 191, 36, 0.65) 25%, rgba(217, 119, 6, 0.26) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(251, 191, 36, 0.52) 14deg, transparent 26deg, rgba(254, 252, 232, 0.7) 42deg, transparent 54deg, rgba(245, 158, 11, 0.85) 65deg, transparent 76deg, rgba(254, 252, 232, 0.7) 88deg, transparent 100deg, rgba(251, 191, 36, 0.52) 114deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(245,158,11,0.4) 0%, rgba(255,255,255,1) 25%, #fefce8 50%, rgba(255,255,255,1) 75%, rgba(245,158,11,0.4) 100%)',
+      shadow: '0 -1px 16px 4px rgba(245, 158, 11, 0.9)',
+      tearBarBg: '#d97706',
+      tearBarShadow: '0 0 16px #fbbf24',
+    },
   },
   {
     code: 'L',
@@ -153,6 +223,20 @@ export const RARITY_TIERS = [
     textColor: '#1f1700',
     subTextColor: '#302400',
     dividerColor: 'rgba(31, 23, 0, 0.22)',
+    gemBg: 'linear-gradient(135deg, #fef08a 0%, #ef4444 35%, #991b1b 75%, #450a0a 100%)',
+    gemBorder: '#fde047',
+    gemText: '#ffffff',
+    frameBorder: '#f59e0b',
+    cartoucheBg: 'linear-gradient(170deg, rgba(255, 255, 255, 0.88) 0%, rgba(254, 243, 199, 0.78) 100%)',
+    illustrationBorder: '#deb226',
+    walkout: {
+      beam: 'linear-gradient(to top, rgba(254, 202, 202, 0.95) 0%, rgba(248, 113, 113, 0.72) 20%, rgba(220, 38, 38, 0.32) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(248, 113, 113, 0.58) 12deg, transparent 24deg, rgba(254, 242, 242, 0.8) 40deg, transparent 52deg, rgba(239, 68, 68, 0.95) 65deg, transparent 78deg, rgba(254, 240, 138, 0.8) 88deg, transparent 102deg, rgba(248, 113, 113, 0.58) 116deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(239,68,68,0.5) 0%, rgba(255,255,255,1) 22%, #fff1f2 50%, rgba(255,234,90,1) 78%, rgba(239,68,68,0.5) 100%)',
+      shadow: '0 -1px 20px 5px rgba(220, 38, 38, 0.95), 0 0 25px rgba(254, 240, 138, 0.6)',
+      tearBarBg: '#dc2626',
+      tearBarShadow: '0 0 18px #ef4444',
+    },
   },
 ];
 
@@ -190,5 +274,21 @@ export function getCardRecycleValue(card) {
   const base = tier.recycleValue || 10;
   return card.isShiny ? base * SHINY_RECYCLE_MULTIPLIER : base;
 }
+
+/** Ordre numérique hiérarchique strict des raretés (C < PC < R < SR < UR < L) */
+export const RARITY_ORDER = {
+  C: 1,
+  PC: 2,
+  R: 3,
+  SR: 4,
+  UR: 5,
+  L: 6,
+};
+
+/** Dictionnaire d'accès direct O(1) aux configurations de raretés par code court */
+export const RARITIES = RARITY_TIERS.reduce((acc, tier) => {
+  acc[tier.code] = tier;
+  return acc;
+}, {});
 
 export const DEMO_CARDS = [];
