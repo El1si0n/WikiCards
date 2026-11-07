@@ -224,7 +224,7 @@ export default function HigherLowerGame({
         <div className="flex-1 flex items-center justify-center py-2">
           {leftCard ? (
             <div className="w-full max-w-[284px]">
-              <WikiCard card={leftCard} compact={true} />
+              <WikiCard card={leftCard} />
             </div>
           ) : (
             <div className="w-full max-w-[284px] aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] bg-[#f8f9fa] flex flex-col items-center justify-center p-6 text-center">
@@ -441,7 +441,6 @@ export default function HigherLowerGame({
             <div className="w-full max-w-[284px]">
               <WikiCard
                 card={rightCard}
-                compact={true}
                 hideViewsAndRarity={!rightRevealed}
               />
             </div>

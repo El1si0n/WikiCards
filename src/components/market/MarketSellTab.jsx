@@ -63,7 +63,7 @@ export default function MarketSellTab({
           {selectedSellCard ? (
             <>
               <div className="w-full max-w-[284px]">
-                <WikiCard card={selectedSellCard} compact={true} />
+                <WikiCard card={selectedSellCard} />
               </div>
 
               <form

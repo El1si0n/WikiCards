@@ -225,7 +225,7 @@ export function removeCardsFromUserCollection(collection = [], cardsToRemove = [
  */
 export function readJsonBody(req, maxSizeBytes = 5 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    const chunks = [];
     let bytesReceived = 0;
 
     req.on('data', (chunk) => {
@@ -235,12 +235,13 @@ export function readJsonBody(req, maxSizeBytes = 5 * 1024 * 1024) {
         req.destroy();
         return;
       }
-      body += chunk;
+      chunks.push(chunk);
     });
 
     req.on('end', () => {
       try {
-        resolve(body ? JSON.parse(body) : {});
+        const raw = Buffer.concat(chunks).toString('utf-8');
+        resolve(raw ? JSON.parse(raw) : {});
       } catch (err) {
         reject(err);
       }

@@ -4,14 +4,14 @@
  * Effets de bord : Aucun (composant de présentation visuelle pur).
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Eye, ExternalLink, Star, Check, Sparkles } from 'lucide-react';
 import {
   getRarityByCode,
   getRarityByViews,
   getCardRecycleValue,
 } from '../config/rarities';
-import { formatCompleteExtract } from '../utils/cardText';
+import { fitSummaryToCard, cleanCardTitle } from '../utils/cardText';
 import WikithuneIcon from './WikithuneIcon';
 import RarityWavePattern from './card/RarityWavePattern';
 
@@ -42,7 +42,7 @@ export default function WikiCard({
   duplicateCount = 1,
   compact = false, // true dans le classeur (4 cartes par ligne)
   mini = false, // true dans le classeur de l'Upgrader (6 cartes par ligne)
-  trade = false, // true dans les propositions d'échanges
+  _trade = false, // true dans les propositions d'échanges
   isRecycleMode = false,
   isSelectedForRecycle = false,
   selectedRecycleCount = 0,
@@ -96,10 +96,81 @@ export default function WikiCard({
   const isProtectedInRecycleMode =
     isRecycleMode && isFavorite && duplicateCount <= 1;
 
-  // Taille de police 100 % uniforme sur toutes les cartes et adaptée mobile (calquée sur la carte booster de référence 284x386)
-  const fullText = formatCompleteExtract(card.extract, 320);
+  // Détection dynamique du palier de taille proportionnel : 'small' (<185px), 'medium' (185-260px), 'large' (>260px)
+  const [sizeTier, setSizeTier] = useState(() => {
+    if (mini) return 'small';
+    if (compact) return 'medium';
+    return 'large';
+  });
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        if (width <= 0) continue;
+        const nextTier =
+          width < 185 ? 'small' : width > 260 ? 'large' : 'medium';
+        setSizeTier((prev) => (prev !== nextTier ? nextTier : prev));
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Configuration typographique et textuelle proportionnelle à la largeur réelle de la carte
+  const maxCharsBudget =
+    sizeTier === 'small' ? 105 : sizeTier === 'medium' ? 195 : 285;
+  const fullText = fitSummaryToCard(card.extract, maxCharsBudget);
+  const displayTitle = cleanCardTitle(card.title);
+
+  const titleTypography =
+    sizeTier === 'small'
+      ? 'font-bold text-[11.5px] leading-[1.22] line-clamp-2 pb-[1px] tracking-tight'
+      : sizeTier === 'medium'
+      ? 'font-extrabold text-[13.5px] leading-[1.22] line-clamp-2 pb-[2px] tracking-tight'
+      : 'font-extrabold text-[15.5px] leading-[1.2] line-clamp-2 pb-[2px] tracking-[-0.01em]';
+
   const descriptionTypography =
-    'text-[10px] sm:text-[12px] leading-[1.35] sm:leading-[1.38] line-clamp-6 sm:line-clamp-8';
+    sizeTier === 'small'
+      ? 'text-[10px] leading-[1.3] line-clamp-4 font-normal m-0'
+      : sizeTier === 'medium'
+      ? 'text-[11px] leading-[1.35] line-clamp-6 font-normal m-0'
+      : 'text-[12px] leading-[1.38] line-clamp-8 font-normal m-0';
+
+  const badgeDimensions =
+    sizeTier === 'small'
+      ? 'min-w-[20px] h-[17px] text-[9.5px]'
+      : sizeTier === 'medium'
+      ? 'min-w-[24px] h-[19px] text-[10.5px]'
+      : 'min-w-[28px] h-[22px] text-[11.5px]';
+
+  const shinyBadgeDimensions =
+    sizeTier === 'small'
+      ? 'h-[17px] px-1 text-[8.5px]'
+      : sizeTier === 'medium'
+      ? 'h-[19px] px-1.5 text-[9.5px]'
+      : 'h-[22px] px-2 text-[10px]';
+
+  const footerTextSize =
+    sizeTier === 'small'
+      ? 'text-[9.5px]'
+      : sizeTier === 'medium'
+      ? 'text-[10.5px]'
+      : 'text-[11.5px]';
+
+  const footerIconSize =
+    sizeTier === 'small' ? 'w-2.5 h-2.5' : 'w-3 h-3';
+
+  const wikiBtnSize =
+    sizeTier === 'small'
+      ? 'px-1.5 py-0.5 text-[9px]'
+      : sizeTier === 'medium'
+      ? 'px-2 py-0.5 text-[10px]'
+      : 'px-2 py-0.5 text-[10.5px]';
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -149,7 +220,7 @@ export default function WikiCard({
   return (
     <div
       onClick={handleCardClick}
-      className={`relative select-none w-full mx-auto max-w-[284px] ${
+      className={`wiki-card-root relative select-none w-full mx-auto max-w-[284px] ${
         isRecycleMode
           ? isProtectedInRecycleMode
             ? 'opacity-55 cursor-not-allowed'
@@ -160,7 +231,11 @@ export default function WikiCard({
             : 'cursor-pointer'
           : ''
       }`}
-      style={{ perspective: '1100px' }}
+      style={{
+        perspective: '1100px',
+        containerType: 'inline-size',
+        containerName: 'wikicard',
+      }}
     >
       {/* Enveloppe externe : Cadre métal brossé si la carte est GIF (.gif) */}
       <div
@@ -357,7 +432,7 @@ export default function WikiCard({
               {/* Badges en haut à gauche : Rareté + Badge Métal GIF (si .gif) */}
               <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-20 flex items-center gap-1 sm:gap-1.5">
                 <div
-                  className="min-w-[22px] sm:min-w-[28px] h-[18px] sm:h-[22px] px-1.5 sm:px-2 text-[10px] sm:text-[11.5px] rounded-[4px] sm:rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]"
+                  className={`${badgeDimensions} px-1.5 sm:px-2 rounded-[4px] sm:rounded-[6px] flex items-center justify-center font-extrabold tracking-wide shadow-[0_2px_6px_rgba(0,0,0,0.22)]`}
                   style={{
                     backgroundColor: tier.badgeBg,
                     color: tier.badgeText,
@@ -369,7 +444,7 @@ export default function WikiCard({
 
                 {isShiny && (
                   <div
-                    className="wiki-shiny-badge h-[18px] sm:h-[22px] px-1.5 sm:px-2 text-[9px] sm:text-[10px] rounded-[4px] sm:rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]"
+                    className={`wiki-shiny-badge ${shinyBadgeDimensions} rounded-[4px] sm:rounded-[6px] inline-flex items-center gap-1 font-extrabold tracking-wider uppercase shadow-[0_2px_8px_rgba(0,0,0,0.35)] border border-[#cbd5e1]`}
                     title="Carte GIF Métal (.gif animé) — Valeur de recyclage ×3 !"
                   >
                     <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0 text-[#e2e8f0]" />
@@ -381,7 +456,13 @@ export default function WikiCard({
 
             {/* 2. PARTIE INFÉRIEURE : FOND TEXTURÉ (MÉTAL BROSSÉ SI GIF) + TITRE + DESCRIPTION + PIED */}
             <div
-              className="relative flex-1 min-h-0 flex flex-col justify-between px-2.5 sm:px-3.5 pt-2 sm:pt-2.5 pb-2 sm:pb-2.5 overflow-hidden"
+              className={`relative flex-1 min-h-0 flex flex-col justify-between ${
+                sizeTier === 'small'
+                  ? 'px-2 pt-1.5 pb-1.5'
+                  : sizeTier === 'medium'
+                  ? 'px-3 pt-2 pb-2'
+                  : 'px-3.5 pt-2.5 pb-2.5'
+              } overflow-hidden`}
             >
               {/* Texture d'ondes organiques (argentée/titane si carte GIF métal) */}
               <RarityWavePattern
@@ -436,9 +517,9 @@ export default function WikiCard({
               )}
 
               {/* Contenu textuel */}
-              <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden justify-start">
                 <h3
-                  className="font-extrabold text-[12.5px] sm:text-[15.5px] mb-0.5 sm:mb-1 leading-[1.2] line-clamp-2 tracking-[-0.01em]"
+                  className={`wiki-card-title shrink-0 ${titleTypography}`}
                   style={{
                     color: isShiny ? '#0f172a' : tier.textColor,
                     textShadow: isShiny
@@ -446,11 +527,11 @@ export default function WikiCard({
                       : undefined,
                   }}
                 >
-                  {card.title}
+                  {displayTitle}
                 </h3>
 
                 <p
-                  className={`${descriptionTypography} font-normal m-0`}
+                  className={`wiki-card-description ${descriptionTypography}`}
                   style={{ color: isShiny ? '#1e293b' : tier.subTextColor }}
                 >
                   {fullText}
@@ -459,7 +540,7 @@ export default function WikiCard({
 
               {/* 3. PIED DE CARTE : VUES WIKIPÉDIA + LIEN DIRECT */}
               <div
-                className="relative z-10 shrink-0 pt-1 sm:pt-1.5 mt-0.5 sm:mt-1 flex items-center justify-between gap-1 border-t"
+                className="wiki-card-footer relative z-10 shrink-0 pt-1 mt-0.5 flex items-center justify-between gap-1 border-t"
                 style={{
                   borderColor: isShiny
                     ? 'rgba(15, 23, 42, 0.22)'
@@ -467,11 +548,11 @@ export default function WikiCard({
                 }}
               >
                 <div
-                  className="flex items-center gap-1 font-bold shrink-0 text-[9.5px] sm:text-[11.5px]"
+                  className={`flex items-center gap-1 font-bold shrink-0 ${footerTextSize}`}
                   style={{ color: isShiny ? '#0f172a' : tier.textColor }}
                   title={`Fréquentation de la page : ${formattedViews} vues (${tier.name})`}
                 >
-                  <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-80 shrink-0" />
+                  <Eye className={`${footerIconSize} opacity-80 shrink-0`} />
                   <span>{formattedViews} vues</span>
                 </div>
 
@@ -485,7 +566,7 @@ export default function WikiCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 shrink-0 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10.5px] rounded-[4px] sm:rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className={`inline-flex items-center gap-1 shrink-0 ${wikiBtnSize} rounded-[4px] sm:rounded-[5px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]`}
                   style={{
                     backgroundColor: isShiny
                       ? 'rgba(255, 255, 255, 0.68)'
@@ -497,9 +578,13 @@ export default function WikiCard({
                   }}
                   title="Consulter l'article officiel sur Wikipédia (nouvel onglet)"
                 >
-                  <span className="hidden sm:inline">Wikipédia</span>
-                  <span className="sm:hidden">Wiki</span>
-                  <ExternalLink className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0" />
+                  <span className={sizeTier === 'small' ? 'hidden' : 'inline'}>
+                    Wikipédia
+                  </span>
+                  <span className={sizeTier === 'small' ? 'inline' : 'hidden'}>
+                    Wiki
+                  </span>
+                  <ExternalLink className={`${footerIconSize} shrink-0`} />
                 </a>
               </div>
             </div>

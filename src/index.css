@@ -608,3 +608,55 @@ html.dark .wiki-range-slider {
   border-color: #3a424d;
 }
 
+/* Container queries réactives pour WikiCard (proportionnelles à la largeur réelle de la carte) */
+.wiki-card-root {
+  container-type: inline-size;
+  container-name: wikicard;
+}
+
+@container wikicard (max-width: 184px) {
+  .wiki-card-title {
+    font-size: 11.5px !important;
+    line-height: 1.22 !important;
+    padding-bottom: 1px !important;
+  }
+  .wiki-card-description {
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+  }
+  .wiki-card-footer {
+    font-size: 9.5px !important;
+  }
+}
+
+@container wikicard (min-width: 185px) and (max-width: 260px) {
+  .wiki-card-title {
+    font-size: 13.5px !important;
+    line-height: 1.22 !important;
+    padding-bottom: 2px !important;
+  }
+  .wiki-card-description {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .wiki-card-footer {
+    font-size: 10.5px !important;
+  }
+}
+
+@container wikicard (min-width: 261px) {
+  .wiki-card-title {
+    font-size: 15.5px !important;
+    line-height: 1.2 !important;
+    padding-bottom: 2px !important;
+  }
+  .wiki-card-description {
+    font-size: 12px !important;
+    line-height: 1.38 !important;
+  }
+  .wiki-card-footer {
+    font-size: 11.5px !important;
+  }
+}
+
+

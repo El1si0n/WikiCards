@@ -622,7 +622,6 @@ export default function DoubleOrNothingGame({
                     <div className="w-full max-w-[284px]">
                       <WikiCard
                         card={spinSnapshot.results[0].card}
-                        compact={true}
                         duplicateCount={2}
                         isFavorite={favorites.includes(spinSnapshot.results[0].card.id)}
                         onToggleFavorite={onToggleFavorite}

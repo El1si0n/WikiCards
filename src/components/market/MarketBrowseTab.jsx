@@ -114,7 +114,7 @@ export default function MarketBrowseTab({
 
                 <div className="flex justify-center">
                   <div className="w-full max-w-[284px]">
-                    <WikiCard card={listing.card} compact={true} />
+                    <WikiCard card={listing.card} />
                   </div>
                 </div>
 

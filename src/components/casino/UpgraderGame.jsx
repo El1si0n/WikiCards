@@ -491,7 +491,6 @@ export default function UpgraderGame({
               <div className="w-full max-w-[284px]">
                 <WikiCard
                   card={wonCard}
-                  compact={true}
                   isFavorite={favorites.includes(wonCard.id)}
                   onToggleFavorite={onToggleFavorite}
                 />

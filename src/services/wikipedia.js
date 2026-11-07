@@ -1,6 +1,6 @@
 /**
  * @file Rôle : Client d'interrogation de l'API Wikipédia FR, Wikimedia Pageviews et génération de cartes.
- * Dépendances : `../config/rarities`, `../config/themes`, API REST Wikipédia, API Wikimedia Pageviews.
+ * Dépendances : `../config/rarities`, `../config/themes`, `../utils/cardText`, API REST Wikipédia, API Wikimedia Pageviews.
  * Effets de bord : Requêtes réseau HTTP externes vers Wikipédia / Wikimedia et appels proxy locaux.
  */
 
@@ -30,6 +30,7 @@
 
 import { getRarityByViews, getRarityByCode } from '../config/rarities';
 import { detectCardTheme } from '../config/themes';
+import { cleanWikiText, cleanCardTitle } from '../utils/cardText';
 
 const WIKI_API_BASE = 'https://fr.wikipedia.org/w/api.php';
 const WIKI_REST_SUMMARY = 'https://fr.wikipedia.org/api/rest_v1/page/summary';
@@ -392,12 +393,13 @@ export async function fetchWikiCardByTitle(title) {
     ? originalUrl || thumbUrl
     : thumbUrl || originalUrl || null;
 
+  const sanitizedTitle = cleanCardTitle(summary.title || cleanTitle);
   const baseCard = {
     id: `wiki-${summary.pageid || summary.title}`,
     pageid: summary.pageid,
-    title: summary.title,
-    description: summary.description || '',
-    extract: summary.extract || '',
+    title: sanitizedTitle,
+    description: cleanWikiText(summary.description || ''),
+    extract: cleanWikiText(summary.extract || ''),
     image: finalImage,
     imageContain: summary.title === 'Wikipédia',
     isGif,
