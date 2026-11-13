@@ -152,3 +152,44 @@ export const PERIODS = [
   { id: '1M', label: '1M' },
   { id: 'TOUT', label: 'TOUT' },
 ];
+
+/**
+ * Ordre de navigation rapide entre les métriques dans la modale graphique.
+ */
+export const METRIC_NAV_ORDER = [
+  'playerScore',
+  'uniqueCardsCount',
+  'totalCardsCount',
+  'wikithunes',
+  'collectionValue',
+  'boostersOpened',
+  'legendaryCount',
+  'ultraRareCount',
+  'gifCount',
+  'netCasinoBilan',
+  'recordStreak',
+  'netCardsBilan',
+  'totalCardsDrawn',
+];
+
+const SINGULAR_UNITS = {
+  ' pts': ' pt',
+  ' articles': ' article',
+  ' cartes': ' carte',
+  ' boosters': ' booster',
+  ' victoires': ' victoire',
+};
+
+/**
+ * Retourne l'unité accordée au singulier ou au pluriel selon la valeur affichée.
+ * @param {string} unit - Unité brute définie dans METRIC_DEFINITIONS
+ * @param {number} value - Valeur numérique associée
+ * @returns {string} Unité accordée
+ */
+export function formatMetricUnit(unit, value) {
+  if (!unit) return '';
+  if (Math.abs(Number(value) || 0) <= 1 && SINGULAR_UNITS[unit]) {
+    return SINGULAR_UNITS[unit];
+  }
+  return unit;
+}

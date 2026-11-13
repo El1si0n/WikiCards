@@ -1,16 +1,20 @@
 /**
  * @file Rôle : Fenêtre modale d'affichage détaillé de l'historique d'une métrique style Trade Republic.
- * Dépendances : React, `lucide-react`, `./WikithuneIcon`, `./StatsHistoryChart`, `./StatsHistoryOverview`, `../utils/statsHistory`, `../config/statsMetrics`.
- * Effets de bord : Écouteur global clavier (touche Échap).
+ * Dépendances : React, `lucide-react`, `./WikithuneIcon`, `./StatsHistoryChart`, `../utils/statsHistory`, `../config/statsMetrics`.
+ * Effets de bord : Écouteur global clavier (Échap pour fermer, flèches gauche/droite pour naviguer).
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import WikithuneIcon from './WikithuneIcon';
 import StatsHistoryChart from './StatsHistoryChart';
-import StatsHistoryOverview from './StatsHistoryOverview';
 import { generateMetricTimeSeries, calculateEvolutionPct } from '../utils/statsHistory';
-import { METRIC_DEFINITIONS, PERIODS } from '../config/statsMetrics';
+import {
+  METRIC_DEFINITIONS,
+  PERIODS,
+  METRIC_NAV_ORDER,
+  formatMetricUnit,
+} from '../config/statsMetrics';
 
 const CASINO_MONEY_SUBTABS = [
   { id: 'netCasinoBilan', label: 'Bilan Net' },
@@ -49,36 +53,66 @@ export default function StatsHistoryModal({
   stats = {},
   wikithunes = 0,
   collectionValue = null,
-  playerName = 'Mocobanks',
+  playerName: _playerName = 'Mocobanks',
   isLocalUser = false,
   createdAt = null,
   snapshots = undefined,
   userCode = null,
 }) {
+  const [metricOverride, setMetricOverride] = useState({
+    forProp: metricId,
+    id: null,
+  });
   const [subMetricOverride, setSubMetricOverride] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoverIndex, setHoverIndex] = useState(null);
 
+  const currentBaseMetricId =
+    metricOverride.forProp === metricId && metricOverride.id
+      ? metricOverride.id
+      : metricId;
+
   const subTabs = useMemo(() => {
-    if (['netCasinoBilan', 'netCasinoGains', 'lostMoneyCasino'].includes(metricId)) {
+    if (
+      ['netCasinoBilan', 'netCasinoGains', 'lostMoneyCasino'].includes(
+        currentBaseMetricId
+      )
+    ) {
       return CASINO_MONEY_SUBTABS;
     }
-    if (['netCardsBilan', 'wonCards', 'lostCards'].includes(metricId)) {
+    if (
+      ['netCardsBilan', 'wonCards', 'lostCards'].includes(currentBaseMetricId)
+    ) {
       return CARDS_BILAN_SUBTABS;
     }
     return null;
-  }, [metricId]);
+  }, [currentBaseMetricId]);
 
   const activeMetricId = useMemo(() => {
-    if (subTabs && subMetricOverride && subTabs.some((t) => t.id === subMetricOverride)) {
+    if (
+      subTabs &&
+      subMetricOverride &&
+      subTabs.some((t) => t.id === subMetricOverride)
+    ) {
       return subMetricOverride;
     }
-    return metricId;
-  }, [metricId, subTabs, subMetricOverride]);
+    return currentBaseMetricId;
+  }, [currentBaseMetricId, subTabs, subMetricOverride]);
 
-  const def = METRIC_DEFINITIONS[activeMetricId] || METRIC_DEFINITIONS.collectionValue;
-  const MetricIcon = def.icon;
-  const isNetMetric = activeMetricId === 'netCasinoBilan' || activeMetricId === 'netCardsBilan';
+  const def =
+    METRIC_DEFINITIONS[activeMetricId] || METRIC_DEFINITIONS.collectionValue;
+  const isNetMetric =
+    activeMetricId === 'netCasinoBilan' || activeMetricId === 'netCardsBilan';
+
+  const currentNavIndex = METRIC_NAV_ORDER.indexOf(currentBaseMetricId);
+  const handleStepMetric = (direction) => {
+    const idx = currentNavIndex === -1 ? 0 : currentNavIndex;
+    const nextIdx =
+      (idx + direction + METRIC_NAV_ORDER.length) % METRIC_NAV_ORDER.length;
+    setMetricOverride({ forProp: metricId, id: METRIC_NAV_ORDER[nextIdx] });
+    setSubMetricOverride(null);
+    setHoverIndex(null);
+  };
 
   const points = useMemo(() => {
     return generateMetricTimeSeries(activeMetricId, {
@@ -104,20 +138,6 @@ export default function StatsHistoryModal({
     snapshots,
     userCode,
   ]);
-
-  const statsOverview = useMemo(() => {
-    if (!points || points.length === 0) {
-      return { min: 0, max: 0, start: 0, current: 0, delta: 0, deltaPct: 0 };
-    }
-    const values = points.map((p) => p.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const start = points[0].value;
-    const current = points[points.length - 1].value;
-    const delta = current - start;
-    const deltaPct = calculateEvolutionPct(current, start, points, def.isCurrency);
-    return { min, max, start, current, delta, deltaPct };
-  }, [points, def.isCurrency]);
 
   const activePoint = useMemo(() => {
     if (!points || points.length === 0) return { timestamp: 0, value: 0 };
@@ -150,6 +170,9 @@ export default function StatsHistoryModal({
   const isLossMetric = activeMetricId === 'lostMoneyCasino' || activeMetricId === 'lostCards';
   const isPositive = isLossMetric ? activeDelta.val <= 0 : activeDelta.val >= 0;
   const isZero = activeDelta.val === 0;
+  const startValue = points[0]?.value ?? 0;
+  const showDeltaPct =
+    Math.abs(startValue) >= 10 && Math.abs(activeDelta.pct) <= 999;
 
   const trendTone = isNetMetric
     ? activePoint.value > 0
@@ -173,30 +196,40 @@ export default function StatsHistoryModal({
         className="relative z-10 w-full max-w-[700px] bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] shadow-2xl overflow-hidden flex flex-col text-[#202122] dark:text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#eaecf0] dark:border-[#30363d] bg-[#f8f9fa] dark:bg-[#12161c]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-[2px] bg-[#eaf3ff] dark:bg-[#1f2937] border border-[#3366cc]/30 flex items-center justify-center text-[#3366cc] shrink-0">
-              <MetricIcon className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[14.5px] font-bold text-[#101418] dark:text-white m-0 truncate">
-                {def.title}
-              </h3>
-              <span className="text-[11.5px] text-[#54595d] dark:text-[#8b949e] truncate block">
-                Historique de {playerName}
-              </span>
-            </div>
-          </div>
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[#eaecf0] dark:border-[#30363d] bg-[#f8f9fa] dark:bg-[#12161c]">
+          <h3 className="text-[18px] sm:text-[20px] font-bold text-[#101418] dark:text-white m-0 truncate">
+            {def.title}
+          </h3>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-[2px] hover:bg-[#eaecf0] dark:hover:bg-[#21262d] text-[#54595d] hover:text-[#202122] dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-            title="Fermer la vue graphique"
-            aria-label="Fermer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleStepMetric(-1)}
+              className="w-8 h-8 rounded-[2px] hover:bg-[#eaecf0] dark:hover:bg-[#21262d] text-[#54595d] hover:text-[#202122] dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+              title="Métrique précédente"
+              aria-label="Métrique précédente"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStepMetric(1)}
+              className="w-8 h-8 rounded-[2px] hover:bg-[#eaecf0] dark:hover:bg-[#21262d] text-[#54595d] hover:text-[#202122] dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+              title="Métrique suivante"
+              aria-label="Métrique suivante"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-[2px] hover:bg-[#eaecf0] dark:hover:bg-[#21262d] text-[#54595d] hover:text-[#202122] dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+              title="Fermer la vue graphique"
+              aria-label="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Sous-onglets rapides pour explorer les composantes détaillées des bilans (Gains vs Pertes) */}
@@ -234,7 +267,7 @@ export default function StatsHistoryModal({
               <WikithuneIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#3366cc] inline-block shrink-0 self-center" />
             ) : (
               <span className="text-[17px] font-bold text-[#54595d] dark:text-[#8b949e]">
-                {def.unit}
+                {formatMetricUnit(def.unit, activePoint.value)}
               </span>
             )}
           </div>
@@ -261,8 +294,10 @@ export default function StatsHistoryModal({
               <span>
                 {activeDelta.val > 0 ? '+' : ''}
                 {new Intl.NumberFormat('fr-FR').format(activeDelta.val)}
-                {def.unit} ({activeDelta.val > 0 ? '+' : ''}
-                {activeDelta.pct.toFixed(1)} %)
+                {formatMetricUnit(def.unit, activeDelta.val)}
+                {showDeltaPct
+                  ? ` (${activeDelta.val > 0 ? '+' : ''}${activeDelta.pct.toFixed(1)} %)`
+                  : ''}
               </span>
             </span>
 
@@ -311,8 +346,6 @@ export default function StatsHistoryModal({
             );
           })}
         </div>
-
-        <StatsHistoryOverview overview={statsOverview} unit={def.unit} />
       </div>
     </div>
   );
