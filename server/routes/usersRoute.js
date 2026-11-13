@@ -89,7 +89,7 @@ export async function handleUsersRoute(req, res, pathname) {
               ];
 
         const resolvedShelves = rawShelves.slice(0, 4).map((shelf, idx) => {
-          const cardIds = [0, 1, 2, 3, 4].map((i) =>
+          const cardIds = [0, 1, 2, 3, 4, 5].map((i) =>
             shelf?.cardIds?.[i] && shelf.cardIds[i] !== 'null'
               ? String(shelf.cardIds[i])
               : null

@@ -1,5 +1,5 @@
 /**
- * @file Rôle : Étagères personnalisables de collections (style Babelio, max 4 étagères × 5 cartes) sur le profil du joueur.
+ * @file Rôle : Étagères personnalisables de collections (style Babelio, max 4 étagères × 6 cartes) sur le profil du joueur.
  * Dépendances : React, `lucide-react`, `../WikiCard`.
  * Effets de bord : Sélection d'un emplacement pour affectation, renommage, suppression d'étagère ou retrait de carte.
  */
@@ -9,9 +9,9 @@ import { Plus, Pencil, Trash2, Check, X, BookMarked } from 'lucide-react';
 import WikiCard from '../WikiCard';
 
 /**
- * Composant affichant les étagères de collection du joueur (1 à 4 étagères, 5 cartes max chacune).
+ * Composant affichant les étagères de collection du joueur (1 à 4 étagères, 6 cartes max chacune).
  * @param {Object} props
- * @param {Array<Object>} props.shelves - Liste des étagères normalisées avec leurs 5 cartes résolues
+ * @param {Array<Object>} props.shelves - Liste des étagères normalisées avec leurs 6 cartes résolues
  * @param {{ shelfId: string, slotIdx: number }|null} props.activeShowcaseSlot - Emplacement actif pour sélection
  * @param {Array<string>} [props.favorites=[]] - Liste des IDs favoris
  * @param {function(string): void} [props.onToggleFavorite] - Callback de bascule favori
@@ -135,9 +135,9 @@ export default function ProfileShowcase({
               )}
             </div>
 
-            {/* Rangée de 5 emplacements style étagère Babelio */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 justify-items-center pb-2">
-              {[0, 1, 2, 3, 4].map((slotIdx) => {
+            {/* Rangée de 6 emplacements style étagère Babelio */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4 justify-items-center pb-2">
+              {[0, 1, 2, 3, 4, 5].map((slotIdx) => {
                 const card = shelf.cards?.[slotIdx] || null;
                 const isSlotActive =
                   activeShowcaseSlot?.shelfId === shelf.id &&

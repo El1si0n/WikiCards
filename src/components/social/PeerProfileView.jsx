@@ -20,7 +20,7 @@ import ProfileStatsGrid from '../profile/ProfileStatsGrid';
  * @param {Object} props.peerStats - Agrégats statistiques du pair
  * @param {Array<Object>} props.peerCollection - Collection de cartes du pair
  * @param {Array<Object|null>} props.peerShowcaseCards - Cartes de l'ancienne vitrine du pair (fallback)
- * @param {Array<Object>} [props.peerShelves] - Étagères de collection du pair (max 4 × 5 cartes)
+ * @param {Array<Object>} [props.peerShelves] - Étagères de collection du pair (max 4 × 6 cartes)
  * @param {function(string): void} props.onOpenHistoryMetric - Callback d'ouverture de l'historique Trade Republic
  * @returns {JSX.Element} Vue complète du profil pair
  */
@@ -43,7 +43,7 @@ export default function PeerProfileView({
           {
             id: 'shelf-1',
             name: 'Vitrine du collectionneur',
-            cards: [0, 1, 2, 3, 4].map((i) => peerShowcaseCards?.[i] || null),
+            cards: [0, 1, 2, 3, 4, 5].map((i) => peerShowcaseCards?.[i] || null),
           },
         ];
   const resolvedUniqueCount =
@@ -150,8 +150,8 @@ export default function PeerProfileView({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 justify-items-center pb-2">
-                  {[0, 1, 2, 3, 4].map((idx) => {
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4 justify-items-center pb-2">
+                  {[0, 1, 2, 3, 4, 5].map((idx) => {
                     const card = shelf.cards?.[idx] || null;
                     return (
                       <div

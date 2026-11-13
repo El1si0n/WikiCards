@@ -161,13 +161,13 @@ export function setStoredUserCode(code) {
 export const MAX_PROFILE_SHELVES = 4;
 
 /** Nombre maximal de cartes par étagère */
-export const MAX_CARDS_PER_SHELF = 5;
+export const MAX_CARDS_PER_SHELF = 6;
 
 /**
  * @typedef {Object} ProfileShelf
  * @property {string} id - Identifiant unique de l'étagère
  * @property {string} name - Nom personnalisable de l'étagère
- * @property {Array<string|null>} cardIds - Tableau de 5 emplacements (ID de carte ou null)
+ * @property {Array<string|null>} cardIds - Tableau de 6 emplacements (ID de carte ou null)
  */
 
 /**

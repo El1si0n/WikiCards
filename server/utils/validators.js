@@ -116,7 +116,7 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
   if (payload.profile && typeof payload.profile === 'object') {
     const rawShowcaseIds = Array.isArray(payload.profile.showcaseIds)
       ? payload.profile.showcaseIds
-          .slice(0, 5)
+          .slice(0, 6)
           .map((id) => (id && id !== 'null' ? String(id) : null))
       : [];
 
@@ -138,7 +138,7 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
       .slice(0, 4)
       .map((shelf, idx) => {
         const rawIds = Array.isArray(shelf?.cardIds) ? shelf.cardIds : [];
-        const cardIds = Array.from({ length: 5 }, (_, i) => {
+        const cardIds = Array.from({ length: 6 }, (_, i) => {
           const val = rawIds[i];
           return val && val !== 'null' ? String(val) : null;
         });
@@ -160,7 +160,7 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
       showcaseIds:
         rawShowcaseIds.length > 0
           ? rawShowcaseIds
-          : sanitizedShelves[0].cardIds.filter(Boolean).slice(0, 5),
+          : sanitizedShelves[0].cardIds.filter(Boolean).slice(0, 6),
       shelves: sanitizedShelves,
     };
   }
