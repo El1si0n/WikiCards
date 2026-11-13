@@ -114,24 +114,21 @@ export default function DoubleOrNothingGame({
                     />
                   </div>
                 ) : (
-                  /* Plusieurs cartes sélectionnées : éventail responsive */
-                  <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/443] overflow-hidden">
+                  /* Plusieurs cartes sélectionnées : éventail responsive sans rognage */
+                  <div className="relative flex items-center justify-center w-full max-w-[300px] min-h-[280px] sm:min-h-[315px] py-2 overflow-visible">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
-                      const offsetStep = Math.min(
-                        38,
-                        Math.floor(110 / Math.max(1, total - 1))
-                      );
-                      const startOffset = -((total - 1) * offsetStep) / 2;
-                      const translateX = startOffset + idx * offsetStep;
+                      const totalSpreadPct = Math.min(34, (total - 1) * 14);
+                      const stepPct = totalSpreadPct / Math.max(1, total - 1);
+                      const translateXPct = -totalSpreadPct / 2 + idx * stepPct;
                       return (
                         <div
                           key={`${card.id}-${idx}`}
                           style={{
-                            transform: `translateX(${translateX}px)`,
+                            transform: `translateX(${translateXPct}%)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-full max-w-[284px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          className="absolute w-[68%] max-w-[196px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-2"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard
