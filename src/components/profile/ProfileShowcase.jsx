@@ -5,7 +5,16 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, BookMarked } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  BookMarked,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react';
 import WikiCard from '../WikiCard';
 
 /**
@@ -18,6 +27,7 @@ import WikiCard from '../WikiCard';
  * @param {function(string, number): void} props.onSelectSlot - Sélection / bascule d'un emplacement
  * @param {function(string, number, React.MouseEvent): void} [props.onClearSlot] - Vidage d'un emplacement
  * @param {function(string, string): void} [props.onRenameShelf] - Renommage d'une étagère
+ * @param {function(string, number): void} [props.onMoveShelf] - Déplacement d'une étagère vers le haut (-1) ou le bas (+1)
  * @param {function(string): void} [props.onRemoveShelf] - Suppression d'une étagère
  * @returns {JSX.Element}
  */
@@ -29,6 +39,7 @@ export default function ProfileShowcase({
   onSelectSlot,
   onClearSlot,
   onRenameShelf,
+  onMoveShelf,
   onRemoveShelf,
 }) {
   const [editingShelfId, setEditingShelfId] = useState(null);
@@ -48,8 +59,10 @@ export default function ProfileShowcase({
 
   return (
     <div className="space-y-6">
-      {shelves.map((shelf) => {
+      {shelves.map((shelf, shelfIdx) => {
         const isEditing = editingShelfId === shelf.id;
+        const canMoveUp = shelfIdx > 0;
+        const canMoveDown = shelfIdx < shelves.length - 1;
 
         return (
           <div
@@ -120,17 +133,51 @@ export default function ProfileShowcase({
                 )}
               </div>
 
-              {shelves.length > 1 && onRemoveShelf && (
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onRemoveShelf(shelf.id)}
-                    className="p-1 text-[#72777d] hover:text-[#bf3c2c] dark:text-[#8b949e] dark:hover:text-[#f87171] cursor-pointer transition-colors"
-                    title="Supprimer cette étagère"
-                    aria-label={`Supprimer ${shelf.name}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {shelves.length > 1 && (onMoveShelf || onRemoveShelf) && (
+                <div className="flex items-center gap-1 shrink-0">
+                  {onMoveShelf && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={!canMoveUp}
+                        onClick={() => onMoveShelf(shelf.id, -1)}
+                        className={`p-1 rounded-[2px] transition-colors ${
+                          canMoveUp
+                            ? 'text-[#72777d] hover:text-[#3366cc] hover:bg-[#eaecf0]/70 dark:text-[#8b949e] dark:hover:text-[#6699ff] dark:hover:bg-[#21262d] cursor-pointer'
+                            : 'text-[#c8ccd1] dark:text-[#363e4a] cursor-not-allowed'
+                        }`}
+                        title="Monter cette étagère"
+                        aria-label={`Monter ${shelf.name}`}
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canMoveDown}
+                        onClick={() => onMoveShelf(shelf.id, 1)}
+                        className={`p-1 rounded-[2px] transition-colors ${
+                          canMoveDown
+                            ? 'text-[#72777d] hover:text-[#3366cc] hover:bg-[#eaecf0]/70 dark:text-[#8b949e] dark:hover:text-[#6699ff] dark:hover:bg-[#21262d] cursor-pointer'
+                            : 'text-[#c8ccd1] dark:text-[#363e4a] cursor-not-allowed'
+                        }`}
+                        title="Descendre cette étagère"
+                        aria-label={`Descendre ${shelf.name}`}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                  {onRemoveShelf && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveShelf(shelf.id)}
+                      className="p-1 text-[#72777d] hover:text-[#bf3c2c] dark:text-[#8b949e] dark:hover:text-[#f87171] cursor-pointer transition-colors"
+                      title="Supprimer cette étagère"
+                      aria-label={`Supprimer ${shelf.name}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>

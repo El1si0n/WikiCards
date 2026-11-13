@@ -92,6 +92,7 @@ export default function UserProfile({
     handleAddShelf,
     handleRemoveShelf,
     handleRenameShelf,
+    handleMoveShelf,
     handleSelectShowcaseSlot,
     handleAssignCardToShowcase,
     handleRemoveShowcaseSlot,
@@ -170,6 +171,7 @@ export default function UserProfile({
           onSelectSlot={handleSelectShowcaseSlot}
           onClearSlot={handleRemoveShowcaseSlot}
           onRenameShelf={handleRenameShelf}
+          onMoveShelf={handleMoveShelf}
           onRemoveShelf={handleRemoveShelf}
         />
 

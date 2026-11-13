@@ -323,6 +323,18 @@ export default function useUserProfile({
     soundManager.playCardSlide();
   };
 
+  const handleMoveShelf = (shelfId, direction) => {
+    const idx = rawShelves.findIndex((s) => s.id === shelfId);
+    if (idx === -1) return;
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= rawShelves.length) return;
+    const nextShelves = [...rawShelves];
+    const [moved] = nextShelves.splice(idx, 1);
+    nextShelves.splice(targetIdx, 0, moved);
+    commitShelvesUpdate(nextShelves);
+    soundManager.playCardSlide();
+  };
+
   const handleSelectShowcaseSlot = (shelfId, slotIdx) => {
     setActiveShowcaseSlot((prev) =>
       prev && prev.shelfId === shelfId && prev.slotIdx === slotIdx
@@ -530,6 +542,7 @@ export default function useUserProfile({
     handleAddShelf,
     handleRemoveShelf,
     handleRenameShelf,
+    handleMoveShelf,
     handleSelectShowcaseSlot,
     handleAssignCardToShowcase,
     handleRemoveShowcaseSlot,
