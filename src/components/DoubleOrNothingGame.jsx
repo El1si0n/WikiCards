@@ -51,9 +51,6 @@ export default function DoubleOrNothingGame({
     liveSelectedCards,
     displayedSelectedCards,
     activeTier,
-    baseChance,
-    fatiguePenalty,
-    recoveryRemainingSeconds,
     displayChance,
     getChanceForRarity,
     getMaxSelectableCopies,
@@ -163,16 +160,6 @@ export default function DoubleOrNothingGame({
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
             </span>
-            {fatiguePenalty > 0 && (
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] bg-[#fff4e5] dark:bg-[#3a2810] border border-[#f5a642]/60 text-[11px] font-bold text-[#b45309] dark:text-[#fbbf24]"
-                title={`Malus anti-farm actif (-${fatiguePenalty} %). Récupération progressive vers ${baseChance} % après inactivité.`}
-              >
-                <span>-{fatiguePenalty}%</span>
-                <span>•</span>
-                <span>Récup. {recoveryRemainingSeconds}s</span>
-              </span>
-            )}
           </div>
 
           {isMultiMode ? (

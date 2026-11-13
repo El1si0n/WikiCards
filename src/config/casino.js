@@ -68,11 +68,11 @@ export const DOUBLE_CHANCE_BY_RARITY = {
 /** Plancher minimal de probabilité de succès au Quitte ou Double (%) */
 export const DOUBLE_MIN_CHANCE = 12;
 
-/** Délai d'inactivité (ms) permettant de récupérer un palier de malus anti-farm (30 secondes) */
-export const DOUBLE_FATIGUE_RECOVERY_MS = 30000;
+/** Délai d'inactivité (ms) permettant de récupérer un palier de malus anti-farm (5 minutes) */
+export const DOUBLE_FATIGUE_RECOVERY_MS = 5 * 60 * 1000;
 
-/** Malus dégressif rapide (en points de %) appliqué selon le nombre de parties consécutives */
-export const DOUBLE_FATIGUE_PENALTIES = [0, 4, 9, 16, 24, 33, 42];
+/** Malus progressif (en points de %) appliqué par rareté selon le nombre de lancers consécutifs */
+export const DOUBLE_FATIGUE_PENALTIES = [0, 2, 4, 6, 9, 12, 16, 20, 25, 30, 36, 42];
 
 /**
  * Calcule le malus anti-farm (en points de pourcentage) selon le nombre de parties consécutives.
@@ -86,7 +86,7 @@ export function getDoubleFatiguePenalty(consecutiveCount = 0) {
     return DOUBLE_FATIGUE_PENALTIES[count];
   }
   const extra = count - (DOUBLE_FATIGUE_PENALTIES.length - 1);
-  return DOUBLE_FATIGUE_PENALTIES[DOUBLE_FATIGUE_PENALTIES.length - 1] + extra * 9;
+  return DOUBLE_FATIGUE_PENALTIES[DOUBLE_FATIGUE_PENALTIES.length - 1] + extra * 6;
 }
 
 /**

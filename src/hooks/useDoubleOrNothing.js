@@ -15,36 +15,62 @@ import {
 } from '../config/casino';
 import { getRarityByCode, RARITY_TIERS } from '../config/rarities';
 
-const DOUBLE_FATIGUE_STORAGE_KEY = 'wikicards_double_fatigue_v1';
+const DOUBLE_FATIGUE_STORAGE_KEY = 'wikicards_double_fatigue_v2';
 
-function loadInitialFatigueState() {
+function resolveFatigueMap(rawMap, now = Date.now()) {
+  const next = {};
+  if (!rawMap || typeof rawMap !== 'object') return next;
+  Object.entries(rawMap).forEach(([rarity, entry]) => {
+    if (!entry || typeof entry !== 'object') return;
+    const resolved = resolveDoubleFatigueState(
+      entry.count,
+      entry.lastTimestamp,
+      now
+    );
+    if (resolved.count > 0) {
+      next[rarity] = {
+        count: resolved.count,
+        lastTimestamp: resolved.lastTimestamp,
+        nextRecoveryRemainingMs: resolved.nextRecoveryRemainingMs,
+      };
+    }
+  });
+  return next;
+}
+
+function loadInitialFatigueByRarity() {
   try {
     const raw = localStorage.getItem(DOUBLE_FATIGUE_STORAGE_KEY);
-    if (!raw) return { count: 0, lastTimestamp: Date.now() };
+    if (!raw) return {};
     const parsed = JSON.parse(raw);
-    const resolved = resolveDoubleFatigueState(
-      parsed?.count,
-      parsed?.lastTimestamp,
-      Date.now()
-    );
-    return { count: resolved.count, lastTimestamp: resolved.lastTimestamp };
+    const resolved = resolveFatigueMap(parsed, Date.now());
+    const clean = {};
+    Object.entries(resolved).forEach(([rarity, entry]) => {
+      clean[rarity] = { count: entry.count, lastTimestamp: entry.lastTimestamp };
+    });
+    return clean;
   } catch {
-    return { count: 0, lastTimestamp: Date.now() };
+    return {};
   }
 }
 
-function saveFatigueState(state) {
+function saveFatigueByRarity(map) {
   try {
-    if (!state || state.count <= 0) {
+    const clean = {};
+    if (map && typeof map === 'object') {
+      Object.entries(map).forEach(([rarity, entry]) => {
+        if (entry && entry.count > 0) {
+          clean[rarity] = {
+            count: entry.count,
+            lastTimestamp: entry.lastTimestamp,
+          };
+        }
+      });
+    }
+    if (Object.keys(clean).length === 0) {
       localStorage.removeItem(DOUBLE_FATIGUE_STORAGE_KEY);
     } else {
-      localStorage.setItem(
-        DOUBLE_FATIGUE_STORAGE_KEY,
-        JSON.stringify({
-          count: state.count,
-          lastTimestamp: state.lastTimestamp,
-        })
-      );
+      localStorage.setItem(DOUBLE_FATIGUE_STORAGE_KEY, JSON.stringify(clean));
     }
   } catch {
     // ignore
@@ -79,34 +105,50 @@ export default function useDoubleOrNothing({
   const [selectedThemeFilter, setSelectedThemeFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('rarity_desc');
 
-  const [fatigueState, setFatigueState] = useState(() => loadInitialFatigueState());
+  const [fatigueByRarity, setFatigueByRarity] = useState(() =>
+    loadInitialFatigueByRarity()
+  );
   const [now, setNow] = useState(() => Date.now());
 
   const tickTimersRef = useRef([]);
 
-  useEffect(() => {
-    if (fatigueState.count <= 0) return undefined;
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [fatigueState.count]);
-
-  const resolvedFatigue = useMemo(
-    () => resolveDoubleFatigueState(fatigueState.count, fatigueState.lastTimestamp, now),
-    [fatigueState.count, fatigueState.lastTimestamp, now]
+  const hasActiveFatigue = Object.values(fatigueByRarity).some(
+    (entry) => entry && entry.count > 0
   );
 
   useEffect(() => {
-    if (resolvedFatigue.count !== fatigueState.count) {
-      const next = {
-        count: resolvedFatigue.count,
-        lastTimestamp: resolvedFatigue.lastTimestamp,
-      };
-      setFatigueState(next);
-      saveFatigueState(next);
+    if (!hasActiveFatigue) return undefined;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasActiveFatigue]);
+
+  const resolvedFatigueByRarity = useMemo(
+    () => resolveFatigueMap(fatigueByRarity, now),
+    [fatigueByRarity, now]
+  );
+
+  useEffect(() => {
+    const keysA = Object.keys(fatigueByRarity);
+    const keysB = Object.keys(resolvedFatigueByRarity);
+    const changed =
+      keysA.length !== keysB.length ||
+      keysB.some(
+        (k) => fatigueByRarity[k]?.count !== resolvedFatigueByRarity[k]?.count
+      );
+    if (changed) {
+      const nextClean = {};
+      keysB.forEach((k) => {
+        nextClean[k] = {
+          count: resolvedFatigueByRarity[k].count,
+          lastTimestamp: resolvedFatigueByRarity[k].lastTimestamp,
+        };
+      });
+      setFatigueByRarity(nextClean);
+      saveFatigueByRarity(nextClean);
     }
-  }, [resolvedFatigue.count, resolvedFatigue.lastTimestamp, fatigueState.count]);
+  }, [fatigueByRarity, resolvedFatigueByRarity]);
 
   useEffect(() => {
     return () => {
@@ -194,17 +236,25 @@ export default function useDoubleOrNothing({
     [activeRarityCode]
   );
 
-  const consecutivePlays = resolvedFatigue.count;
+  const activeFatigue = resolvedFatigueByRarity[activeRarityCode] || {
+    count: 0,
+    lastTimestamp: now,
+    nextRecoveryRemainingMs: 0,
+  };
+  const consecutivePlays = activeFatigue.count;
   const fatiguePenalty = getDoubleFatiguePenalty(consecutivePlays);
   const recoveryRemainingSeconds = Math.ceil(
-    (resolvedFatigue.nextRecoveryRemainingMs || 0) / 1000
+    (activeFatigue.nextRecoveryRemainingMs || 0) / 1000
   );
   const baseChance = DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
   const displayChance =
     spinSnapshot?.winPercent ??
     getEffectiveDoubleChance(activeRarityCode, consecutivePlays);
   const getChanceForRarity = (rarityCode) =>
-    getEffectiveDoubleChance(rarityCode, consecutivePlays);
+    getEffectiveDoubleChance(
+      rarityCode,
+      resolvedFatigueByRarity[rarityCode]?.count || 0
+    );
 
   const getMaxSelectableCopies = (card) => {
     if (!card || card.rarity === 'L') return 0;
@@ -293,23 +343,30 @@ export default function useDoubleOrNothing({
     if (spinState === 'spinning' || liveSelectedCards.length === 0) return;
 
     const launchNow = Date.now();
-    const currentFatigue = resolveDoubleFatigueState(
-      fatigueState.count,
-      fatigueState.lastTimestamp,
-      launchNow
-    );
     const lockedCards = [...liveSelectedCards];
     const rarity = activeRarityCode;
-    const winPercent = getEffectiveDoubleChance(rarity, currentFatigue.count);
-    const winArc = (winPercent / 100) * 360;
-
-    const nextFatigue = {
-      count: currentFatigue.count + 1,
+    const resolvedMap = resolveFatigueMap(fatigueByRarity, launchNow);
+    const currentRarityFatigue = resolvedMap[rarity] || {
+      count: 0,
       lastTimestamp: launchNow,
     };
-    setFatigueState(nextFatigue);
+    const winPercent = getEffectiveDoubleChance(rarity, currentRarityFatigue.count);
+    const winArc = (winPercent / 100) * 360;
+
+    const nextFatigueMap = {};
+    Object.entries(resolvedMap).forEach(([k, entry]) => {
+      nextFatigueMap[k] = {
+        count: entry.count,
+        lastTimestamp: entry.lastTimestamp,
+      };
+    });
+    nextFatigueMap[rarity] = {
+      count: currentRarityFatigue.count + 1,
+      lastTimestamp: launchNow,
+    };
+    setFatigueByRarity(nextFatigueMap);
     setNow(launchNow);
-    saveFatigueState(nextFatigue);
+    saveFatigueByRarity(nextFatigueMap);
 
     const consumedMap = {};
     lockedCards.forEach((c) => {
