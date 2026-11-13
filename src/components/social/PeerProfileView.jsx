@@ -136,7 +136,6 @@ export default function PeerProfileView({
         <h3 className="wiki-smallcaps mb-1">Étagères de collections</h3>
         <div className="space-y-5">
           {resolvedShelves.map((shelf) => {
-            const filledCount = (shelf.cards || []).filter(Boolean).length;
             return (
               <div
                 key={shelf.id}
@@ -149,9 +148,6 @@ export default function PeerProfileView({
                       {shelf.name}
                     </span>
                   </div>
-                  <span className="text-[11.5px] font-bold text-[#54595d] dark:text-[#a2a9b1] bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2d3542] px-2 py-0.5 rounded-[2px] shrink-0">
-                    {filledCount}/5 cartes
-                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 justify-items-center pb-2">
@@ -173,8 +169,6 @@ export default function PeerProfileView({
                     );
                   })}
                 </div>
-
-                <div className="h-[6px] w-full rounded-[2px] bg-gradient-to-b from-[#d8ccb8] to-[#b5a48b] dark:from-[#3d352a] dark:to-[#27211a] border-t border-white/60 dark:border-white/10 shadow-xs" />
               </div>
             );
           })}

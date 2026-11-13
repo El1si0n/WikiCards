@@ -37,6 +37,7 @@ const RARITY_ORDER = {
  * @param {Array<string>} [params.favorites=[]] - Identifiants des cartes favorites
  * @param {number} [params.wikithunes=0] - Solde en monnaie virtuelle
  * @param {Object} [params.stats={}] - Statistiques de jeu
+ * @param {function(string): void} [params.onToggleFavorite] - Callback de bascule favori pour protéger les cartes placées en étagère
  * @returns {Object} États réactifs, données calculées et gestionnaires d'actions
  */
 export default function useUserProfile({
@@ -48,6 +49,7 @@ export default function useUserProfile({
   favorites = [],
   wikithunes = 0,
   stats = {},
+  onToggleFavorite,
 }) {
   // Édition directe de l'identité
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
@@ -350,6 +352,15 @@ export default function useUserProfile({
     });
 
     commitShelvesUpdate(nextShelves);
+
+    // Protège automatiquement la carte en la passant en favori si elle ne l'est pas déjà
+    if (
+      onToggleFavorite &&
+      !favorites.some((favId) => String(favId) === String(card.id))
+    ) {
+      onToggleFavorite(card.id);
+    }
+
     soundManager.playCardSlide();
     setActiveShowcaseSlot(nextEmptySlot);
   };

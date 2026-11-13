@@ -105,6 +105,7 @@ export default function UserProfile({
     favorites,
     wikithunes,
     stats,
+    onToggleFavorite,
   });
 
   return (
@@ -157,20 +158,8 @@ export default function UserProfile({
 
       {/* CADRE 2 : ÉTAGÈRES DE COLLECTIONS PERSONNALISABLES (STYLE BABELIO) */}
       <section className="accueil_2017_cadre">
-        <div className="wiki-cadre-header flex flex-wrap items-center justify-between gap-2">
+        <div className="wiki-cadre-header">
           <h2 className="wiki-smallcaps m-0">Étagères de collections</h2>
-          {shelves.length < MAX_PROFILE_SHELVES && (
-            <button
-              type="button"
-              onClick={handleAddShelf}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] hover:bg-[#dcebff] dark:hover:bg-[#223550] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc]/40 rounded-[2px] cursor-pointer transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>
-                Ajouter une étagère ({shelves.length}/{MAX_PROFILE_SHELVES})
-              </span>
-            </button>
-          )}
         </div>
 
         <ProfileShowcase
@@ -201,6 +190,21 @@ export default function UserProfile({
             favorites={favorites}
             onAssignCard={handleAssignCardToShowcase}
           />
+        )}
+
+        {shelves.length < MAX_PROFILE_SHELVES && (
+          <div className="mt-4 pt-3 border-t border-[#eaecf0] dark:border-[#2d3542] flex justify-end">
+            <button
+              type="button"
+              onClick={handleAddShelf}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] hover:bg-[#dcebff] dark:hover:bg-[#223550] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc]/40 rounded-[2px] cursor-pointer transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>
+                Ajouter une étagère ({shelves.length}/{MAX_PROFILE_SHELVES})
+              </span>
+            </button>
+          </div>
         )}
       </section>
 

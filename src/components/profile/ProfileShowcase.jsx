@@ -49,7 +49,6 @@ export default function ProfileShowcase({
   return (
     <div className="space-y-6">
       {shelves.map((shelf) => {
-        const filledCount = (shelf.cards || []).filter(Boolean).length;
         const isEditing = editingShelfId === shelf.id;
 
         return (
@@ -121,11 +120,8 @@ export default function ProfileShowcase({
                 )}
               </div>
 
-              <div className="flex items-center gap-2.5 shrink-0">
-                <span className="text-[11.5px] font-bold text-[#54595d] dark:text-[#a2a9b1] bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2d3542] px-2 py-0.5 rounded-[2px]">
-                  {filledCount}/5 cartes
-                </span>
-                {shelves.length > 1 && onRemoveShelf && (
+              {shelves.length > 1 && onRemoveShelf && (
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => onRemoveShelf(shelf.id)}
@@ -135,8 +131,8 @@ export default function ProfileShowcase({
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Rangée de 5 emplacements style étagère Babelio */}
@@ -207,9 +203,6 @@ export default function ProfileShowcase({
                 );
               })}
             </div>
-
-            {/* Rebord visuel de l'étagère */}
-            <div className="h-[6px] w-full rounded-[2px] bg-gradient-to-b from-[#d8ccb8] to-[#b5a48b] dark:from-[#3d352a] dark:to-[#27211a] border-t border-white/60 dark:border-white/10 shadow-xs" />
           </div>
         );
       })}
