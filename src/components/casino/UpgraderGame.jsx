@@ -63,7 +63,6 @@ export default function UpgraderGame({
     handleFinishRound,
     handleClasseurCardClick,
     handleRemoveSelectedInstanceAt,
-    handleClearSelection,
     handleLaunchUpgrade,
   } = useUpgraderGame({
     collection,
@@ -92,20 +91,9 @@ export default function UpgraderGame({
             <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
               Cartes sélectionnées
             </span>
-            <div className="flex items-center gap-2">
-              {displayedSelectedCards.length > 0 && !spinSnapshot && spinState !== 'spinning' && (
-                <button
-                  type="button"
-                  onClick={handleClearSelection}
-                  className="text-[11.5px] text-[#bf3c2c] hover:underline font-semibold"
-                >
-                  Vider
-                </button>
-              )}
-              <span className="text-[12px] text-[#54595d] font-medium">
-                {displayedSelectedCards.length}/{MAX_SELECTED_CARDS}
-              </span>
-            </div>
+            <span className="text-[12px] text-[#54595d] font-medium">
+              {displayedSelectedCards.length}/{MAX_SELECTED_CARDS}
+            </span>
           </div>
 
           <div className="flex-1 flex items-center justify-center py-2">
@@ -127,12 +115,12 @@ export default function UpgraderGame({
                     />
                   </div>
                 ) : (
-                  <div className="relative flex items-center justify-center w-full max-w-[284px] aspect-[284/443] overflow-hidden">
+                  <div className="relative flex items-center justify-center w-full h-[390px] sm:h-[430px]">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
                       const offsetStep = Math.min(
-                        38,
-                        Math.floor(110 / Math.max(1, total - 1))
+                        30,
+                        Math.floor(84 / Math.max(1, total - 1))
                       );
                       const startOffset =
                         -((total - 1) * offsetStep) / 2;
@@ -144,7 +132,7 @@ export default function UpgraderGame({
                             transform: `translateX(${translateX}px)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-full max-w-[284px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
+                          className="absolute w-[236px] sm:w-[258px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard

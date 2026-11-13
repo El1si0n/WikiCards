@@ -1,24 +1,14 @@
 // Rôle : Conteneur et routeur d'affichage des vues d'onglets (Booster, WikiSino, Social, Marché, Profil, Classeur).
-// Dépendances : React (lazy, Suspense), BoosterTab, Classeur, WikiSino, SocialHub, AuctionMarket, UserProfile.
+// Dépendances : React, BoosterTab, Classeur, WikiSino, SocialHub, AuctionMarket, UserProfile.
 // Effets de bord : Aucun (délègue les interactions aux sous-composants).
 
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import BoosterTab from './BoosterTab';
 import Classeur from './Classeur';
-
-const WikiSino = lazy(() => import('./WikiSino'));
-const SocialHub = lazy(() => import('./SocialHub'));
-const AuctionMarket = lazy(() => import('./AuctionMarket'));
-const UserProfile = lazy(() => import('./UserProfile'));
-
-function TabLoadingFallback() {
-  return (
-    <div className="py-20 flex flex-col items-center justify-center gap-3">
-      <div className="w-8 h-8 border-3 border-[#3366cc] border-t-transparent rounded-full animate-spin" />
-      <span className="text-[13px] text-[#54595d]">Chargement...</span>
-    </div>
-  );
-}
+import WikiSino from './WikiSino';
+import SocialHub from './SocialHub';
+import AuctionMarket from './AuctionMarket';
+import UserProfile from './UserProfile';
 
 /**
  * Routeur de contenu pour l'onglet actuellement sélectionné.
@@ -59,72 +49,64 @@ export default function AppTabContent({
 
   if (activeTab === 'wikisino') {
     return (
-      <Suspense fallback={<TabLoadingFallback />}>
-        <WikiSino
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
-          onSpendWikithunes={account.spendWikithunes}
-          onAddWikithunes={account.addWikithunes}
-          onConsumeCards={account.consumeCardsFromCollection}
-          onCardWon={(wonCard) => account.addCardsToCollection([wonCard], false)}
-          existingCardIds={account.existingCardIds}
-          onToggleFavorite={account.toggleFavorite}
-          stats={account.stats}
-          onUpdateStats={account.handleUpdateStats}
-        />
-      </Suspense>
+      <WikiSino
+        collection={account.collection}
+        favorites={account.favorites}
+        wikithunes={account.wikithunes}
+        onSpendWikithunes={account.spendWikithunes}
+        onAddWikithunes={account.addWikithunes}
+        onConsumeCards={account.consumeCardsFromCollection}
+        onCardWon={(wonCard) => account.addCardsToCollection([wonCard], false)}
+        existingCardIds={account.existingCardIds}
+        onToggleFavorite={account.toggleFavorite}
+        stats={account.stats}
+        onUpdateStats={account.handleUpdateStats}
+      />
     );
   }
 
   if (activeTab === 'social') {
     return (
-      <Suspense fallback={<TabLoadingFallback />}>
-        <SocialHub
-          userCode={account.userCode}
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
-          stats={account.stats}
-          userProfile={account.userProfile}
-          accountCreatedAt={account.accountCreatedAt}
-          onSyncAccountState={account.handleSyncAccountState}
-        />
-      </Suspense>
+      <SocialHub
+        userCode={account.userCode}
+        collection={account.collection}
+        favorites={account.favorites}
+        wikithunes={account.wikithunes}
+        stats={account.stats}
+        userProfile={account.userProfile}
+        accountCreatedAt={account.accountCreatedAt}
+        onSyncAccountState={account.handleSyncAccountState}
+      />
     );
   }
 
   if (activeTab === 'market') {
     return (
-      <Suspense fallback={<TabLoadingFallback />}>
-        <AuctionMarket
-          userCode={account.userCode}
-          collection={account.collection}
-          favorites={account.favorites}
-          wikithunes={account.wikithunes}
-          onSyncAccountState={account.handleSyncAccountState}
-        />
-      </Suspense>
+      <AuctionMarket
+        userCode={account.userCode}
+        collection={account.collection}
+        favorites={account.favorites}
+        wikithunes={account.wikithunes}
+        onSyncAccountState={account.handleSyncAccountState}
+      />
     );
   }
 
   if (activeTab === 'profile') {
     return (
-      <Suspense fallback={<TabLoadingFallback />}>
-        <UserProfile
-          userCode={account.userCode}
-          profile={account.userProfile}
-          onUpdateProfile={account.handleUpdateUserProfile}
-          onLogout={account.handleLogout}
-          onDeleteAccount={account.handleDeleteAccount}
-          collection={account.collection}
-          favorites={account.favorites}
-          onToggleFavorite={account.toggleFavorite}
-          wikithunes={account.wikithunes}
-          stats={account.stats}
-          accountCreatedAt={account.accountCreatedAt}
-        />
-      </Suspense>
+      <UserProfile
+        userCode={account.userCode}
+        profile={account.userProfile}
+        onUpdateProfile={account.handleUpdateUserProfile}
+        onLogout={account.handleLogout}
+        onDeleteAccount={account.handleDeleteAccount}
+        collection={account.collection}
+        favorites={account.favorites}
+        onToggleFavorite={account.toggleFavorite}
+        wikithunes={account.wikithunes}
+        stats={account.stats}
+        accountCreatedAt={account.accountCreatedAt}
+      />
     );
   }
 

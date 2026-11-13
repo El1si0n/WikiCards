@@ -148,19 +148,18 @@ export function useAuctionMarket({
     };
   }, [userCode, activeSubTab]);
 
-  const activeListings = useMemo(
-    () => listings.filter((l) => l.status === 'active'),
+  const safeListings = useMemo(
+    () => (Array.isArray(listings) ? listings : []),
     [listings]
   );
 
-  useEffect(() => {
-    const hasExpiredActive = activeListings.some(
-      (l) => l.highestBidderCode && l.bidExpiresAt && now >= Number(l.bidExpiresAt)
-    );
-    if (hasExpiredActive) {
-      loadListings(true);
-    }
-  }, [now, activeListings]);
+  const activeListings = useMemo(
+    () =>
+      safeListings.filter(
+        (l) => l && l.status === 'active' && l.card && typeof l.card === 'object'
+      ),
+    [safeListings]
+  );
 
   const filteredBrowseListings = useMemo(() => {
     return activeListings.filter((l) =>
@@ -169,8 +168,8 @@ export function useAuctionMarket({
   }, [activeListings, rarityFilter]);
 
   const myListings = useMemo(
-    () => listings.filter((l) => l.sellerCode === userCode),
-    [listings, userCode]
+    () => safeListings.filter((l) => l && l.sellerCode === userCode),
+    [safeListings, userCode]
   );
 
   const selectedSellCard = useMemo(

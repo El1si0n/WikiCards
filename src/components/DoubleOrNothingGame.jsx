@@ -112,20 +112,23 @@ export default function DoubleOrNothingGame({
                   </div>
                 ) : (
                   /* Plusieurs cartes sélectionnées : éventail responsive sans rognage */
-                  <div className="relative flex items-center justify-center w-full max-w-[300px] min-h-[280px] sm:min-h-[315px] py-2 overflow-visible">
+                  <div className="relative flex items-center justify-center w-full h-[390px] sm:h-[430px]">
                     {displayedSelectedCards.map((card, idx) => {
                       const total = displayedSelectedCards.length;
-                      const totalSpreadPct = Math.min(34, (total - 1) * 14);
-                      const stepPct = totalSpreadPct / Math.max(1, total - 1);
-                      const translateXPct = -totalSpreadPct / 2 + idx * stepPct;
+                      const offsetStep = Math.min(
+                        30,
+                        Math.floor(84 / Math.max(1, total - 1))
+                      );
+                      const startOffset = -((total - 1) * offsetStep) / 2;
+                      const translateX = startOffset + idx * offsetStep;
                       return (
                         <div
                           key={`${card.id}-${idx}`}
                           style={{
-                            transform: `translateX(${translateXPct}%)`,
+                            transform: `translateX(${translateX}px)`,
                             zIndex: 10 + idx,
                           }}
-                          className="absolute w-[68%] max-w-[196px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-2"
+                          className="absolute w-[236px] sm:w-[258px] aspect-[284/443] transition-transform duration-200 hover:!z-40 hover:-translate-y-1.5"
                           title="Cliquez sur cette carte pour la retirer"
                         >
                           <WikiCard

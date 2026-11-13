@@ -13,6 +13,22 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('[WikiCards ErrorBoundary caught exception]:', error, errorInfo);
     this.setState({ errorInfo });
+    const msg = String(error?.message || error || '');
+    if (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('error loading dynamically imported module')
+    ) {
+      try {
+        const lastReload = Number(sessionStorage.getItem('wikicards_chunk_reload_ts') || 0);
+        if (Date.now() - lastReload > 10000) {
+          sessionStorage.setItem('wikicards_chunk_reload_ts', String(Date.now()));
+          window.location.reload();
+        }
+      } catch {
+        // ignore
+      }
+    }
   }
 
   handleReload = () => {
