@@ -69,8 +69,42 @@ export async function handleUsersRoute(req, res, pathname) {
           ? parsed.profile.showcaseIds
           : [];
         const showcaseCards = showcaseIds
-          .map((id) => (id ? col.find((c) => String(c.id) === String(id)) || null : null))
+          .map((id) =>
+            id && id !== 'null'
+              ? col.find((c) => String(c.id) === String(id)) || null
+              : null
+          )
           .filter(Boolean);
+
+        const rawShelves =
+          Array.isArray(parsed.profile?.shelves) &&
+          parsed.profile.shelves.length > 0
+            ? parsed.profile.shelves
+            : [
+                {
+                  id: 'shelf-1',
+                  name: 'Vitrine du collectionneur',
+                  cardIds: showcaseIds,
+                },
+              ];
+
+        const resolvedShelves = rawShelves.slice(0, 4).map((shelf, idx) => {
+          const cardIds = [0, 1, 2, 3, 4].map((i) =>
+            shelf?.cardIds?.[i] && shelf.cardIds[i] !== 'null'
+              ? String(shelf.cardIds[i])
+              : null
+          );
+          const fallbackName =
+            idx === 0 ? 'Vitrine du collectionneur' : `Étagère ${idx + 1}`;
+          return {
+            id: String(shelf?.id || `shelf-${idx + 1}`).slice(0, 40),
+            name: String(shelf?.name || fallbackName).trim().slice(0, 45) || fallbackName,
+            cardIds,
+            cards: cardIds.map((id) =>
+              id ? col.find((c) => String(c.id) === String(id)) || null : null
+            ),
+          };
+        });
 
         users.push({
           code: parsed.code,
@@ -83,6 +117,7 @@ export async function handleUsersRoute(req, res, pathname) {
           bio: parsed.profile?.bio || '',
           showcaseIds,
           showcaseCards,
+          shelves: resolvedShelves,
           uniqueCardsCount: col.length,
           totalCardsCount: col.reduce((s, c) => s + (c.count || 1), 0),
           legendaryCount: col

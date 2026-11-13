@@ -5,7 +5,9 @@
  */
 
 import React from 'react';
+import { Plus } from 'lucide-react';
 import useUserProfile from '../hooks/useUserProfile';
+import { MAX_PROFILE_SHELVES } from '../services/userStorage';
 import ProfileHeader from './profile/ProfileHeader';
 import ProfileAvatarPicker from './profile/ProfileAvatarPicker';
 import ProfileStatsGrid from './profile/ProfileStatsGrid';
@@ -66,8 +68,9 @@ export default function UserProfile({
     setSortBy,
     historyModalMetric,
     setHistoryModalMetric,
-    showcaseIds,
-    showcaseCards,
+    shelves,
+    activeShelf,
+    activeShelfShowcaseIds,
     totalCopiesCount,
     legendaryCount,
     ultraRareCount,
@@ -86,7 +89,12 @@ export default function UserProfile({
     handleCancelEditIdentity,
     handleSaveIdentity,
     handleSelectCardAvatar,
+    handleAddShelf,
+    handleRemoveShelf,
+    handleRenameShelf,
+    handleSelectShowcaseSlot,
     handleAssignCardToShowcase,
+    handleRemoveShowcaseSlot,
     handleConfirmDelete,
   } = useUserProfile({
     userCode,
@@ -147,27 +155,39 @@ export default function UserProfile({
         />
       </section>
 
-      {/* CADRE 2 : VITRINE DE 4 CARTES FAVORITES EXPOSÉES */}
+      {/* CADRE 2 : ÉTAGÈRES DE COLLECTIONS PERSONNALISABLES (STYLE BABELIO) */}
       <section className="accueil_2017_cadre">
         <div className="wiki-cadre-header flex flex-wrap items-center justify-between gap-2">
-          <h2 className="wiki-smallcaps m-0">Vitrine du collectionneur</h2>
+          <h2 className="wiki-smallcaps m-0">Étagères de collections</h2>
+          {shelves.length < MAX_PROFILE_SHELVES && (
+            <button
+              type="button"
+              onClick={handleAddShelf}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-bold bg-[#eaf3ff] dark:bg-[#1a2a40] hover:bg-[#dcebff] dark:hover:bg-[#223550] text-[#3366cc] dark:text-[#6699ff] border border-[#3366cc]/40 rounded-[2px] cursor-pointer transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>
+                Ajouter une étagère ({shelves.length}/{MAX_PROFILE_SHELVES})
+              </span>
+            </button>
+          )}
         </div>
 
         <ProfileShowcase
-          showcaseCards={showcaseCards}
+          shelves={shelves}
           activeShowcaseSlot={activeShowcaseSlot}
           favorites={favorites}
           onToggleFavorite={onToggleFavorite}
-          onSelectSlot={(slotIdx) =>
-            setActiveShowcaseSlot(
-              activeShowcaseSlot === slotIdx ? null : slotIdx
-            )
-          }
+          onSelectSlot={handleSelectShowcaseSlot}
+          onClearSlot={handleRemoveShowcaseSlot}
+          onRenameShelf={handleRenameShelf}
+          onRemoveShelf={handleRemoveShelf}
         />
 
         {activeShowcaseSlot !== null && (
           <ProfileShowcasePicker
             onClose={() => setActiveShowcaseSlot(null)}
+            activeShelfName={activeShelf?.name}
             collection={collection}
             filteredAndSortedCollection={filteredAndSortedCollection}
             selectedRarityFilter={selectedRarityFilter}
@@ -177,7 +197,7 @@ export default function UserProfile({
             sortBy={sortBy}
             onSelectSortBy={setSortBy}
             themeCounts={themeCounts}
-            showcaseIds={showcaseIds}
+            showcaseIds={activeShelfShowcaseIds}
             favorites={favorites}
             onAssignCard={handleAssignCardToShowcase}
           />

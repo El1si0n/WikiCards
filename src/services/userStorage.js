@@ -157,6 +157,56 @@ export function setStoredUserCode(code) {
   return clean;
 }
 
+/** Nombre maximal d'étagères personnalisables par profil */
+export const MAX_PROFILE_SHELVES = 4;
+
+/** Nombre maximal de cartes par étagère */
+export const MAX_CARDS_PER_SHELF = 5;
+
+/**
+ * @typedef {Object} ProfileShelf
+ * @property {string} id - Identifiant unique de l'étagère
+ * @property {string} name - Nom personnalisable de l'étagère
+ * @property {Array<string|null>} cardIds - Tableau de 5 emplacements (ID de carte ou null)
+ */
+
+/**
+ * Normalise les étagères d'un profil (rétrocompatible avec l'ancienne vitrine `showcaseIds`).
+ * @param {Object|null} profile - Profil brut du joueur
+ * @returns {Array<ProfileShelf>} Liste de 1 à 4 étagères normalisées à 5 emplacements
+ */
+export function normalizeProfileShelves(profile) {
+  if (Array.isArray(profile?.shelves) && profile.shelves.length > 0) {
+    return profile.shelves.slice(0, MAX_PROFILE_SHELVES).map((shelf, idx) => {
+      const rawCardIds = Array.isArray(shelf?.cardIds) ? shelf.cardIds : [];
+      const cardIds = Array.from({ length: MAX_CARDS_PER_SHELF }, (_, i) => {
+        const val = rawCardIds[i];
+        return val && val !== 'null' ? String(val) : null;
+      });
+      const fallbackName =
+        idx === 0 ? 'Vitrine du collectionneur' : `Étagère ${idx + 1}`;
+      const cleanName = String(shelf?.name || '').trim().slice(0, 45);
+      return {
+        id: String(shelf?.id || `shelf-${idx + 1}`).slice(0, 40),
+        name: cleanName || fallbackName,
+        cardIds,
+      };
+    });
+  }
+
+  const legacy = Array.isArray(profile?.showcaseIds) ? profile.showcaseIds : [];
+  return [
+    {
+      id: 'shelf-1',
+      name: 'Vitrine du collectionneur',
+      cardIds: Array.from({ length: MAX_CARDS_PER_SHELF }, (_, i) => {
+        const val = legacy[i];
+        return val && val !== 'null' ? String(val) : null;
+      }),
+    },
+  ];
+}
+
 /**
  * Construit un objet de profil par défaut pour un compte.
  * @param {string} code - Code utilisateur associé
@@ -168,7 +218,14 @@ export function getDefaultProfile(code) {
     username: `Wikipédien-${suffix}`,
     avatar: 'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
     bio: 'Contributeur et collectionneur d’articles sur Wikipédia FR.',
-    showcaseIds: [], // Jusqu'à 4 IDs de cartes exposées en vitrine
+    showcaseIds: [], // Rétrocompatibilité avec les anciennes vitrines
+    shelves: [
+      {
+        id: 'shelf-1',
+        name: 'Vitrine du collectionneur',
+        cardIds: [null, null, null, null, null],
+      },
+    ],
     themePreference: 'light', // Mode clair par défaut
   };
 }
@@ -191,12 +248,16 @@ export function loadLocalProfile(code) {
         !String(parsed.username || '').endsWith('-0000')
       ) {
         const { _code, ...rest } = parsed;
+        const normalizedShelves = normalizeProfileShelves(rest);
         return {
           ...getDefaultProfile(cleanCode),
           ...rest,
           showcaseIds: Array.isArray(rest.showcaseIds)
-            ? rest.showcaseIds.slice(0, 4)
+            ? rest.showcaseIds.slice(0, MAX_CARDS_PER_SHELF).map((id) =>
+                id && id !== 'null' ? String(id) : null
+              )
             : [],
+          shelves: normalizedShelves,
         };
       }
     }
@@ -208,6 +269,7 @@ export function loadLocalProfile(code) {
     return {
       ...getDefaultProfile(cleanCode),
       ...fallback.profile,
+      shelves: normalizeProfileShelves(fallback.profile),
     };
   }
   return getDefaultProfile(cleanCode);

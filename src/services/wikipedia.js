@@ -67,221 +67,6 @@ export const WIKI_GIF_ARTICLES = [
   'Courbe de Péano',
 ];
 
-// Bassin d'articles Wikipédia FR emblématiques (Légendaires >= 20 000 vues) pour le Booster Iconique et le Plus ou Moins
-const ICONIC_LEGENDARY_POOL = [
-  'Système solaire',
-  'Trou noir',
-  'Révolution française',
-  'Léonard de Vinci',
-  'Albert Einstein',
-  'Marie Curie',
-  'Pyramide de Khéops',
-  'Intelligence artificielle',
-  'Mythologie grecque',
-  'Empire romain',
-  'Napoléon Ier',
-  'Tour Eiffel',
-  'Mont Éverest',
-  'Voie lactée',
-  'ADN',
-  'Physique quantique',
-  'Seconde Guerre mondiale',
-  'Moyen Âge',
-  'Renaissance',
-  'Jules César',
-  'Cléopâtre VII',
-  'Isaac Newton',
-  'Charles Darwin',
-  'Nikola Tesla',
-  'Alexandre le Grand',
-  'Château de Versailles',
-  'Musée du Louvre',
-  'Wolfgang Amadeus Mozart',
-  'Ludwig van Beethoven',
-  'Vincent van Gogh',
-  'Pablo Picasso',
-  'Claude Monet',
-  'Victor Hugo',
-  'Molière',
-  'Jules Verne',
-  'Odyssée',
-  'Lune',
-  'Mars (planète)',
-  'Jupiter (planète)',
-  'Saturne (planète)',
-  'Big Bang',
-  'Relativité générale',
-  'France',
-  'Japon',
-  'Italie',
-  'États-Unis',
-  'Chine',
-  'Brésil',
-  'Égypte',
-  'Royaume-Uni',
-  'Allemagne',
-  'Espagne',
-  'Paris',
-  'Tokyo',
-  'New York',
-  'Rome',
-  'Londres',
-  'Statue de la Liberté',
-  'Pyramides de Gizeh',
-  'Sagrada Família',
-  'Stonehenge',
-  'Acropole d\'Athènes',
-  'Le Seigneur des anneaux',
-  'Harry Potter',
-  'Star Wars',
-  'Titanic (film, 1997)',
-  'Avatar (film, 2009)',
-  'Matrix (film)',
-  'Jurassic Park (film)',
-  'Minecraft',
-  'Pokémon',
-  'Super Mario',
-  'Grand Theft Auto',
-  'The Legend of Zelda',
-  'The Beatles',
-  'Michael Jackson',
-  'Queen (groupe)',
-  'Daft Punk',
-  'Bob Marley',
-  'Pink Floyd',
-  'Première Guerre mondiale',
-  'Chute du mur de Berlin',
-  'Jeanne d\'Arc',
-  'Charles de Gaulle',
-  'Nelson Mandela',
-  'Mahatma Gandhi',
-  'Internet',
-  'Smartphone',
-  'Dinosaure',
-  'Baleine bleue',
-  'Grand requin blanc',
-  'Lion',
-];
-
-// Bassin d'articles Wikipédia FR populaires (Ultra Rares : 5 000 à 19 999 vues) pour le Booster Iconique et le Plus ou Moins
-const ICONIC_ULTRA_RARE_POOL = [
-  'Iliade',
-  'Galilée (savant)',
-  'Socrate',
-  'Platon',
-  'Aristote',
-  'Guerre de Cent Ans',
-  'Chute de Constantinople',
-  'Empire byzantin',
-  'Civilisation maya',
-  'Empire inca',
-  'Machu Picchu',
-  'Colisée',
-  'Parthénon',
-  'Taj Mahal',
-  'Grande Muraille',
-  'Pétra',
-  'Angkor Vat',
-  'Mont Saint-Michel',
-  'Aurore polaire',
-  'Supernova',
-  'Nébuleuse',
-  'Exoplanète',
-  'Tectonique des plaques',
-  'Photosynthèse',
-  'Tableau périodique des éléments',
-  'Nombre d\'or',
-  'Suite de Fibonacci',
-  'Théorème de Pythagore',
-  'Machine de Turing',
-  'Alan Turing',
-  'Ada Lovelace',
-  'Rosalind Franklin',
-  'Louis Pasteur',
-  'Antoine Lavoisier',
-  'Blaise Pascal',
-  'René Descartes',
-  'Voltaire',
-  'Jean-Jacques Rousseau',
-  'Montesquieu',
-  'Denis Diderot',
-  'Homère',
-  'William Shakespeare',
-  'Dante Alighieri',
-  'Miguel de Cervantes',
-  'Frédéric Chopin',
-  'Antonio Vivaldi',
-  'Jean-Sébastien Bach',
-  'Michel-Ange',
-  'Raphaël (peintre)',
-  'Rembrandt',
-  'Salvador Dalí',
-  'Frida Kahlo',
-  'Hokusai',
-  'Canada',
-  'Australie',
-  'Grèce',
-  'Suisse',
-  'Russie',
-  'Mexique',
-  'Inde',
-  'Maroc',
-  'Norvège',
-  'Islande',
-  'Venise',
-  'Berlin',
-  'Madrid',
-  'Amsterdam',
-  'Athènes',
-  'Kyoto',
-  'Barcelone',
-  'Notre-Dame de Paris',
-  'Cathédrale Saint-Basile de Moscou',
-  'Alhambra (Grenade)',
-  'Opéra de Sydney',
-  'Burj Khalifa',
-  'Inception',
-  'Interstellar',
-  'Pulp Fiction',
-  'Forrest Gump',
-  'Le Parrain',
-  'Le Roi lion (film, 1994)',
-  'Gladiator (film, 2000)',
-  'Tetris',
-  'Fortnite',
-  'World of Warcraft',
-  'The Witcher',
-  'Final Fantasy',
-  'Assassin\'s Creed',
-  'Pac-Man',
-  'David Bowie',
-  'Nirvana (groupe)',
-  'Elvis Presley',
-  'ABBA',
-  'AC/DC',
-  'Eminem',
-  'Zinédine Zidane',
-  'Télescope spatial Hubble',
-  'Télescope spatial James-Webb',
-  'Station spatiale internationale',
-  'Apollo 11',
-  'Comète de Halley',
-  'Faucon pèlerin',
-  'Guépard',
-  'Panda géant',
-  'Loup gris',
-  'Orque (cétacé)',
-  'Tyrannosaure',
-  'Mammouth laineux',
-  'Thor (mythologie)',
-  'Odin',
-  'Zeus',
-  'Poséidon',
-  'Anubis',
-  'Sphinx de Gizeh',
-  'Excalibur',
-];
-
 /**
  * Formate une plage de 30 jours consolidés pour l'API Wikimedia Pageviews (YYYYMMDD00).
  */
@@ -477,88 +262,8 @@ async function fetchPureRandomTitles(limit = 12) {
 export async function fetchBoosterPackCards(count = 6, options = {}) {
   const { isIconic = false } = options;
 
-  if (isIconic) {
-    // Booster Iconique : Garantit strictement 1 ou 2 Légendaires (L) et le reste en Ultra Rare (UR) minimum
-    const targetLegendaries = Math.random() < 0.45 ? 2 : 1;
-    const legendaryCards = [];
-    const ultraRareCards = [];
-
-    // 1. Récupère les 1 ou 2 cartes Légendaires garanties (L : >= 20 000 vues)
-    const shuffledLegendaryTitles = [...ICONIC_LEGENDARY_POOL].sort(
-      () => Math.random() - 0.5
-    );
-    const legBatch = await Promise.allSettled(
-      shuffledLegendaryTitles
-        .slice(0, 6)
-        .map((title) => fetchWikiCardByTitle(title))
-    );
-
-    for (const item of legBatch) {
-      if (
-        item.status === 'fulfilled' &&
-        item.value &&
-        item.value.extract &&
-        item.value.extract.length >= 60
-      ) {
-        const card = item.value;
-        const ensuredViews =
-          card.views >= 20000
-            ? card.views
-            : 21500 + Math.floor(Math.random() * 25000);
-        legendaryCards.push({
-          ...card,
-          views: ensuredViews,
-          rarity: 'L',
-        });
-        if (legendaryCards.length === targetLegendaries) break;
-      }
-    }
-
-    // 2. Complète le reste du paquet exclusivement avec des cartes Ultra Rares (UR : 5 000 à 19 999 vues)
-    const shuffledUrTitles = [...ICONIC_ULTRA_RARE_POOL].sort(
-      () => Math.random() - 0.5
-    );
-    for (
-      let i = 0;
-      i < shuffledUrTitles.length &&
-      legendaryCards.length + ultraRareCards.length < count;
-      i += 6
-    ) {
-      const batch = shuffledUrTitles.slice(i, i + 6);
-      const settled = await Promise.allSettled(
-        batch.map((title) => fetchWikiCardByTitle(title))
-      );
-
-      for (const item of settled) {
-        if (
-          item.status === 'fulfilled' &&
-          item.value &&
-          item.value.extract &&
-          item.value.extract.length >= 60 &&
-          !legendaryCards.some((c) => c.id === item.value.id) &&
-          !ultraRareCards.some((c) => c.id === item.value.id)
-        ) {
-          const card = item.value;
-          const ensuredUrViews =
-            card.views >= 5000 && card.views < 20000
-              ? card.views
-              : 6200 + Math.floor(Math.random() * 12500);
-          ultraRareCards.push({
-            ...card,
-            views: ensuredUrViews,
-            rarity: 'UR',
-          });
-          if (legendaryCards.length + ultraRareCards.length >= count) break;
-        }
-      }
-    }
-
-    const finalPack = [...ultraRareCards, ...legendaryCards].slice(0, count);
-    return finalPack.sort((a, b) => (a.views || 0) - (b.views || 0));
-  }
-
-  // Mode Booster Standard : tirage 100 % naturel et aléatoire sur Wikipédia FR (2,6 millions d'articles).
-  // Une carte devient "GIF Métal" uniquement si son illustration Wikipédia s'avère naturellement être un .gif animé.
+  // Tirage 100 % naturel et aléatoire sur Wikipédia FR (2,6 millions d'articles),
+  // y compris pour le Booster Iconique qui applique ensuite sa garantie de rareté UR / L.
   const validCards = [];
   let boosterAttempts = 0;
   while (validCards.length < count && boosterAttempts < 6) {
@@ -583,7 +288,41 @@ export async function fetchBoosterPackCards(count = 6, options = {}) {
     }
   }
 
-  return validCards.slice(0, count).sort((a, b) => (a.views || 0) - (b.views || 0));
+  const drawnCards = validCards
+    .slice(0, count)
+    .sort((a, b) => (a.views || 0) - (b.views || 0));
+
+  if (isIconic && drawnCards.length > 0) {
+    // Booster Iconique : Garantit strictement 1 ou 2 Légendaires (L) et le reste en Ultra Rare (UR) minimum
+    const targetLegendaries = Math.min(
+      drawnCards.length,
+      Math.random() < 0.45 ? 2 : 1
+    );
+    const urCount = drawnCards.length - targetLegendaries;
+
+    const promoted = drawnCards.map((card, idx) => {
+      const shouldBeLegendary = idx >= urCount || (card.views || 0) >= 20000;
+      if (shouldBeLegendary) {
+        return {
+          ...card,
+          rarity: 'L',
+          views:
+            (card.views || 0) >= 20000
+              ? card.views
+              : getSimulatedViewsForTier('L', card.views),
+        };
+      }
+      return {
+        ...card,
+        rarity: 'UR',
+        views: getSimulatedViewsForTier('UR', card.views),
+      };
+    });
+
+    return promoted.sort((a, b) => (a.views || 0) - (b.views || 0));
+  }
+
+  return drawnCards;
 }
 
 /**

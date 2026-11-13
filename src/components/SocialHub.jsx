@@ -65,6 +65,7 @@ export default function SocialHub({
     activePeerProfile,
     peerCollection,
     peerShowcaseCards,
+    peerShelves,
     peerAvatarWiki,
     peerStats,
     selectedPeerScore,
@@ -212,6 +213,7 @@ export default function SocialHub({
               peerStats={peerStats}
               peerCollection={peerCollection}
               peerShowcaseCards={peerShowcaseCards}
+              peerShelves={peerShelves}
               onOpenHistoryMetric={setHistoryModalMetric}
             />
           </div>

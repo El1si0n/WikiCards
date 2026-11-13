@@ -17,6 +17,13 @@ import {
 } from '../utils/jsonStorage.js';
 import { sanitizeCode } from '../utils/validators.js';
 
+/** Durée initiale d'une enchère à compter de la 1re offre (24 heures) */
+export const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000;
+/** Seuil de déclenchement de l'anti-sniping (5 minutes avant la fin) */
+export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
+/** Durée de prolongation en cas d'enchère dans la fenêtre d'anti-sniping (+5 minutes) */
+export const ANTI_SNIPE_EXTENSION_MS = 5 * 60 * 1000;
+
 /**
  * Clôture automatiquement les enchères dont le délai de 24h est écoulé.
  * Verse les Wikithunes au vendeur, attribue la carte au meilleur enchérisseur et persiste le résultat.
@@ -386,12 +393,34 @@ export async function handleMarketRoute(req, res, pathname) {
         wikithunes: (bidder.wikithunes || 0) - toPayNow,
       });
 
+      const now = Date.now();
+      const isFirstBid = !listing.highestBidderCode || !listing.bidExpiresAt;
+      let antiSnipeExtended = false;
+
       listing.currentBid = bidAmount;
       listing.highestBidderCode = actorCode;
       listing.highestBidderUsername = bidder.profile?.username || actorCode;
-      // Lance le compte à rebours de 24h dès qu'une enchère est posée
-      listing.bidExpiresAt = Date.now() + 24 * 60 * 60 * 1000;
-      listing.lastBidAt = Date.now();
+      listing.lastBidAt = now;
+
+      if (isFirstBid) {
+        // La 1re enchère lance le compte à rebours initial de 24h
+        listing.firstBidAt = now;
+        listing.bidExpiresAt = now + AUCTION_DURATION_MS;
+      } else {
+        // Surenchère : prolongation anti-sniping uniquement s'il reste moins de 5 minutes,
+        // sans jamais dépasser 24h à partir de l'instant présent.
+        const remainingMs = listing.bidExpiresAt - now;
+        if (remainingMs > 0 && remainingMs < ANTI_SNIPE_WINDOW_MS) {
+          const nextExpiry = Math.min(
+            now + AUCTION_DURATION_MS,
+            listing.bidExpiresAt + ANTI_SNIPE_EXTENSION_MS
+          );
+          if (nextExpiry > listing.bidExpiresAt) {
+            listing.bidExpiresAt = nextExpiry;
+            antiSnipeExtended = true;
+          }
+        }
+      }
 
       // Si l'enchère atteint ou dépasse le prix d'achat immédiat, la vente est conclue immédiatement
       if (bidAmount >= listing.buyoutPrice) {
@@ -435,6 +464,7 @@ export async function handleMarketRoute(req, res, pathname) {
         JSON.stringify({
           ok: true,
           listing,
+          antiSnipeExtended,
           updatedUser: updatedBidder,
         })
       );

@@ -112,16 +112,56 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
       });
   }
 
-  // 3. Profil public : limitation des longueurs textuelles
+  // 3. Profil public : limitation des longueurs textuelles et normalisation des étagères
   if (payload.profile && typeof payload.profile === 'object') {
+    const rawShowcaseIds = Array.isArray(payload.profile.showcaseIds)
+      ? payload.profile.showcaseIds
+          .slice(0, 5)
+          .map((id) => (id && id !== 'null' ? String(id) : null))
+      : [];
+
+    let rawShelves = Array.isArray(payload.profile.shelves) && payload.profile.shelves.length > 0
+      ? payload.profile.shelves
+      : null;
+
+    if (!rawShelves && Array.isArray(existingUser.profile?.shelves) && existingUser.profile.shelves.length > 0 && payload.profile.shelves === undefined) {
+      rawShelves = existingUser.profile.shelves;
+    }
+
+    const sanitizedShelves = (rawShelves || [
+      {
+        id: 'shelf-1',
+        name: 'Vitrine du collectionneur',
+        cardIds: rawShowcaseIds,
+      },
+    ])
+      .slice(0, 4)
+      .map((shelf, idx) => {
+        const rawIds = Array.isArray(shelf?.cardIds) ? shelf.cardIds : [];
+        const cardIds = Array.from({ length: 5 }, (_, i) => {
+          const val = rawIds[i];
+          return val && val !== 'null' ? String(val) : null;
+        });
+        const fallbackName =
+          idx === 0 ? 'Vitrine du collectionneur' : `Étagère ${idx + 1}`;
+        const cleanName = String(shelf?.name || '').trim().slice(0, 45);
+        return {
+          id: String(shelf?.id || `shelf-${idx + 1}`).slice(0, 40),
+          name: cleanName || fallbackName,
+          cardIds,
+        };
+      });
+
     sanitized.profile = {
       ...payload.profile,
       username: String(payload.profile.username || 'Wikipédien').slice(0, 40),
       bio: String(payload.profile.bio || '').slice(0, 500),
       avatar: String(payload.profile.avatar || '').slice(0, 500),
-      showcaseIds: Array.isArray(payload.profile.showcaseIds)
-        ? payload.profile.showcaseIds.slice(0, 4).map(String)
-        : [],
+      showcaseIds:
+        rawShowcaseIds.length > 0
+          ? rawShowcaseIds
+          : sanitizedShelves[0].cardIds.filter(Boolean).slice(0, 5),
+      shelves: sanitizedShelves,
     };
   }
 

@@ -24,6 +24,7 @@ import { Gavel, ShoppingBag, Clock, Check, X } from 'lucide-react';
  * @param {function(string, string, Object=): Promise<void>} props.handleMarketAction - Action d'achat ou d'enchère
  * @param {number} props.now - Horodatage courant pour le compte à rebours
  * @param {function(number|null, string|null, number): string} props.formatRemainingTime - Formateur de temps restant
+ * @param {function(number|null, string|null, number): boolean} [props.isAuctionInAntiSnipeZone] - Indique si l'enchère est dans les 5 dernières minutes
  * @param {function(string|number|null): string} props.sanitizeNumberInput - Nettoyeur numérique
  * @returns {JSX.Element} Vue de parcours des enchères
  */
@@ -39,6 +40,7 @@ export default function MarketBrowseTab({
   handleMarketAction,
   now,
   formatRemainingTime,
+  isAuctionInAntiSnipeZone,
   sanitizeNumberInput,
 }) {
   return (
@@ -139,14 +141,35 @@ export default function MarketBrowseTab({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-[#eaecf0]">
+                  <div
+                    className="flex items-center justify-between text-[11px] pt-1.5 border-t border-[#eaecf0]"
+                    title="Décompte fixe de 24h dès la 1re offre. Toute surenchère dans les 5 dernières minutes prolonge de +5 min (anti-sniping)."
+                  >
                     <span className="text-[#54595d] inline-flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#3366cc]" />
+                      <Clock
+                        className={`w-3 h-3 ${
+                          isAuctionInAntiSnipeZone?.(
+                            listing.bidExpiresAt,
+                            listing.highestBidderCode,
+                            now
+                          )
+                            ? 'text-[#d97706]'
+                            : 'text-[#3366cc]'
+                        }`}
+                      />
                       <span>Fin d'enchère :</span>
                     </span>
                     <span
                       className={`font-mono font-bold ${
-                        listing.highestBidderCode ? 'text-[#3366cc]' : 'text-[#72777d]'
+                        isAuctionInAntiSnipeZone?.(
+                          listing.bidExpiresAt,
+                          listing.highestBidderCode,
+                          now
+                        )
+                          ? 'text-[#d97706]'
+                          : listing.highestBidderCode
+                          ? 'text-[#3366cc]'
+                          : 'text-[#72777d]'
                       }`}
                     >
                       {formatRemainingTime(listing.bidExpiresAt, listing.highestBidderCode, now)}

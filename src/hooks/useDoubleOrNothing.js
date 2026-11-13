@@ -1,7 +1,7 @@
 /**
- * @file Rôle : Custom hook encapsulant la logique d'état, de simulation multi-roues et de transactions du Quitte ou Double.
+ * @file Rôle : Custom hook encapsulant la logique d'état, de simulation multi-roues, d'anti-farm et de transactions du Quitte ou Double.
  * Dépendances : React, `../services/sound`, `../config/casino`, `../config/rarities`.
- * Effets de bord : Résolution sessionStorage en cas d'interruption (F5), audio procédural, consommation et gains de cartes.
+ * Effets de bord : Résolution sessionStorage en cas d'interruption (F5), persistance localStorage de la fatigue anti-farm, audio procédural, consommation et gains de cartes.
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -9,8 +9,47 @@ import { soundManager } from '../services/sound';
 import {
   DOUBLE_CHANCE_BY_RARITY,
   MAX_SELECTED_CARDS,
+  getDoubleFatiguePenalty,
+  getEffectiveDoubleChance,
+  resolveDoubleFatigueState,
 } from '../config/casino';
 import { getRarityByCode, RARITY_TIERS } from '../config/rarities';
+
+const DOUBLE_FATIGUE_STORAGE_KEY = 'wikicards_double_fatigue_v1';
+
+function loadInitialFatigueState() {
+  try {
+    const raw = localStorage.getItem(DOUBLE_FATIGUE_STORAGE_KEY);
+    if (!raw) return { count: 0, lastTimestamp: Date.now() };
+    const parsed = JSON.parse(raw);
+    const resolved = resolveDoubleFatigueState(
+      parsed?.count,
+      parsed?.lastTimestamp,
+      Date.now()
+    );
+    return { count: resolved.count, lastTimestamp: resolved.lastTimestamp };
+  } catch {
+    return { count: 0, lastTimestamp: Date.now() };
+  }
+}
+
+function saveFatigueState(state) {
+  try {
+    if (!state || state.count <= 0) {
+      localStorage.removeItem(DOUBLE_FATIGUE_STORAGE_KEY);
+    } else {
+      localStorage.setItem(
+        DOUBLE_FATIGUE_STORAGE_KEY,
+        JSON.stringify({
+          count: state.count,
+          lastTimestamp: state.lastTimestamp,
+        })
+      );
+    }
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Hook personnalisé gérant les paris de duplication de cartes.
@@ -40,7 +79,34 @@ export default function useDoubleOrNothing({
   const [selectedThemeFilter, setSelectedThemeFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('rarity_desc');
 
+  const [fatigueState, setFatigueState] = useState(() => loadInitialFatigueState());
+  const [now, setNow] = useState(() => Date.now());
+
   const tickTimersRef = useRef([]);
+
+  useEffect(() => {
+    if (fatigueState.count <= 0) return undefined;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [fatigueState.count]);
+
+  const resolvedFatigue = useMemo(
+    () => resolveDoubleFatigueState(fatigueState.count, fatigueState.lastTimestamp, now),
+    [fatigueState.count, fatigueState.lastTimestamp, now]
+  );
+
+  useEffect(() => {
+    if (resolvedFatigue.count !== fatigueState.count) {
+      const next = {
+        count: resolvedFatigue.count,
+        lastTimestamp: resolvedFatigue.lastTimestamp,
+      };
+      setFatigueState(next);
+      saveFatigueState(next);
+    }
+  }, [resolvedFatigue.count, resolvedFatigue.lastTimestamp, fatigueState.count]);
 
   useEffect(() => {
     return () => {
@@ -128,7 +194,17 @@ export default function useDoubleOrNothing({
     [activeRarityCode]
   );
 
-  const displayChance = DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
+  const consecutivePlays = resolvedFatigue.count;
+  const fatiguePenalty = getDoubleFatiguePenalty(consecutivePlays);
+  const recoveryRemainingSeconds = Math.ceil(
+    (resolvedFatigue.nextRecoveryRemainingMs || 0) / 1000
+  );
+  const baseChance = DOUBLE_CHANCE_BY_RARITY[activeRarityCode] || 50;
+  const displayChance =
+    spinSnapshot?.winPercent ??
+    getEffectiveDoubleChance(activeRarityCode, consecutivePlays);
+  const getChanceForRarity = (rarityCode) =>
+    getEffectiveDoubleChance(rarityCode, consecutivePlays);
 
   const getMaxSelectableCopies = (card) => {
     if (!card || card.rarity === 'L') return 0;
@@ -216,10 +292,24 @@ export default function useDoubleOrNothing({
   const handleLaunchDouble = async () => {
     if (spinState === 'spinning' || liveSelectedCards.length === 0) return;
 
+    const launchNow = Date.now();
+    const currentFatigue = resolveDoubleFatigueState(
+      fatigueState.count,
+      fatigueState.lastTimestamp,
+      launchNow
+    );
     const lockedCards = [...liveSelectedCards];
     const rarity = activeRarityCode;
-    const winPercent = DOUBLE_CHANCE_BY_RARITY[rarity] || 50;
+    const winPercent = getEffectiveDoubleChance(rarity, currentFatigue.count);
     const winArc = (winPercent / 100) * 360;
+
+    const nextFatigue = {
+      count: currentFatigue.count + 1,
+      lastTimestamp: launchNow,
+    };
+    setFatigueState(nextFatigue);
+    setNow(launchNow);
+    saveFatigueState(nextFatigue);
 
     const consumedMap = {};
     lockedCards.forEach((c) => {
@@ -280,6 +370,7 @@ export default function useDoubleOrNothing({
       wonCount,
       totalCount,
       rarity,
+      winPercent,
     });
     setSelectedCardIds([]);
     setSpinState('spinning');
@@ -436,7 +527,12 @@ export default function useDoubleOrNothing({
     displayedSelectedCards,
     activeRarityCode,
     activeTier,
+    baseChance,
+    fatiguePenalty,
+    consecutivePlays,
+    recoveryRemainingSeconds,
     displayChance,
+    getChanceForRarity,
     getMaxSelectableCopies,
     handleToggleCard,
     handleRemoveSelectedInstanceAt,

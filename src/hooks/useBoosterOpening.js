@@ -112,13 +112,24 @@ export default function useBoosterOpening({
     setStage(newStage);
   };
 
-  const preloadNextBooster = async () => {
-    if (isPreloadingRef.current || preloadedPackRef.current) return;
+  const preloadNextBooster = async (
+    targetIsIconic = getOrRollNextBoosterIsIconic()
+  ) => {
+    const desiredIconic = Boolean(targetIsIconic);
+    if (
+      isPreloadingRef.current ||
+      (preloadedPackRef.current &&
+        preloadedPackRef.current.isIconic === desiredIconic &&
+        Array.isArray(preloadedPackRef.current.cards) &&
+        preloadedPackRef.current.cards.length > 0)
+    ) {
+      return;
+    }
     isPreloadingRef.current = true;
     try {
-      const cards = await fetchBoosterPackCards(6, { isIconic: false });
+      const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
       if (cards && cards.length > 0) {
-        preloadedPackRef.current = cards;
+        preloadedPackRef.current = { isIconic: desiredIconic, cards };
       }
     } catch {
       // Ignoré silencieusement
@@ -128,7 +139,7 @@ export default function useBoosterOpening({
   };
 
   useEffect(() => {
-    preloadNextBooster();
+    preloadNextBooster(isIconicRoll);
     return () => {
       if (tearTimerRef.current) {
         clearTimeout(tearTimerRef.current);
@@ -190,6 +201,7 @@ export default function useBoosterOpening({
 
     const isPackIconic =
       typeof overrideIsIconic === 'boolean' ? overrideIsIconic : isIconicPack;
+    setIsIconicRoll(isPackIconic);
     const isFree = !isPackIconic && freeBoostersCount > 0;
     const priceToPay = isFree
       ? 0
@@ -207,8 +219,13 @@ export default function useBoosterOpening({
     }
 
     let cards = null;
-    if (!isPackIconic && preloadedPackRef.current) {
-      cards = preloadedPackRef.current;
+    if (
+      preloadedPackRef.current &&
+      preloadedPackRef.current.isIconic === isPackIconic &&
+      Array.isArray(preloadedPackRef.current.cards) &&
+      preloadedPackRef.current.cards.length > 0
+    ) {
+      cards = preloadedPackRef.current.cards;
       preloadedPackRef.current = null;
     }
 
@@ -244,8 +261,9 @@ export default function useBoosterOpening({
       onSpendWikithunes(priceToPay);
     }
 
+    // Sauvegarde le tirage du prochain booster en localStorage sans écraser
+    // le type visuel du booster actuellement en cours d'animation ('tearing').
     const nextRolled = rollAndSaveNextBoosterIsIconic();
-    setIsIconicRoll(nextRolled);
 
     const ownedSet = new Set(existingCardIds);
     const seenInPack = new Set();
@@ -262,7 +280,7 @@ export default function useBoosterOpening({
     updateStage('tearing');
     pendingCardsRef.current = annotatedCards;
 
-    preloadNextBooster();
+    preloadNextBooster(nextRolled);
 
     if (tearTimerRef.current) {
       clearTimeout(tearTimerRef.current);
@@ -284,7 +302,17 @@ export default function useBoosterOpening({
     if (isOpeningRef.current || isFetching) return;
     const nextIsIconic = getOrRollNextBoosterIsIconic();
     setIsIconicRoll(nextIsIconic);
-    handleOpenPack(nextIsIconic);
+    if (nextIsIconic) {
+      // Affiche le sachet doré Iconique pour que le joueur voie son apparition
+      // et puisse choisir de l'ouvrir ou de le passer au booster standard.
+      soundManager.playBoosterCharge();
+      updateStage('pack');
+      setPackCards([]);
+      setCurrentCardIdx(0);
+      preloadNextBooster(true);
+      return;
+    }
+    handleOpenPack(false);
   };
 
   const handleNextCard = () => {
@@ -309,11 +337,12 @@ export default function useBoosterOpening({
   const handleResetToNewPack = () => {
     if (isOpeningRef.current || isFetching) return;
     soundManager.playBoosterCharge();
-    setIsIconicRoll(getOrRollNextBoosterIsIconic());
+    const nextIsIconic = getOrRollNextBoosterIsIconic();
+    setIsIconicRoll(nextIsIconic);
     updateStage('pack');
     setPackCards([]);
     setCurrentCardIdx(0);
-    preloadNextBooster();
+    preloadNextBooster(nextIsIconic);
   };
 
   const handleSkipIconicToStandard = () => {
@@ -325,6 +354,8 @@ export default function useBoosterOpening({
     } catch {
       // ignore
     }
+    preloadedPackRef.current = null;
+    preloadNextBooster(false);
   };
 
   const currentCard = packCards[currentCardIdx] || null;

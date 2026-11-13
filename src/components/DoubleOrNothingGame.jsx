@@ -1,12 +1,12 @@
 /**
- * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 54% C, 51% PC, 48% R, 45% SR, 42% UR).
+ * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 59% C, 56% PC, 53% R, 50% SR, 47% UR avec malus anti-farm dégressif).
  * Dépendances : React, `lucide-react`, `./WikiCard`, `../config/casino`, `../hooks/useDoubleOrNothing`, `./casino/CasinoCardPicker`.
  * Effets de bord : Consommation de cartes, attribution de doublons, sons procéduraux et animations multi-roues.
  */
 
 import React from 'react';
 import WikiCard from './WikiCard';
-import { DOUBLE_CHANCE_BY_RARITY, MAX_SELECTED_CARDS } from '../config/casino';
+import { MAX_SELECTED_CARDS } from '../config/casino';
 import useDoubleOrNothing from '../hooks/useDoubleOrNothing';
 import CasinoCardPicker from './casino/CasinoCardPicker';
 import {
@@ -51,7 +51,11 @@ export default function DoubleOrNothingGame({
     liveSelectedCards,
     displayedSelectedCards,
     activeTier,
+    baseChance,
+    fatiguePenalty,
+    recoveryRemainingSeconds,
     displayChance,
+    getChanceForRarity,
     getMaxSelectableCopies,
     handleToggleCard,
     handleRemoveSelectedInstanceAt,
@@ -158,10 +162,20 @@ export default function DoubleOrNothingGame({
 
         {/* COLONNE CENTRALE (4 col) : Jauge 50/50 ou Roues individuelles */}
         <div className="order-2 lg:order-2 lg:col-span-4 flex flex-col items-center justify-between bg-white dark:bg-[#181d24] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[2px] p-3 sm:p-4">
-          <div className="w-full flex items-center justify-between border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
+          <div className="w-full flex items-center justify-between gap-2 border-b border-[#eaecf0] dark:border-[#272d36] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] dark:text-[#eaecf0] uppercase tracking-wider">
               {isMultiMode ? 'Roues de probabilité' : 'Jauge de probabilité'}
             </span>
+            {fatiguePenalty > 0 && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] bg-[#fff4e5] dark:bg-[#3a2810] border border-[#f5a642]/60 text-[11px] font-bold text-[#b45309] dark:text-[#fbbf24]"
+                title={`Malus anti-farm actif (-${fatiguePenalty} %). Récupération progressive vers ${baseChance} % après inactivité.`}
+              >
+                <span>-{fatiguePenalty}%</span>
+                <span>•</span>
+                <span>Récup. {recoveryRemainingSeconds}s</span>
+              </span>
+            )}
           </div>
 
           {isMultiMode ? (
@@ -937,7 +951,7 @@ export default function DoubleOrNothingGame({
           )
         }
         getCardBadgeText={(card, { isLockedInSpin, isFavProtected, isSelected, selectedQty, maxCopies }) => {
-          const chance = DOUBLE_CHANCE_BY_RARITY[card.rarity] || 50;
+          const chance = getChanceForRarity(card.rarity);
           if (isLockedInSpin) return 'En jeu';
           if (isFavProtected) return '★ Protégée';
           if (isSelected) {

@@ -26,8 +26,26 @@ export function sanitizeNumberInput(val) {
   return clean;
 }
 
+/** Seuil de déclenchement de l'anti-sniping côté affichage (5 minutes) */
+export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
+
 /**
- * Calcule et formate le compte à rebours de 24h d'une enchère.
+ * Détermine si une enchère est entrée dans sa fenêtre d'anti-sniping (<= 5 min restantes).
+ * @param {number|null} bidExpiresAt - Timestamp d'expiration
+ * @param {string|null} highestBidderCode - Code du meilleur enchérisseur
+ * @param {number} now - Horodatage courant
+ * @returns {boolean} Vrai si l'enchère est dans la zone anti-sniping
+ */
+export function isAuctionInAntiSnipeZone(bidExpiresAt, highestBidderCode, now) {
+  if (!highestBidderCode || !bidExpiresAt) return false;
+  const expiry = Number(bidExpiresAt);
+  if (Number.isNaN(expiry)) return false;
+  const diff = expiry - now;
+  return diff > 0 && diff <= ANTI_SNIPE_WINDOW_MS;
+}
+
+/**
+ * Calcule et formate le compte à rebours d'une enchère (24h dès la 1ère offre + anti-sniping).
  * @param {number|null} bidExpiresAt - Timestamp d'expiration
  * @param {string|null} highestBidderCode - Code du meilleur enchérisseur
  * @param {number} now - Horodatage courant
@@ -135,6 +153,15 @@ export function useAuctionMarket({
     [listings]
   );
 
+  useEffect(() => {
+    const hasExpiredActive = activeListings.some(
+      (l) => l.highestBidderCode && l.bidExpiresAt && now >= Number(l.bidExpiresAt)
+    );
+    if (hasExpiredActive) {
+      loadListings(true);
+    }
+  }, [now, activeListings]);
+
   const filteredBrowseListings = useMemo(() => {
     return activeListings.filter((l) =>
       rarityFilter === 'ALL' ? true : l.card?.rarity === rarityFilter
@@ -223,6 +250,14 @@ export function useAuctionMarket({
         soundManager.playSummaryFanfare();
       } else {
         soundManager.playCardSlide();
+      }
+      if (action === 'bid') {
+        setFeedback({
+          type: 'success',
+          message: res.antiSnipeExtended
+            ? 'Enchère enregistrée ! Anti-sniping activé : fin prolongée de +5 min.'
+            : 'Enchère enregistrée avec succès !',
+        });
       }
       await loadListings();
     } catch (err) {

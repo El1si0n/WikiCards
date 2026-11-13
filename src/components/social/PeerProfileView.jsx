@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { ExternalLink, Crown, TrendingUp } from 'lucide-react';
+import { ExternalLink, Crown, TrendingUp, BookMarked } from 'lucide-react';
 import WikiCard from '../WikiCard';
 import ProfileStatsGrid from '../profile/ProfileStatsGrid';
 
@@ -19,7 +19,8 @@ import ProfileStatsGrid from '../profile/ProfileStatsGrid';
  * @param {Object} props.peerAvatarWiki - Métadonnées Wikipédia de l'avatar du pair
  * @param {Object} props.peerStats - Agrégats statistiques du pair
  * @param {Array<Object>} props.peerCollection - Collection de cartes du pair
- * @param {Array<Object|null>} props.peerShowcaseCards - 4 cartes en vitrine du pair
+ * @param {Array<Object|null>} props.peerShowcaseCards - Cartes de l'ancienne vitrine du pair (fallback)
+ * @param {Array<Object>} [props.peerShelves] - Étagères de collection du pair (max 4 × 5 cartes)
  * @param {function(string): void} props.onOpenHistoryMetric - Callback d'ouverture de l'historique Trade Republic
  * @returns {JSX.Element} Vue complète du profil pair
  */
@@ -32,8 +33,19 @@ export default function PeerProfileView({
   peerStats,
   peerCollection,
   peerShowcaseCards,
+  peerShelves,
   onOpenHistoryMetric,
 }) {
+  const resolvedShelves =
+    Array.isArray(peerShelves) && peerShelves.length > 0
+      ? peerShelves
+      : [
+          {
+            id: 'shelf-1',
+            name: 'Vitrine du collectionneur',
+            cards: [0, 1, 2, 3, 4].map((i) => peerShowcaseCards?.[i] || null),
+          },
+        ];
   const resolvedUniqueCount =
     peerCollection.length > 0
       ? peerCollection.length
@@ -119,24 +131,53 @@ export default function PeerProfileView({
         />
       </div>
 
-      {/* Vitrine du joueur visité */}
-      <div className="pt-2 border-t border-[#eaecf0] dark:border-[#2d3542]">
-        <h3 className="wiki-smallcaps mb-3">Vitrine du collectionneur</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
-          {peerShowcaseCards.map((card, idx) => (
-            <div
-              key={idx}
-              className="w-full max-w-[284px] flex flex-col items-center"
-            >
-              {card ? (
-                <WikiCard card={card} compact={true} />
-              ) : (
-                <div className="w-full aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-[#f8f9fa] dark:bg-[#12161c] flex items-center justify-center p-3 sm:p-6 text-center text-[12px] sm:text-[13px] text-[#72777d] dark:text-[#8b949e]">
-                  Emplacement vide
+      {/* Étagères de collections du joueur visité */}
+      <div className="pt-2 border-t border-[#eaecf0] dark:border-[#2d3542] space-y-4">
+        <h3 className="wiki-smallcaps mb-1">Étagères de collections</h3>
+        <div className="space-y-5">
+          {resolvedShelves.map((shelf) => {
+            const filledCount = (shelf.cards || []).filter(Boolean).length;
+            return (
+              <div
+                key={shelf.id}
+                className="bg-[#f8f9fa] dark:bg-[#14181f] border border-[#c8ccd1] dark:border-[#363e4a] rounded-[3px] p-3 sm:p-4"
+              >
+                <div className="flex items-center justify-between gap-2 pb-2 mb-3 border-b border-[#eaecf0] dark:border-[#272d36]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BookMarked className="w-4 h-4 text-[#3366cc] shrink-0" />
+                    <span className="wiki-serif text-[16px] text-[#101418] dark:text-[#eaecf0] truncate">
+                      {shelf.name}
+                    </span>
+                  </div>
+                  <span className="text-[11.5px] font-bold text-[#54595d] dark:text-[#a2a9b1] bg-white dark:bg-[#1a202c] border border-[#eaecf0] dark:border-[#2d3542] px-2 py-0.5 rounded-[2px] shrink-0">
+                    {filledCount}/5 cartes
+                  </span>
                 </div>
-              )}
-            </div>
-          ))}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 justify-items-center pb-2">
+                  {[0, 1, 2, 3, 4].map((idx) => {
+                    const card = shelf.cards?.[idx] || null;
+                    return (
+                      <div
+                        key={idx}
+                        className="w-full max-w-[230px] flex flex-col items-center"
+                      >
+                        {card ? (
+                          <WikiCard card={card} compact={true} />
+                        ) : (
+                          <div className="w-full aspect-[284/443] rounded-[14px] border-2 border-dashed border-[#c8ccd1] dark:border-[#363e4a] bg-white/60 dark:bg-[#12161c] flex items-center justify-center p-3 text-center text-[12px] text-[#72777d] dark:text-[#8b949e]">
+                            Emplacement vide
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="h-[6px] w-full rounded-[2px] bg-gradient-to-b from-[#d8ccb8] to-[#b5a48b] dark:from-[#3d352a] dark:to-[#27211a] border-t border-white/60 dark:border-white/10 shadow-xs" />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

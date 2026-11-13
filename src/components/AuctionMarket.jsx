@@ -8,6 +8,7 @@ import React from 'react';
 import {
   useAuctionMarket,
   formatRemainingTime,
+  isAuctionInAntiSnipeZone,
   sanitizeNumberInput,
 } from '../hooks/useAuctionMarket';
 import MarketBrowseTab from './market/MarketBrowseTab';
@@ -109,6 +110,7 @@ export default function AuctionMarket({
             handleMarketAction={market.handleMarketAction}
             now={market.now}
             formatRemainingTime={formatRemainingTime}
+            isAuctionInAntiSnipeZone={isAuctionInAntiSnipeZone}
             sanitizeNumberInput={sanitizeNumberInput}
           />
         ) : market.activeSubTab === 'sell' ? (

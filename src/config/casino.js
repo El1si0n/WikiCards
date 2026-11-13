@@ -54,16 +54,83 @@ export const MAX_UPGRADE_CHANCE = 95;
 export const MAX_SELECTED_CARDS = 8;
 
 /**
- * Pourcentages de chance de doubler selon l'échelon de rareté de la carte misée.
- * C: 54%, PC: 51%, R: 48%, SR: 45%, UR: 42%.
+ * Pourcentages de chance de doubler de base selon l'échelon de rareté de la carte misée.
+ * C: 59%, PC: 56%, R: 53%, SR: 50%, UR: 47%.
  */
 export const DOUBLE_CHANCE_BY_RARITY = {
-  C: 54,
-  PC: 51,
-  R: 48,
-  SR: 45,
-  UR: 42,
+  C: 59,
+  PC: 56,
+  R: 53,
+  SR: 50,
+  UR: 47,
 };
+
+/** Plancher minimal de probabilité de succès au Quitte ou Double (%) */
+export const DOUBLE_MIN_CHANCE = 12;
+
+/** Délai d'inactivité (ms) permettant de récupérer un palier de malus anti-farm (30 secondes) */
+export const DOUBLE_FATIGUE_RECOVERY_MS = 30000;
+
+/** Malus dégressif rapide (en points de %) appliqué selon le nombre de parties consécutives */
+export const DOUBLE_FATIGUE_PENALTIES = [0, 4, 9, 16, 24, 33, 42];
+
+/**
+ * Calcule le malus anti-farm (en points de pourcentage) selon le nombre de parties consécutives.
+ * @param {number} [consecutiveCount=0] - Nombre de parties jouées à la suite
+ * @returns {number} Malus en points de %
+ */
+export function getDoubleFatiguePenalty(consecutiveCount = 0) {
+  const count = Math.max(0, Math.floor(Number(consecutiveCount) || 0));
+  if (count === 0) return 0;
+  if (count < DOUBLE_FATIGUE_PENALTIES.length) {
+    return DOUBLE_FATIGUE_PENALTIES[count];
+  }
+  const extra = count - (DOUBLE_FATIGUE_PENALTIES.length - 1);
+  return DOUBLE_FATIGUE_PENALTIES[DOUBLE_FATIGUE_PENALTIES.length - 1] + extra * 9;
+}
+
+/**
+ * Calcule la probabilité effective de gain au Quitte ou Double après application du malus anti-farm.
+ * @param {string} rarityCode - Code de rareté ('C', 'PC', 'R', 'SR', 'UR')
+ * @param {number} [consecutiveCount=0] - Nombre de parties consécutives actives
+ * @returns {number} Probabilité effective en pourcentage [DOUBLE_MIN_CHANCE, base]
+ */
+export function getEffectiveDoubleChance(rarityCode, consecutiveCount = 0) {
+  const base = DOUBLE_CHANCE_BY_RARITY[rarityCode] || 50;
+  const penalty = getDoubleFatiguePenalty(consecutiveCount);
+  return Math.max(DOUBLE_MIN_CHANCE, base - penalty);
+}
+
+/**
+ * Résout l'état de fatigue résiduel en fonction du temps d'inactivité écoulé.
+ * @param {number} [savedCount=0] - Compteur de fatigue sauvegardé
+ * @param {number} [lastTimestamp=0] - Timestamp ms de la dernière partie ou récupération
+ * @param {number} [now=Date.now()] - Horodatage courant
+ * @returns {{ count: number, lastTimestamp: number, nextRecoveryRemainingMs: number }} État résolu
+ */
+export function resolveDoubleFatigueState(savedCount = 0, lastTimestamp = 0, now = Date.now()) {
+  const count = Math.max(0, Math.floor(Number(savedCount) || 0));
+  const lastTs = Number(lastTimestamp) || 0;
+  if (count <= 0 || lastTs <= 0) {
+    return { count: 0, lastTimestamp: now, nextRecoveryRemainingMs: 0 };
+  }
+  const elapsed = Math.max(0, now - lastTs);
+  const recoveredSteps = Math.floor(elapsed / DOUBLE_FATIGUE_RECOVERY_MS);
+  const nextCount = Math.max(0, count - recoveredSteps);
+  if (nextCount === 0) {
+    return { count: 0, lastTimestamp: now, nextRecoveryRemainingMs: 0 };
+  }
+  const nextLastTimestamp = lastTs + recoveredSteps * DOUBLE_FATIGUE_RECOVERY_MS;
+  const nextRecoveryRemainingMs = Math.max(
+    0,
+    DOUBLE_FATIGUE_RECOVERY_MS - (now - nextLastTimestamp)
+  );
+  return {
+    count: nextCount,
+    lastTimestamp: nextLastTimestamp,
+    nextRecoveryRemainingMs,
+  };
+}
 
 /**
  * Multiplicateurs de gain indexés sur la série de victoires au jeu Plus ou Moins.

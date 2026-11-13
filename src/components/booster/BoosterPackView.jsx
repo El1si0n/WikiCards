@@ -99,6 +99,7 @@ export default function BoosterPackView({
         }`}
       >
         <motion.div
+          initial={{ y: 0, scale: 1, opacity: 1 }}
           animate={
             stage === 'tearing'
               ? {
@@ -108,6 +109,8 @@ export default function BoosterPackView({
                 }
               : {
                   y: glare.isHovered ? -4 : 0,
+                  scale: 1,
+                  opacity: 1,
                 }
           }
           transition={
@@ -192,6 +195,7 @@ export default function BoosterPackView({
 
           {/* Soudure supérieure */}
           <motion.div
+            initial={{ y: 0, x: 0, rotate: 0, opacity: 1 }}
             animate={
               stage === 'tearing'
                 ? {

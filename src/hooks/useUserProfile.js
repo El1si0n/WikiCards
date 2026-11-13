@@ -10,6 +10,11 @@ import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
 import { countRarityCopies, countGifCopies } from '../utils/statsHistory';
 import { soundManager } from '../services/sound';
+import {
+  MAX_PROFILE_SHELVES,
+  MAX_CARDS_PER_SHELF,
+  normalizeProfileShelves,
+} from '../services/userStorage';
 
 const RARITY_ORDER = {
   L: 6,
@@ -58,7 +63,7 @@ export default function useUserProfile({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
-  // Vitrine (4 emplacements)
+  // Étagères de collections (max 4 étagères, 5 emplacements chacune)
   const [activeShowcaseSlot, setActiveShowcaseSlot] = useState(null);
   const [selectedRarityFilter, setSelectedRarityFilter] = useState('ALL');
   const [selectedThemeFilter, setSelectedThemeFilter] = useState('ALL');
@@ -67,16 +72,36 @@ export default function useUserProfile({
   // Modal d'historique Trade Republic
   const [historyModalMetric, setHistoryModalMetric] = useState(null);
 
-  const showcaseIds = useMemo(() => {
-    const raw = Array.isArray(profile?.showcaseIds) ? profile.showcaseIds : [];
-    return [raw[0] || null, raw[1] || null, raw[2] || null, raw[3] || null];
-  }, [profile?.showcaseIds]);
+  const rawShelves = useMemo(() => normalizeProfileShelves(profile), [profile]);
 
-  const showcaseCards = useMemo(() => {
-    return showcaseIds.map((id) =>
-      id ? collection.find((c) => String(c.id) === String(id)) || null : null
-    );
-  }, [showcaseIds, collection]);
+  const shelves = useMemo(() => {
+    return rawShelves.map((shelf) => ({
+      ...shelf,
+      cards: shelf.cardIds.map((id) =>
+        id ? collection.find((c) => String(c.id) === String(id)) || null : null
+      ),
+    }));
+  }, [rawShelves, collection]);
+
+  const activeShelf = useMemo(() => {
+    if (!activeShowcaseSlot) return null;
+    return shelves.find((s) => s.id === activeShowcaseSlot.shelfId) || null;
+  }, [shelves, activeShowcaseSlot]);
+
+  const activeShelfShowcaseIds = useMemo(
+    () => (activeShelf ? activeShelf.cardIds : []),
+    [activeShelf]
+  );
+
+  const showcaseIds = useMemo(
+    () => (shelves[0] ? shelves[0].cardIds : []),
+    [shelves]
+  );
+
+  const showcaseCards = useMemo(
+    () => (shelves[0] ? shelves[0].cards : []),
+    [shelves]
+  );
 
   const totalCopiesCount = useMemo(
     () => collection.reduce((sum, c) => sum + (c.count || 1), 0),
@@ -247,36 +272,97 @@ export default function useUserProfile({
     return { url: 'https://fr.wikipedia.org/', title: 'Wikipédia' };
   }, [profile?.avatar, profile?.avatarUrl, profile?.avatarTitle, collection]);
 
-  const handleAssignCardToShowcase = (card) => {
-    if (activeShowcaseSlot === null || !card) return;
-    const nextIds = [...showcaseIds];
-
-    const existingIdx = nextIds.findIndex(
-      (id) => String(id) === String(card.id)
-    );
-    if (existingIdx !== -1) {
-      nextIds[existingIdx] = null;
-    }
-
-    nextIds[activeShowcaseSlot] = card.id;
+  const commitShelvesUpdate = (nextShelves) => {
+    const cleanShelves = nextShelves.slice(0, MAX_PROFILE_SHELVES).map((s, idx) => ({
+      id: s.id || `shelf-${idx + 1}`,
+      name: s.name || `Étagère ${idx + 1}`,
+      cardIds: Array.from({ length: MAX_CARDS_PER_SHELF }, (_, i) =>
+        s.cardIds?.[i] ? String(s.cardIds[i]) : null
+      ),
+    }));
+    const legacyShowcaseIds = (cleanShelves[0]?.cardIds || [])
+      .filter(Boolean)
+      .slice(0, MAX_CARDS_PER_SHELF);
     onUpdateProfile({
       ...profile,
-      showcaseIds: nextIds,
+      shelves: cleanShelves,
+      showcaseIds: legacyShowcaseIds,
     });
-    soundManager.playCardSlide();
-
-    const nextEmptySlot = nextIds.findIndex((id) => !id);
-    setActiveShowcaseSlot(nextEmptySlot !== -1 ? nextEmptySlot : null);
   };
 
-  const handleRemoveShowcaseSlot = (slotIdx, e) => {
-    if (e) e.stopPropagation();
-    const nextIds = [...showcaseIds];
-    nextIds[slotIdx] = null;
-    onUpdateProfile({
-      ...profile,
-      showcaseIds: nextIds,
+  const handleAddShelf = () => {
+    if (rawShelves.length >= MAX_PROFILE_SHELVES) return;
+    const newShelf = {
+      id: `shelf-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      name: `Étagère ${rawShelves.length + 1}`,
+      cardIds: Array.from({ length: MAX_CARDS_PER_SHELF }, () => null),
+    };
+    commitShelvesUpdate([...rawShelves, newShelf]);
+    soundManager.playCardSlide();
+  };
+
+  const handleRemoveShelf = (shelfId) => {
+    if (rawShelves.length <= 1) return;
+    const nextShelves = rawShelves.filter((s) => s.id !== shelfId);
+    if (activeShowcaseSlot?.shelfId === shelfId) {
+      setActiveShowcaseSlot(null);
+    }
+    commitShelvesUpdate(nextShelves);
+    soundManager.playCardSlide();
+  };
+
+  const handleRenameShelf = (shelfId, newName) => {
+    const cleanName = String(newName || '').trim().slice(0, 45);
+    if (!cleanName) return;
+    const nextShelves = rawShelves.map((s) =>
+      s.id === shelfId ? { ...s, name: cleanName } : s
+    );
+    commitShelvesUpdate(nextShelves);
+    soundManager.playCardSlide();
+  };
+
+  const handleSelectShowcaseSlot = (shelfId, slotIdx) => {
+    setActiveShowcaseSlot((prev) =>
+      prev && prev.shelfId === shelfId && prev.slotIdx === slotIdx
+        ? null
+        : { shelfId, slotIdx }
+    );
+  };
+
+  const handleAssignCardToShowcase = (card) => {
+    if (!activeShowcaseSlot || !card) return;
+    const { shelfId, slotIdx } = activeShowcaseSlot;
+    let nextEmptySlot = null;
+
+    const nextShelves = rawShelves.map((shelf) => {
+      if (shelf.id !== shelfId) return shelf;
+      const nextIds = [...shelf.cardIds];
+      const existingIdx = nextIds.findIndex(
+        (id) => String(id) === String(card.id)
+      );
+      if (existingIdx !== -1) {
+        nextIds[existingIdx] = null;
+      }
+      nextIds[slotIdx] = card.id;
+      const emptyIdx = nextIds.findIndex((id) => !id);
+      nextEmptySlot = emptyIdx !== -1 ? { shelfId, slotIdx: emptyIdx } : null;
+      return { ...shelf, cardIds: nextIds };
     });
+
+    commitShelvesUpdate(nextShelves);
+    soundManager.playCardSlide();
+    setActiveShowcaseSlot(nextEmptySlot);
+  };
+
+  const handleRemoveShowcaseSlot = (shelfId, slotIdx, e) => {
+    if (e) e.stopPropagation();
+    const nextShelves = rawShelves.map((shelf) => {
+      if (shelf.id !== shelfId) return shelf;
+      const nextIds = [...shelf.cardIds];
+      nextIds[slotIdx] = null;
+      return { ...shelf, cardIds: nextIds };
+    });
+    commitShelvesUpdate(nextShelves);
     soundManager.playCardSlide();
   };
 
@@ -406,6 +492,9 @@ export default function useUserProfile({
     setSortBy,
     historyModalMetric,
     setHistoryModalMetric,
+    shelves,
+    activeShelf,
+    activeShelfShowcaseIds,
     showcaseIds,
     showcaseCards,
     totalCopiesCount,
@@ -427,6 +516,10 @@ export default function useUserProfile({
     handleCancelEditIdentity,
     handleSaveIdentity,
     handleSelectCardAvatar,
+    handleAddShelf,
+    handleRemoveShelf,
+    handleRenameShelf,
+    handleSelectShowcaseSlot,
     handleAssignCardToShowcase,
     handleRemoveShowcaseSlot,
     handleConfirmDelete,

@@ -14,6 +14,7 @@ import WikiCard from '../WikiCard';
  * Galerie filtrable et triable pour choisir une carte à ajouter en vitrine.
  * @param {Object} props
  * @param {function(): void} props.onClose - Fermeture du sélecteur
+ * @param {string} [props.activeShelfName] - Nom de l'étagère cible sélectionnée
  * @param {Array<Object>} props.collection - Collection complète du joueur
  * @param {Array<Object>} props.filteredAndSortedCollection - Cartes filtrées et triées
  * @param {string} props.selectedRarityFilter - Filtre de rareté actif
@@ -30,6 +31,7 @@ import WikiCard from '../WikiCard';
  */
 export default function ProfileShowcasePicker({
   onClose,
+  activeShelfName,
   collection,
   filteredAndSortedCollection,
   selectedRarityFilter,
@@ -47,7 +49,9 @@ export default function ProfileShowcasePicker({
     <div className="mt-6 pt-5 border-t border-[#c8ccd1] dark:border-[#363e4a]">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="text-[14px] font-bold text-[#202122] dark:text-[#eaecf0]">
-          Choisissez une carte à exposer
+          {activeShelfName
+            ? `Choisissez une carte à exposer dans « ${activeShelfName} »`
+            : 'Choisissez une carte à exposer'}
         </div>
         <button
           type="button"

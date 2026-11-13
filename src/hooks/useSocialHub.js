@@ -11,6 +11,7 @@ import {
   fetchUserTrades,
   createTradeOffer,
   respondToTradeOffer,
+  normalizeProfileShelves,
 } from '../services/userStorage';
 import { soundManager } from '../services/sound';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -135,6 +136,13 @@ export default function useSocialHub({
 
     const cachedUser = usersList.find((u) => u.code === targetCode);
     if (cachedUser) {
+      const cachedShelfCards = Array.isArray(cachedUser.shelves)
+        ? cachedUser.shelves.flatMap((s) => s.cards || []).filter(Boolean)
+        : [];
+      const cachedCollection =
+        cachedShelfCards.length > 0
+          ? cachedShelfCards
+          : cachedUser.showcaseCards || [];
       setSelectedPeer({
         code: cachedUser.code,
         profile: {
@@ -142,9 +150,11 @@ export default function useSocialHub({
           avatar: cachedUser.avatar,
           bio: cachedUser.bio,
           showcaseIds: cachedUser.showcaseIds || [],
+          shelves: cachedUser.shelves || [],
         },
-        collection: cachedUser.showcaseCards || [],
+        collection: cachedCollection,
         showcaseCards: cachedUser.showcaseCards || [],
+        shelves: cachedUser.shelves || [],
         uniqueCardsCount: cachedUser.uniqueCardsCount,
         totalCardsCount: cachedUser.totalCardsCount,
         legendaryCount: cachedUser.legendaryCount,
@@ -408,6 +418,31 @@ export default function useSocialHub({
     });
   }, [selectedPeer, activePeerProfile, peerCollection]);
 
+  const peerShelves = useMemo(() => {
+    const profileSource =
+      Array.isArray(activePeerProfile?.shelves) &&
+      activePeerProfile.shelves.length > 0
+        ? activePeerProfile
+        : {
+            ...activePeerProfile,
+            shelves: selectedPeer?.shelves,
+          };
+    const normalized = normalizeProfileShelves(profileSource);
+    return normalized.map((shelf, sIdx) => ({
+      ...shelf,
+      cards: shelf.cardIds.map((id, slotIdx) => {
+        if (id) {
+          const fromCol = peerCollection.find((c) => String(c.id) === String(id));
+          if (fromCol) return fromCol;
+        }
+        return (
+          selectedPeer?.shelves?.[sIdx]?.cards?.[slotIdx] ||
+          (sIdx === 0 ? selectedPeer?.showcaseCards?.[slotIdx] || null : null)
+        );
+      }),
+    }));
+  }, [activePeerProfile, selectedPeer, peerCollection]);
+
   const offeredCountsMap = useMemo(() => {
     const map = {};
     offeredCardIds.forEach((id) => {
@@ -603,6 +638,7 @@ export default function useSocialHub({
     peerStats,
     selectedPeerScore,
     peerShowcaseCards,
+    peerShelves,
     offeredCountsMap,
     requestedCountsMap,
     handleInspectPeer,
