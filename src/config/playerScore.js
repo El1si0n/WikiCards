@@ -116,14 +116,12 @@ export function calculatePlayerScore(playerData = {}) {
         : 0)
   );
 
-  // 5. Progression : Boosters ouverts
+  // 5. Progression : Boosters ouverts et Cartes tirées (uniquement via boosters)
   const stats = playerData.stats || {};
   const boostersOpened = Number(stats.boostersOpened || 0);
-  const totalCardsDrawn = Math.max(
-    Number(playerData.totalCardsDrawn ?? stats.totalCardsDrawn ?? 0),
-    boostersOpened * 6,
-    totalCards
-  );
+  const rawTotalDrawn = Number(playerData.totalCardsDrawn ?? stats.totalCardsDrawn ?? 0);
+  const totalCardsDrawn =
+    boostersOpened > 0 ? boostersOpened * 6 : rawTotalDrawn;
 
   // 6. Points de Rareté (~4x par palier supérieur)
   let rarityPoints = 0;

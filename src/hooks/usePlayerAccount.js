@@ -136,15 +136,17 @@ export function usePlayerAccount({
       const saved = localStorage.getItem(STORAGE_KEYS.STATS);
       if (saved) {
         const parsed = JSON.parse(saved);
+        const boosters = Number(parsed?.boostersOpened || 0);
         return {
           boostersOpened: 0,
-          totalCardsDrawn: 0,
           lostMoneyCasino: 0,
           lostCards: 0,
           wonCards: 0,
           netCasinoGains: 0,
           recordStreak: 0,
           ...parsed,
+          totalCardsDrawn:
+            boosters > 0 ? boosters * 6 : Number(parsed?.totalCardsDrawn || 0),
         };
       }
     } catch {
@@ -454,15 +456,20 @@ export function usePlayerAccount({
         }
       }
       if (serverAccount.stats && typeof serverAccount.stats === 'object') {
+        const serverBoosters = Number(serverAccount.stats.boostersOpened || 0);
         setStats({
-          boostersOpened: Number(serverAccount.stats.boostersOpened || 0),
-          totalCardsDrawn: Number(serverAccount.stats.totalCardsDrawn || 0),
+          boostersOpened: serverBoosters,
+          totalCardsDrawn:
+            serverBoosters > 0
+              ? serverBoosters * 6
+              : Number(serverAccount.stats.totalCardsDrawn || 0),
           lostMoneyCasino: Number(serverAccount.stats.lostMoneyCasino || 0),
           lostCards: Number(serverAccount.stats.lostCards || 0),
           wonCards: Number(serverAccount.stats.wonCards || 0),
           netCasinoGains: Number(serverAccount.stats.netCasinoGains || 0),
           recordStreak: Number(serverAccount.stats.recordStreak || 0),
           ...serverAccount.stats,
+          ...(serverBoosters > 0 ? { totalCardsDrawn: serverBoosters * 6 } : {}),
         });
       }
       if (serverAccount.lastDailyClaimDate) {
@@ -888,11 +895,13 @@ export function usePlayerAccount({
       return Array.from(map.values());
     });
 
-    setStats((prev) => ({
-      ...prev,
-      boostersOpened: (prev.boostersOpened || 0) + (fromBooster ? 1 : 0),
-      totalCardsDrawn: (prev.totalCardsDrawn || 0) + newCards.length,
-    }));
+    if (fromBooster) {
+      setStats((prev) => ({
+        ...prev,
+        boostersOpened: (prev.boostersOpened || 0) + 1,
+        totalCardsDrawn: (prev.totalCardsDrawn || 0) + newCards.length,
+      }));
+    }
   }, [bumpLocalUpdatedAt]);
 
   const consumeCardsFromCollection = useCallback((quantitiesMap) => {
@@ -996,6 +1005,7 @@ export function usePlayerAccount({
         ? account.wikithunes
         : INITIAL_WIKITHUNES
     );
+    const loginBoosters = Number(account.stats?.boostersOpened || 0);
     setStats({
       boostersOpened: 0,
       totalCardsDrawn: 0,
@@ -1005,6 +1015,7 @@ export function usePlayerAccount({
       netCasinoGains: 0,
       recordStreak: 0,
       ...(account.stats || {}),
+      ...(loginBoosters > 0 ? { totalCardsDrawn: loginBoosters * 6 } : {}),
     });
     if (Array.isArray(account.snapshots) && account.snapshots.length > 0) {
       try {

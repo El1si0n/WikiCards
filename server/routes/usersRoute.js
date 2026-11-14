@@ -63,10 +63,10 @@ function detectAndApplyManualFileEdit(filePath, parsed) {
         actualCopies + lostCards - Math.min(actualCopies, boostersOpened * 6)
       );
       const adjustedWonCards = Math.min(wonCards, maxPlausibleWonCards);
-      const adjustedTotalDraws = Math.min(
-        Number(rawStats.totalCardsDrawn || 0),
-        Math.max(actualCopies + lostCards, boostersOpened * 6)
-      );
+      const adjustedTotalDraws =
+        boostersOpened > 0
+          ? boostersOpened * 6
+          : Math.min(Number(rawStats.totalCardsDrawn || 0), actualCopies + lostCards);
 
       const updatedUser = {
         ...parsed,

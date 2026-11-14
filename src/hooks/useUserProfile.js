@@ -151,15 +151,10 @@ export default function useUserProfile({
     [stats]
   );
 
-  const totalCardsDrawn = useMemo(
-    () =>
-      Math.max(
-        Number(stats?.totalCardsDrawn || 0),
-        Number(stats?.boostersOpened || 0) * 6,
-        totalCopiesCount
-      ),
-    [stats, totalCopiesCount]
-  );
+  const totalCardsDrawn = useMemo(() => {
+    const boosters = Number(stats?.boostersOpened || 0);
+    return boosters > 0 ? boosters * 6 : Number(stats?.totalCardsDrawn || 0);
+  }, [stats]);
 
   const playerScore = useMemo(
     () =>

@@ -168,9 +168,11 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
   // 4. Statistiques de jeu : préservation intégrale et validation des types
   if (payload.stats && typeof payload.stats === 'object') {
     const rawStats = payload.stats;
+    const boostersOpened = Math.max(0, Math.floor(Number(rawStats.boostersOpened) || 0));
+    const rawTotalDrawn = Math.max(0, Math.floor(Number(rawStats.totalCardsDrawn) || 0));
     sanitized.stats = {
-      boostersOpened: Math.max(0, Math.floor(Number(rawStats.boostersOpened) || 0)),
-      totalCardsDrawn: Math.max(0, Math.floor(Number(rawStats.totalCardsDrawn) || 0)),
+      boostersOpened,
+      totalCardsDrawn: boostersOpened > 0 ? boostersOpened * 6 : rawTotalDrawn,
       wonCards: Math.max(0, Math.floor(Number(rawStats.wonCards) || 0)),
       lostCards: Math.max(0, Math.floor(Number(rawStats.lostCards) || 0)),
       lostMoneyCasino: Math.max(0, Math.floor(Number(rawStats.lostMoneyCasino) || 0)),
