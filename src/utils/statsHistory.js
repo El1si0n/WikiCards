@@ -505,12 +505,17 @@ export function calculateEvolutionPct(currentVal, startVal, allPoints = [], isCu
 
 /**
  * Calcule ou reconstitue le score joueur d'un instantané historique.
+ * Recalcule dynamiquement avec le barème courant lorsque les composantes sont présentes.
  * @param {Object} s - Instantané de statistiques
  * @returns {number} Score calculé pour cet instantané
  */
 function resolveSnapshotPlayerScore(s) {
   if (!s) return 0;
-  if (typeof s.playerScore === 'number' && s.playerScore >= 0) {
+  const hasBreakdown =
+    typeof s.uniqueCardsCount === 'number' ||
+    typeof s.collectionValue === 'number' ||
+    typeof s.wikithunes === 'number';
+  if (!hasBreakdown && typeof s.playerScore === 'number' && s.playerScore >= 0) {
     return s.playerScore;
   }
   return calculatePlayerScore({
@@ -721,7 +726,7 @@ export function generateMetricTimeSeries(
       if (isBeforeAccount) {
         points.push({
           timestamp: t,
-          value: metricId === 'playerScore' ? Math.floor(INITIAL_WIKITHUNES / 50) : 0,
+          value: metricId === 'playerScore' ? Math.floor(INITIAL_WIKITHUNES / 10) : 0,
         });
         continue;
       }

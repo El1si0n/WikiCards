@@ -203,9 +203,9 @@ export function calculatePlayerScore(playerData = {}) {
         // Volume d'exemplaires dans le classeur
         totalCards * 1 +
 
-        // Économie & patrimoine
-        Math.floor(wikithunes / 50) +
-        Math.floor(collectionValue / 100) +
+        // Économie & patrimoine (valorisation renforcée des Wikithunes et du patrimoine)
+        Math.floor(wikithunes / 10) +
+        Math.floor(collectionValue / 40) +
 
         // Activité & fidélité (Volume exploré Proposition 4)
         boostersOpened * 10 +
@@ -213,7 +213,7 @@ export function calculatePlayerScore(playerData = {}) {
 
         // Exploits & prouesses au jeu (bilans nets réels uniquement)
         netWonCards * 15 +
-        Math.floor(netCasinoMoney / 50) +
+        Math.floor(netCasinoMoney / 20) +
         streakPoints
     )
   );
