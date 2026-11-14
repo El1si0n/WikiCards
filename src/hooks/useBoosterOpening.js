@@ -17,15 +17,13 @@ import {
 import { soundManager } from '../services/sound';
 
 const STORAGE_KEY_NEXT_BOOSTER_ICONIC = 'wikicards_next_booster_is_iconic_v1';
-const STORAGE_KEY_PRELOADED_PACKS = 'wikicards_preloaded_packs_queue_v1';
-const TARGET_PRELOADED_QUEUE_SIZE = 2;
+const STORAGE_KEY_PRELOADED_PACK = 'wikicards_preloaded_booster_pack_v1';
 
-// File d'attente partagée au niveau du module + persistance localStorage :
-// survit aux changements d'onglets (Classeur, Casino, Marché) et aux rafraîchissements de page (F5),
-// garantissant que le 1er booster est toujours déjà prêt instantanément dès l'arrivée sur le jeu.
-let sharedPreloadedQueue = [];
-let isSharedPreloading = false;
-let sharedPreloadPromise = null;
+// Cache global de module : persiste entre les changements d'onglets (Classeur, Casino, Marché, Social -> Accueil)
+// et démarre dès l'import du module pour que le 1er booster soit déjà prêt au clic.
+let globalPreloadedPack = null;
+let globalPreloadPromise = null;
+let globalIsPreloading = false;
 
 /**
  * Précharge en mémoire les illustrations d'un lot de cartes afin que leur affichage
@@ -47,131 +45,49 @@ function preloadCardImages(cards) {
   }
 }
 
-function hydratePreloadedQueueFromStorage() {
-  if (sharedPreloadedQueue.length > 0) return;
+function loadPersistedPreloadedPack() {
+  if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PRELOADED_PACKS);
-    if (!raw) return;
+    const raw = localStorage.getItem(STORAGE_KEY_PRELOADED_PACK);
+    if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return;
-    const validPacks = parsed.filter(
-      (entry) =>
-        entry &&
-        typeof entry.isIconic === 'boolean' &&
-        Array.isArray(entry.cards) &&
-        entry.cards.length >= 6
-    );
-    if (validPacks.length > 0) {
-      sharedPreloadedQueue = validPacks.slice(0, 3);
-      for (const pack of sharedPreloadedQueue) {
-        preloadCardImages(pack.cards);
-      }
+    if (
+      parsed &&
+      typeof parsed.isIconic === 'boolean' &&
+      Array.isArray(parsed.cards) &&
+      parsed.cards.length >= 6 &&
+      parsed.cards.every((c) => c && c.id && c.title)
+    ) {
+      const pack = {
+        isIconic: parsed.isIconic,
+        cards: parsed.cards.slice(0, 6),
+      };
+      preloadCardImages(pack.cards);
+      return pack;
     }
   } catch {
     // ignore
   }
+  return null;
 }
 
-function persistPreloadedQueueToStorage() {
+function savePersistedPreloadedPack(pack) {
+  if (typeof window === 'undefined') return;
   try {
-    if (sharedPreloadedQueue.length === 0) {
-      localStorage.removeItem(STORAGE_KEY_PRELOADED_PACKS);
+    if (!pack || !Array.isArray(pack.cards) || pack.cards.length < 6) {
+      localStorage.removeItem(STORAGE_KEY_PRELOADED_PACK);
     } else {
       localStorage.setItem(
-        STORAGE_KEY_PRELOADED_PACKS,
-        JSON.stringify(sharedPreloadedQueue.slice(0, 3))
+        STORAGE_KEY_PRELOADED_PACK,
+        JSON.stringify({
+          isIconic: Boolean(pack.isIconic),
+          cards: pack.cards.slice(0, 6),
+        })
       );
     }
   } catch {
     // ignore
   }
-}
-
-function takePreloadedPack(isIconic) {
-  hydratePreloadedQueueFromStorage();
-  const desired = Boolean(isIconic);
-  const idx = sharedPreloadedQueue.findIndex((p) => p.isIconic === desired);
-  if (idx === -1) return null;
-  const [found] = sharedPreloadedQueue.splice(idx, 1);
-  persistPreloadedQueueToStorage();
-  return found?.cards ? found.cards.slice(0, 6) : null;
-}
-
-function countPreloadedPacks(isIconic) {
-  hydratePreloadedQueueFromStorage();
-  const desired = Boolean(isIconic);
-  return sharedPreloadedQueue.filter((p) => p.isIconic === desired).length;
-}
-
-/**
- * Précharge proactivement en arrière-plan (et persiste en localStorage) une réserve
- * de boosters prêts à être ouverts instantanément dès le premier clic.
- * @param {boolean} [targetIsIconic] - Indique si le prochain booster attendu est Iconique
- * @returns {Promise<Array<Object>|null>}
- */
-export async function preloadNextBooster(
-  targetIsIconic = getOrRollNextBoosterIsIconic()
-) {
-  hydratePreloadedQueueFromStorage();
-  const desiredIconic = Boolean(targetIsIconic);
-  const targetCount = desiredIconic ? 1 : TARGET_PRELOADED_QUEUE_SIZE;
-
-  if (countPreloadedPacks(desiredIconic) >= targetCount) {
-    const existing = sharedPreloadedQueue.find(
-      (p) => p.isIconic === desiredIconic
-    );
-    return existing ? existing.cards : null;
-  }
-
-  if (
-    isSharedPreloading &&
-    sharedPreloadPromise &&
-    sharedPreloadPromise.isIconic === desiredIconic
-  ) {
-    return sharedPreloadPromise.promise;
-  }
-
-  isSharedPreloading = true;
-  const promise = (async () => {
-    let firstPackCards = null;
-    try {
-      while (countPreloadedPacks(desiredIconic) < targetCount) {
-        const cards = await fetchBoosterPackCards(6, {
-          isIconic: desiredIconic,
-        });
-        if (Array.isArray(cards) && cards.length >= 6) {
-          const sixCards = cards.slice(0, 6);
-          preloadCardImages(sixCards);
-          sharedPreloadedQueue.push({
-            isIconic: desiredIconic,
-            cards: sixCards,
-          });
-          persistPreloadedQueueToStorage();
-          if (!firstPackCards) {
-            firstPackCards = sixCards;
-          }
-        } else {
-          break;
-        }
-      }
-    } catch {
-      // Ignoré silencieusement en arrière-plan
-    } finally {
-      isSharedPreloading = false;
-      sharedPreloadPromise = null;
-    }
-    return firstPackCards;
-  })();
-
-  sharedPreloadPromise = { isIconic: desiredIconic, promise };
-  return promise;
-}
-
-// Démarre immédiatement la préparation de la réserve de boosters dès le chargement de l'application
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    preloadNextBooster();
-  }, 50);
 }
 
 function getOrRollNextBoosterIsIconic() {
@@ -200,6 +116,75 @@ function rollAndSaveNextBoosterIsIconic() {
     // ignore
   }
   return rolled;
+}
+
+/**
+ * Assure qu'un booster de 6 cartes est toujours préchargé en mémoire et dans localStorage,
+ * quelle que soit la page ou l'onglet visité par le joueur.
+ * @param {boolean} [targetIsIconic] - Indique si le booster à préparer est iconique
+ * @returns {Promise<Array<Object>|null>} Les 6 cartes préchargées
+ */
+export function ensureBoosterPreloaded(
+  targetIsIconic = getOrRollNextBoosterIsIconic()
+) {
+  const desiredIconic = Boolean(targetIsIconic);
+
+  if (!globalPreloadedPack) {
+    const restored = loadPersistedPreloadedPack();
+    if (restored && restored.isIconic === desiredIconic) {
+      globalPreloadedPack = restored;
+    }
+  }
+
+  if (
+    globalPreloadedPack &&
+    globalPreloadedPack.isIconic === desiredIconic &&
+    Array.isArray(globalPreloadedPack.cards) &&
+    globalPreloadedPack.cards.length >= 6
+  ) {
+    preloadCardImages(globalPreloadedPack.cards);
+    return Promise.resolve(globalPreloadedPack.cards);
+  }
+
+  if (
+    globalIsPreloading &&
+    globalPreloadPromise &&
+    globalPreloadPromise.isIconic === desiredIconic
+  ) {
+    return globalPreloadPromise.promise;
+  }
+
+  globalIsPreloading = true;
+  const promise = (async () => {
+    try {
+      const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
+      if (Array.isArray(cards) && cards.length >= 6) {
+        const sixCards = cards.slice(0, 6);
+        preloadCardImages(sixCards);
+        const pack = {
+          isIconic: desiredIconic,
+          cards: sixCards,
+        };
+        globalPreloadedPack = pack;
+        savePersistedPreloadedPack(pack);
+        return pack.cards;
+      }
+    } catch {
+      // Ignoré silencieusement en arrière-plan
+    } finally {
+      globalIsPreloading = false;
+      globalPreloadPromise = null;
+    }
+    return null;
+  })();
+
+  globalPreloadPromise = { isIconic: desiredIconic, promise };
+  return promise;
+}
+
+// Lancement immédiat dès le chargement du script (même sur l'écran de connexion ou un autre onglet)
+if (typeof window !== 'undefined') {
+  ensureBoosterPreloaded();
 }
 
 /**
@@ -281,9 +266,19 @@ export default function useBoosterOpening({
     setStage(newStage);
   };
 
+  const preloadNextBooster = (
+    targetIsIconic = getOrRollNextBoosterIsIconic()
+  ) => ensureBoosterPreloaded(targetIsIconic);
+
   useEffect(() => {
     preloadNextBooster(isIconicRoll);
+    const keepWarmInterval = setInterval(() => {
+      if (!globalPreloadedPack && !globalIsPreloading) {
+        preloadNextBooster(getOrRollNextBoosterIsIconic());
+      }
+    }, 5000);
     return () => {
+      clearInterval(keepWarmInterval);
       if (tearTimerRef.current) {
         clearTimeout(tearTimerRef.current);
       }
@@ -369,18 +364,37 @@ export default function useBoosterOpening({
       price: priceToPay,
     });
 
-    let cards = takePreloadedPack(isPackIconic);
+    if (!globalPreloadedPack) {
+      const restored = loadPersistedPreloadedPack();
+      if (restored && restored.isIconic === isPackIconic) {
+        globalPreloadedPack = restored;
+      }
+    }
+
+    let cards = null;
     if (
-      !cards &&
-      isSharedPreloading &&
-      sharedPreloadPromise &&
-      sharedPreloadPromise.isIconic === isPackIconic
+      globalPreloadedPack &&
+      globalPreloadedPack.isIconic === isPackIconic &&
+      Array.isArray(globalPreloadedPack.cards) &&
+      globalPreloadedPack.cards.length >= 6
+    ) {
+      cards = globalPreloadedPack.cards.slice(0, 6);
+      globalPreloadedPack = null;
+      savePersistedPreloadedPack(null);
+    } else if (
+      globalIsPreloading &&
+      globalPreloadPromise &&
+      globalPreloadPromise.isIconic === isPackIconic
     ) {
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
-        await sharedPreloadPromise.promise;
-        cards = takePreloadedPack(isPackIconic);
+        const awaited = await globalPreloadPromise.promise;
+        if (Array.isArray(awaited) && awaited.length >= 6) {
+          cards = awaited.slice(0, 6);
+          globalPreloadedPack = null;
+          savePersistedPreloadedPack(null);
+        }
       } catch {
         // On tentera un tirage direct ci-dessous
       }
@@ -524,8 +538,9 @@ export default function useBoosterOpening({
     } catch {
       // ignore
     }
-    sharedPreloadedQueue = sharedPreloadedQueue.filter((p) => !p.isIconic);
-    persistPreloadedQueueToStorage();
+    globalPreloadedPack = null;
+    globalPreloadPromise = null;
+    savePersistedPreloadedPack(null);
     preloadNextBooster(false);
   };
 

@@ -2,10 +2,11 @@
 // Dépendances : React, usePlayerAccount, useNotifications, useAppPreferences, sous-composants d'interface.
 // Effets de bord : Synchronise l'état global avec le localStorage et le backend via les hooks dédiés.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlayerAccount } from './hooks/usePlayerAccount';
 import { useNotifications } from './hooks/useNotifications';
 import { useAppPreferences } from './hooks/useAppPreferences';
+import { ensureBoosterPreloaded } from './hooks/useBoosterOpening';
 import AuthGateway from './components/AuthGateway';
 import WikiHeader from './components/WikiHeader';
 import NavigationTabs from './components/NavigationTabs';
@@ -20,6 +21,16 @@ import WikiFooter from './components/WikiFooter';
 export default function App() {
   const [activeTab, setActiveTab] = useState('booster');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Maintient en permanence un booster préchargé en mémoire et dans localStorage,
+  // même lorsque l'utilisateur navigue dans le Classeur, le Casino, le Marché ou le Social.
+  useEffect(() => {
+    ensureBoosterPreloaded();
+    const interval = setInterval(() => {
+      ensureBoosterPreloaded();
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
