@@ -200,11 +200,17 @@ export function usePlayerAccount({
   const skipNextPushRef = useRef(false);
   const isReconcilingRef = useRef(false);
   const reconcileFnRef = useRef(null);
+  const lastLocalMutationAtRef = useRef(0);
 
   const bumpLocalUpdatedAt = useCallback(() => {
-    const now = setStoredUpdatedAt(Date.now());
-    setLocalUpdatedAt(now);
-    return now;
+    const now = Date.now();
+    lastLocalMutationAtRef.current = now;
+    let nextVal = now;
+    setLocalUpdatedAt((prev) => {
+      nextVal = Math.max(now, (Number(prev) || 0) + 1);
+      return setStoredUpdatedAt(nextVal);
+    });
+    return nextVal;
   }, []);
 
   const [freeBoostersCount, setFreeBoostersCount] = useState(() => {
@@ -570,10 +576,14 @@ export function usePlayerAccount({
 
     const reconcileWithServer = async () => {
       if (isReconcilingRef.current) return;
+      // Si l'utilisateur vient de faire une action locale (ex: clic favori, achat, recyclage),
+      // laisser le push debounced (250ms) s'exécuter avant de lire l'état serveur.
+      if (Date.now() - lastLocalMutationAtRef.current < 1500) return;
       isReconcilingRef.current = true;
       try {
         const current = latestAccountRef.current;
         if (!current.userCode) return;
+        const snapshotStartedAt = lastLocalMutationAtRef.current;
 
         const localSnapshot = {
           code: current.userCode,
@@ -598,6 +608,8 @@ export function usePlayerAccount({
 
         const res = await fetchServerUserAccount(current.userCode);
         if (isCancelled) return;
+        // Si une mutation locale a eu lieu pendant le trajet réseau du GET, on abandonne ce cycle
+        if (lastLocalMutationAtRef.current !== snapshotStartedAt) return;
 
         if (res.status === 'not_found') {
           const pushed = await syncUserAccountToServer(
@@ -691,6 +703,9 @@ export function usePlayerAccount({
       });
       if (result?.serverIsNewer && result?.user) {
         applyServerAccountState(result.user);
+      } else if (result?.user?.updatedAt) {
+        const syncedTs = setStoredUpdatedAt(result.user.updatedAt);
+        setLocalUpdatedAt((prev) => Math.max(prev, syncedTs));
       }
     }, 250);
     return () => clearTimeout(timer);
@@ -795,10 +810,10 @@ export function usePlayerAccount({
   ]);
 
   const toggleFavorite = useCallback((cardId) => {
+    bumpLocalUpdatedAt();
     setFavorites((prev) => {
       const isAdding = !prev.includes(cardId);
       soundManager.playFavoriteToggle(isAdding);
-      bumpLocalUpdatedAt();
       return isAdding ? [...prev, cardId] : prev.filter((id) => id !== cardId);
     });
   }, [bumpLocalUpdatedAt]);

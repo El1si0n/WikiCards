@@ -396,8 +396,7 @@ export async function handleUsersRoute(req, res, pathname) {
         // Si le fichier a été modifié manuellement sur le serveur et que le client n'a pas encore reçu cette révision
         const hasUnacknowledgedManualEdit =
           serverAdminOverrideAt > 0 &&
-          (clientAdminOverrideAt < serverAdminOverrideAt ||
-            incomingUpdatedAt < serverAdminOverrideAt);
+          clientAdminOverrideAt < serverAdminOverrideAt;
 
         const isIncomingStrictlyOlder =
           incomingUpdatedAt > 0 &&
