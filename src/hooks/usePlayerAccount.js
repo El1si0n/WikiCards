@@ -189,6 +189,13 @@ export function usePlayerAccount({
   const [localUpdatedAt, setLocalUpdatedAt] = useState(() =>
     getStoredUpdatedAt(getStoredUserCode(), collection)
   );
+  const [adminOverrideAt, setAdminOverrideAt] = useState(() => {
+    try {
+      return Number(localStorage.getItem('wikicards_admin_override_at_v1') || 0);
+    } catch {
+      return 0;
+    }
+  });
   const isServerHydratedRef = useRef(false);
   const skipNextPushRef = useRef(false);
   const isReconcilingRef = useRef(false);
@@ -486,6 +493,13 @@ export function usePlayerAccount({
           } catch {}
         }
       }
+      if (serverAccount.adminOverrideAt !== undefined) {
+        const overrideTs = Number(serverAccount.adminOverrideAt || 0);
+        setAdminOverrideAt(overrideTs);
+        try {
+          localStorage.setItem('wikicards_admin_override_at_v1', String(overrideTs));
+        } catch {}
+      }
       if (serverAccount.updatedAt) {
         const syncedTs = setStoredUpdatedAt(serverAccount.updatedAt);
         setLocalUpdatedAt(syncedTs);
@@ -505,6 +519,7 @@ export function usePlayerAccount({
     freeBoostersCount,
     lastFreeBoostersResetTime,
     localUpdatedAt,
+    adminOverrideAt,
     accountCreatedAt,
   });
 
@@ -520,6 +535,7 @@ export function usePlayerAccount({
       freeBoostersCount,
       lastFreeBoostersResetTime,
       localUpdatedAt,
+      adminOverrideAt,
       accountCreatedAt,
     };
   }, [
@@ -533,6 +549,7 @@ export function usePlayerAccount({
     freeBoostersCount,
     lastFreeBoostersResetTime,
     localUpdatedAt,
+    adminOverrideAt,
     accountCreatedAt,
   ]);
 
@@ -570,6 +587,7 @@ export function usePlayerAccount({
             current.lastFreeBoostersResetTime || Date.now(),
           updatedAt: current.localUpdatedAt,
           clientUpdatedAt: current.localUpdatedAt,
+          adminOverrideAt: current.adminOverrideAt || 0,
         };
 
         const res = await fetchServerUserAccount(current.userCode);
@@ -663,6 +681,7 @@ export function usePlayerAccount({
         readNotifIds,
         dismissedNotifIds,
         clientUpdatedAt: localUpdatedAt,
+        adminOverrideAt,
       });
       if (result?.serverIsNewer && result?.user) {
         applyServerAccountState(result.user);
@@ -682,6 +701,7 @@ export function usePlayerAccount({
     readNotifIds,
     dismissedNotifIds,
     localUpdatedAt,
+    adminOverrideAt,
     accountCreatedAt,
     applyServerAccountState,
   ]);

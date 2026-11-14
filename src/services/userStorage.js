@@ -346,6 +346,12 @@ export function isAccountStateNewer(candidate, baseline) {
   if (!candidate) return false;
   if (!baseline) return true;
 
+  const candAdminOverride = Number(candidate.adminOverrideAt || 0);
+  const baseAdminOverride = Number(baseline.adminOverrideAt || 0);
+  if (candAdminOverride !== baseAdminOverride) {
+    return candAdminOverride > baseAdminOverride;
+  }
+
   const candBoosters = Number(candidate.stats?.boostersOpened || 0);
   const baseBoosters = Number(baseline.stats?.boostersOpened || 0);
   const candDraws = Number(candidate.stats?.totalCardsDrawn || 0);

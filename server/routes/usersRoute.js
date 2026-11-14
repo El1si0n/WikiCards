@@ -27,6 +27,65 @@ let cachedUsersDirectoryExpiry = 0;
 const DIRECTORY_CACHE_TTL_MS = 5000;
 
 /**
+ * Détecte si le fichier JSON sur le disque a été modifié manuellement (hors API)
+ * en comparant son horodatage système (`mtimeMs`) au champ `updatedAt` interne.
+ * Si le fichier a été édité manuellement (ex: modération anti-triche), met à jour `updatedAt`,
+ * ajuste automatiquement `stats.wonCards` et `stats.totalCardsDrawn` si des cartes dupliquées
+ * ont été retirées, et active un jeton `adminOverrideAt` pour forcer le navigateur du joueur à adopter cet état.
+ *
+ * @param {string} filePath - Chemin absolu du fichier JSON
+ * @param {object} parsed - Contenu JSON désérialisé
+ * @returns {{ user: object, changed: boolean }} Objet utilisateur éventuellement mis à jour
+ */
+function detectAndApplyManualFileEdit(filePath, parsed) {
+  if (!filePath || !parsed || typeof parsed !== 'object') {
+    return { user: parsed, changed: false };
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    const fileMtime = Math.floor(stat.mtimeMs || 0);
+    const jsonUpdatedAt = Number(parsed.updatedAt || 0);
+
+    // Marge de 1500ms pour ignorer le léger décalage naturel entre Date.now() et fs.writeFileSync
+    if (fileMtime > jsonUpdatedAt + 1500) {
+      const col = Array.isArray(parsed.collection) ? parsed.collection : [];
+      const actualCopies = col.reduce((s, c) => s + (Number(c?.count) || 1), 0);
+      const rawStats = parsed.stats && typeof parsed.stats === 'object' ? parsed.stats : {};
+      const boostersOpened = Number(rawStats.boostersOpened || 0);
+      const lostCards = Number(rawStats.lostCards || 0);
+      const wonCards = Number(rawStats.wonCards || 0);
+
+      // Si des cartes ont été supprimées manuellement de `collection`, le net de cartes gagnées
+      // ne peut pas excéder le nombre réel de cartes possédées au-delà des boosters ouverts
+      const maxPlausibleWonCards = Math.max(
+        0,
+        actualCopies + lostCards - Math.min(actualCopies, boostersOpened * 6)
+      );
+      const adjustedWonCards = Math.min(wonCards, maxPlausibleWonCards);
+      const adjustedTotalDraws = Math.min(
+        Number(rawStats.totalCardsDrawn || 0),
+        Math.max(actualCopies + lostCards, boostersOpened * 6)
+      );
+
+      const updatedUser = {
+        ...parsed,
+        stats: {
+          ...rawStats,
+          wonCards: adjustedWonCards,
+          totalCardsDrawn: adjustedTotalDraws,
+        },
+        updatedAt: fileMtime,
+        adminOverrideAt: fileMtime,
+      };
+      return { user: updatedUser, changed: true };
+    }
+  } catch {
+    // ignore
+  }
+  return { user: parsed, changed: false };
+}
+
+/**
  * Vérifie dans `market.json` si l'utilisateur a remporté des enchères (status === 'sold')
  * dont les cartes n'auraient pas encore été intégrées ou acquittées dans son profil.
  * Protège également contre la perte de cartes si une synchro client intervient au même instant.
@@ -121,8 +180,14 @@ export async function handleUsersRoute(req, res, pathname) {
 
     for (const file of files) {
       try {
-        const raw = fs.readFileSync(path.join(usersDir, file), 'utf-8');
-        const parsed = JSON.parse(raw);
+        const fullPath = path.join(usersDir, file);
+        const raw = fs.readFileSync(fullPath, 'utf-8');
+        let parsed = JSON.parse(raw);
+        const manualEdit = detectAndApplyManualFileEdit(fullPath, parsed);
+        if (manualEdit.changed) {
+          parsed = manualEdit.user;
+          atomicWriteJsonSync(fullPath, parsed);
+        }
         const col = Array.isArray(parsed.collection) ? parsed.collection : [];
         const showcaseIds = Array.isArray(parsed.profile?.showcaseIds)
           ? parsed.profile.showcaseIds
@@ -257,13 +322,14 @@ export async function handleUsersRoute(req, res, pathname) {
     }
     try {
       const raw = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
+      const manualEdit = detectAndApplyManualFileEdit(filePath, parsed);
       const cleanCode = sanitizeCode(code);
       const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
-        parsed,
+        manualEdit.user,
         cleanCode
       );
-      if (changed) {
+      if (manualEdit.changed || changed) {
         atomicWriteJsonSync(filePath, consolidated);
         invalidateUsersDirectoryCache();
       }
@@ -285,13 +351,14 @@ export async function handleUsersRoute(req, res, pathname) {
 
     if (fileExists) {
       try {
-        existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const rawExisting = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const manualEdit = detectAndApplyManualFileEdit(filePath, rawExisting);
         const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
-          existing,
+          manualEdit.user,
           cleanCode
         );
-        if (changed) {
-          existing = consolidated;
+        existing = consolidated;
+        if (manualEdit.changed || changed) {
           atomicWriteJsonSync(filePath, existing);
           invalidateUsersDirectoryCache();
         }
@@ -305,7 +372,7 @@ export async function handleUsersRoute(req, res, pathname) {
     if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
 
     // Protection anti-écrasement : si le serveur a reçu une mutation asynchrone plus récente
-    // (ex: gain d'enchère, vente créditée, remboursement de surenchère ou échange accepté)
+    // (ex: édition manuelle sur le disque, gain d'enchère, vente créditée ou échange accepté)
     if (fileExists && existing.code && !body.forceOverwrite) {
       const existingDraws = Number(existing.stats?.totalCardsDrawn || 0);
       const existingBoosters = Number(existing.stats?.boostersOpened || 0);
@@ -321,6 +388,14 @@ export async function handleUsersRoute(req, res, pathname) {
       );
       const existingUpdatedAt = Number(existing.updatedAt || 0);
       const incomingUpdatedAt = Number(body.clientUpdatedAt || body.updatedAt || 0);
+      const serverAdminOverrideAt = Number(existing.adminOverrideAt || 0);
+      const clientAdminOverrideAt = Number(rawBody.adminOverrideAt || 0);
+
+      // Si le fichier a été modifié manuellement sur le serveur et que le client n'a pas encore reçu cette révision
+      const hasUnacknowledgedManualEdit =
+        serverAdminOverrideAt > 0 &&
+        (clientAdminOverrideAt < serverAdminOverrideAt ||
+          incomingUpdatedAt < serverAdminOverrideAt);
 
       const isIncomingStrictlyOlder =
         incomingUpdatedAt > 0 &&
@@ -335,7 +410,11 @@ export async function handleUsersRoute(req, res, pathname) {
         incomingDraws <= existingDraws &&
         incomingBoosters <= existingBoosters;
 
-      if (hasServerAsyncUpdate || (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)) {
+      if (
+        hasUnacknowledgedManualEdit ||
+        hasServerAsyncUpdate ||
+        (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)
+      ) {
         res.statusCode = 200;
         res.end(
           JSON.stringify({
