@@ -183,8 +183,8 @@ export default function BoosterPackView({
                       transition={{ duration: 0.72, delay: i * 0.04, ease: 'easeOut' }}
                       className="w-1.5 h-1.5 rounded-full"
                       style={{
-                        backgroundColor: highestRarityKey === 'L' ? '#ffea5a' : '#ffffff',
-                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#deb226' : '#f59e0b'}`,
+                        backgroundColor: highestRarityKey === 'L' ? '#ffea5a' : '#ffd08a',
+                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#deb226' : '#e8831c'}`,
                       }}
                     />
                   ))}
