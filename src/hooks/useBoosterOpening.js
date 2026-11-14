@@ -79,19 +79,35 @@ export default function useBoosterOpening({
   const [isIconicRoll, setIsIconicRoll] = useState(() =>
     getOrRollNextBoosterIsIconic()
   );
+  // Instantané visuel figé dès le clic d'ouverture jusqu'à la fin de l'animation de déchirure ('tearing')
+  const [lockedPackState, setLockedPackState] = useState(null);
 
-  const isIconicPack = isIconicRoll;
-  const isFreeStandardPack = !isIconicPack && freeBoostersCount > 0;
-  const activePrice = isIconicPack
+  const liveIsIconicPack = isIconicRoll;
+  const liveIsFreeStandardPack = !liveIsIconicPack && freeBoostersCount > 0;
+  const liveActivePrice = liveIsIconicPack
     ? iconicBoosterPrice
-    : isFreeStandardPack
+    : liveIsFreeStandardPack
     ? 0
     : boosterPrice;
+
+  const isPackVisualLocked = Boolean(
+    lockedPackState && (isOpening || isFetching || stage === 'tearing')
+  );
+  const isIconicPack = isPackVisualLocked
+    ? lockedPackState.isIconic
+    : liveIsIconicPack;
+  const isFreeStandardPack = isPackVisualLocked
+    ? lockedPackState.isFree
+    : liveIsFreeStandardPack;
+  const activePrice = isPackVisualLocked
+    ? lockedPackState.price
+    : liveActivePrice;
 
   const packRef = useRef(null);
   const [glare, setGlare] = useState({ x: 50, y: 35, isHovered: false });
 
   const preloadedPackRef = useRef(null);
+  const preloadPromiseRef = useRef(null);
   const isPreloadingRef = useRef(false);
   const tearTimerRef = useRef(null);
   const isOpeningRef = useRef(false);
@@ -117,25 +133,41 @@ export default function useBoosterOpening({
   ) => {
     const desiredIconic = Boolean(targetIsIconic);
     if (
-      isPreloadingRef.current ||
-      (preloadedPackRef.current &&
-        preloadedPackRef.current.isIconic === desiredIconic &&
-        Array.isArray(preloadedPackRef.current.cards) &&
-        preloadedPackRef.current.cards.length > 0)
+      preloadedPackRef.current &&
+      preloadedPackRef.current.isIconic === desiredIconic &&
+      Array.isArray(preloadedPackRef.current.cards) &&
+      preloadedPackRef.current.cards.length >= 6
     ) {
-      return;
+      return preloadedPackRef.current.cards;
+    }
+    if (
+      isPreloadingRef.current &&
+      preloadPromiseRef.current &&
+      preloadPromiseRef.current.isIconic === desiredIconic
+    ) {
+      return preloadPromiseRef.current.promise;
     }
     isPreloadingRef.current = true;
-    try {
-      const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
-      if (cards && cards.length > 0) {
-        preloadedPackRef.current = { isIconic: desiredIconic, cards };
+    const promise = (async () => {
+      try {
+        const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
+        if (Array.isArray(cards) && cards.length >= 6) {
+          preloadedPackRef.current = {
+            isIconic: desiredIconic,
+            cards: cards.slice(0, 6),
+          };
+          return preloadedPackRef.current.cards;
+        }
+      } catch {
+        // Ignoré silencieusement en arrière-plan
+      } finally {
+        isPreloadingRef.current = false;
+        preloadPromiseRef.current = null;
       }
-    } catch {
-      // Ignoré silencieusement
-    } finally {
-      isPreloadingRef.current = false;
-    }
+      return null;
+    })();
+    preloadPromiseRef.current = { isIconic: desiredIconic, promise };
+    return promise;
   };
 
   useEffect(() => {
@@ -200,7 +232,7 @@ export default function useBoosterOpening({
     setErrorMsg(null);
 
     const isPackIconic =
-      typeof overrideIsIconic === 'boolean' ? overrideIsIconic : isIconicPack;
+      typeof overrideIsIconic === 'boolean' ? overrideIsIconic : liveIsIconicPack;
     setIsIconicRoll(isPackIconic);
     const isFree = !isPackIconic && freeBoostersCount > 0;
     const priceToPay = isFree
@@ -218,25 +250,53 @@ export default function useBoosterOpening({
       return;
     }
 
+    // Verrouille l'apparence exacte du sachet en cours d'ouverture (type et prix affiché)
+    // afin que le débit du booster gratuit ou le tirage du prochain booster ne modifie pas le sachet pendant 'tearing'
+    setLockedPackState({
+      isIconic: isPackIconic,
+      isFree,
+      price: priceToPay,
+    });
+
     let cards = null;
     if (
       preloadedPackRef.current &&
       preloadedPackRef.current.isIconic === isPackIconic &&
       Array.isArray(preloadedPackRef.current.cards) &&
-      preloadedPackRef.current.cards.length > 0
+      preloadedPackRef.current.cards.length >= 6
     ) {
-      cards = preloadedPackRef.current.cards;
+      cards = preloadedPackRef.current.cards.slice(0, 6);
       preloadedPackRef.current = null;
+    } else if (
+      isPreloadingRef.current &&
+      preloadPromiseRef.current &&
+      preloadPromiseRef.current.isIconic === isPackIconic
+    ) {
+      soundManager.playBoosterCharge();
+      setIsFetching(true);
+      try {
+        const awaited = await preloadPromiseRef.current.promise;
+        if (Array.isArray(awaited) && awaited.length >= 6) {
+          cards = awaited.slice(0, 6);
+          preloadedPackRef.current = null;
+        }
+      } catch {
+        // On tentera un tirage direct ci-dessous
+      }
+      setIsFetching(false);
     }
 
-    if (!cards || cards.length === 0) {
+    if (!cards || cards.length < 6) {
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
         cards = await fetchBoosterPackCards(6, { isIconic: isPackIconic });
       } catch {
-        setErrorMsg('Impossible de joindre Wikipédia. Veuillez réessayer.');
+        setErrorMsg(
+          'Connexion instable : impossible de récupérer les 6 cartes sur Wikipédia. Aucun booster débité, veuillez réessayer.'
+        );
         setIsFetching(false);
+        setLockedPackState(null);
         updateStage('pack');
         isOpeningRef.current = false;
         setIsOpening(false);
@@ -245,13 +305,18 @@ export default function useBoosterOpening({
       setIsFetching(false);
     }
 
-    if (!cards || cards.length === 0) {
-      setErrorMsg('Aucun article récupéré. Veuillez réessayer.');
+    if (!Array.isArray(cards) || cards.length < 6) {
+      setErrorMsg(
+        'Connexion instable : moins de 6 articles ont pu être chargés. Aucun booster débité, veuillez réessayer.'
+      );
+      setLockedPackState(null);
       updateStage('pack');
       isOpeningRef.current = false;
       setIsOpening(false);
       return;
     }
+
+    const validSixCards = cards.slice(0, 6);
 
     if (isFree) {
       if (onUseFreeBooster) {
@@ -262,12 +327,12 @@ export default function useBoosterOpening({
     }
 
     // Sauvegarde le tirage du prochain booster en localStorage sans écraser
-    // le type visuel du booster actuellement en cours d'animation ('tearing').
+    // le type visuel ni le prix du booster actuellement en cours d'animation ('tearing').
     const nextRolled = rollAndSaveNextBoosterIsIconic();
 
     const ownedSet = new Set(existingCardIds);
     const seenInPack = new Set();
-    const annotatedCards = cards.map((c) => {
+    const annotatedCards = validSixCards.map((c) => {
       const isNew = !ownedSet.has(c.id) && !seenInPack.has(c.id);
       seenInPack.add(c.id);
       return { ...c, isNew };
@@ -286,6 +351,7 @@ export default function useBoosterOpening({
       clearTimeout(tearTimerRef.current);
     }
     tearTimerRef.current = setTimeout(() => {
+      setLockedPackState(null);
       updateStage('card_by_card');
       if (onCardsOpenedRef.current && pendingCardsRef.current) {
         onCardsOpenedRef.current(pendingCardsRef.current);
@@ -337,6 +403,7 @@ export default function useBoosterOpening({
   const handleResetToNewPack = () => {
     if (isOpeningRef.current || isFetching) return;
     soundManager.playBoosterCharge();
+    setLockedPackState(null);
     const nextIsIconic = getOrRollNextBoosterIsIconic();
     setIsIconicRoll(nextIsIconic);
     updateStage('pack');
@@ -348,6 +415,7 @@ export default function useBoosterOpening({
   const handleSkipIconicToStandard = () => {
     if (isOpeningRef.current || isFetching || stageRef.current !== 'pack') return;
     setErrorMsg(null);
+    setLockedPackState(null);
     setIsIconicRoll(false);
     try {
       localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC, 'false');
@@ -355,6 +423,7 @@ export default function useBoosterOpening({
       // ignore
     }
     preloadedPackRef.current = null;
+    preloadPromiseRef.current = null;
     preloadNextBooster(false);
   };
 

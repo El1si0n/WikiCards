@@ -88,6 +88,7 @@ export default function App() {
     freeBoostersCount: account.freeBoostersCount,
     lastFreeBoostersResetTime: account.lastFreeBoostersResetTime,
     setActiveTab,
+    onTriggerServerReconcile: account.triggerServerReconcile,
     readNotifIds,
     setReadNotifIds,
     dismissedNotifIds,

@@ -100,12 +100,12 @@ export async function fetchPageViews30Days(title) {
     const normalizedTitle = title.trim().replace(/ /g, '_');
     const { start, end } = getPageviewsDateRange();
 
-    // 1. Essai via le proxy backend pour éviter les erreurs 404 dans la console du navigateur
+    // 1. Essai via le proxy backend avec cache mémoire (évite les 404 dans la console et le double-timeout)
     try {
       const proxyRes = await fetchWithTimeout(
         `/api/pageviews?title=${encodeURIComponent(normalizedTitle)}&start=${start}&end=${end}`,
         {},
-        3500
+        2300
       );
       if (proxyRes.ok) {
         const json = await proxyRes.json();
@@ -113,16 +113,23 @@ export async function fetchPageViews30Days(title) {
           return json.views;
         }
       }
-    } catch {
-      // En cas d'indisponibilité du proxy local, on continue vers Wikimedia directement
+      // Si le proxy local a répondu (même hors 200), inutile de relancer un second appel lent
+      if (proxyRes.status !== 404) {
+        return 0;
+      }
+    } catch (err) {
+      // Si la requête a expiré par timeout (AbortError), ne pas doubler l'attente
+      if (err?.name === 'AbortError') {
+        return 0;
+      }
     }
 
-    // 2. Requête directe Wikimedia Pageviews
+    // 2. Requête directe Wikimedia Pageviews (uniquement si /api/pageviews n'existe pas en mode statique)
     const url = `${WIKIMEDIA_PAGEVIEWS}/${encodeURIComponent(
       normalizedTitle
     )}/daily/${start}/${end}`;
 
-    const res = await fetchWithTimeout(url, {}, 3500);
+    const res = await fetchWithTimeout(url, {}, 2300);
     if (!res.ok) return 0;
 
     const data = await res.json();
@@ -226,6 +233,85 @@ export async function fetchRandomGifWikiCard() {
 }
 
 /**
+ * Récupère en une seule requête MediaWiki un lot d'articles encyclopédiques aléatoires
+ * incluant déjà leur extrait, description courte, image et URL officielle.
+ * Permet d'accélérer drastiquement l'ouverture des boosters en évitant 16 requêtes REST unitaires.
+ *
+ * @param {number} [limit=16] - Nombre de pages aléatoires à demander
+ * @returns {Promise<Array<Omit<WikiCard, 'views' | 'rarity'>>>} Cartes pré-assemblées (sans les vues)
+ */
+async function fetchRandomWikiCandidatesBatch(limit = 16) {
+  try {
+    const params = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      generator: 'random',
+      grnnamespace: '0',
+      grnfilterredir: 'nonredirects',
+      grnlimit: String(limit),
+      prop: 'extracts|pageimages|description|info|pageprops',
+      exintro: '1',
+      explaintext: '1',
+      exLimit: 'max',
+      piprop: 'original|thumbnail',
+      pithumbsize: '420',
+      inprop: 'url',
+      origin: '*',
+    });
+
+    const res = await fetchWithTimeout(
+      `${WIKI_API_BASE}?${params.toString()}`,
+      {},
+      3500
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const pagesObj = data?.query?.pages;
+    if (!pagesObj || typeof pagesObj !== 'object') return [];
+
+    const candidates = [];
+    for (const page of Object.values(pagesObj)) {
+      if (!page || !page.title) continue;
+      // Exclure les pages d'homonymie
+      if (page.pageprops && 'disambiguation' in page.pageprops) continue;
+      const rawExtract = String(page.extract || '').trim();
+      if (rawExtract.length < 50) continue;
+
+      const originalUrl = page.original?.source || '';
+      const thumbUrl = page.thumbnail?.source || '';
+      const isGif = isGifImageUrl(originalUrl) || isGifImageUrl(thumbUrl);
+      const finalImage = isGif
+        ? originalUrl || thumbUrl
+        : thumbUrl || originalUrl || null;
+
+      const sanitizedTitle = cleanCardTitle(page.title);
+      const encoded = encodeURIComponent(page.title.trim().replace(/ /g, '_'));
+      const baseCard = {
+        id: `wiki-${page.pageid || page.title}`,
+        pageid: page.pageid,
+        title: sanitizedTitle,
+        description: cleanWikiText(page.description || ''),
+        extract: fitSummaryToCard(rawExtract, 400),
+        image: finalImage,
+        imageContain: page.title === 'Wikipédia',
+        isGif,
+        isShiny: isGif,
+        url: page.fullurl || `https://fr.wikipedia.org/wiki/${encoded}`,
+      };
+
+      candidates.push({
+        ...baseCard,
+        theme: detectCardTheme(baseCard),
+      });
+    }
+
+    return candidates;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Récupère des titres 100 % aléatoires depuis l'espace encyclopédique de fr.wikipedia.org
  */
 async function fetchPureRandomTitles(limit = 12) {
@@ -243,7 +329,7 @@ async function fetchPureRandomTitles(limit = 12) {
     const res = await fetchWithTimeout(
       `${WIKI_API_BASE}?${params.toString()}`,
       {},
-      4000
+      3500
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -255,6 +341,8 @@ async function fetchPureRandomTitles(limit = 12) {
 
 /**
  * Tire un paquet de cartes aléatoires sur Wikipédia FR triées par suspense croissant.
+ * Garantit strictement `count` cartes (6 par défaut) ou lève une erreur si la connexion est coupée.
+ *
  * @param {number} [count=6] - Nombre de cartes à tirer (par défaut: 6)
  * @param {BoosterPackOptions} [options={}] - Options de tirage (ex: isIconic)
  * @returns {Promise<WikiCard[]>} Liste des cartes du paquet triées
@@ -262,35 +350,103 @@ async function fetchPureRandomTitles(limit = 12) {
 export async function fetchBoosterPackCards(count = 6, options = {}) {
   const { isIconic = false } = options;
 
-  // Tirage 100 % naturel et aléatoire sur Wikipédia FR (2,6 millions d'articles),
-  // y compris pour le Booster Iconique qui applique ensuite sa garantie de rareté UR / L.
-  const validCards = [];
-  let boosterAttempts = 0;
-  while (validCards.length < count && boosterAttempts < 6) {
-    boosterAttempts++;
-    const randomTitles = await fetchPureRandomTitles(16);
-    for (const title of randomTitles) {
-      if (validCards.length >= count) break;
-      if (validCards.some((c) => c.title.toLowerCase() === title.toLowerCase())) continue;
-      try {
-        const card = await fetchWikiCardByTitle(title);
-        if (
-          card &&
-          card.extract &&
-          card.extract.length >= 50 &&
-          !validCards.some((c) => c.id === card.id)
-        ) {
-          validCards.push(card);
-        }
-      } catch {
-        // continue
+  const baseCandidates = [];
+  const seenIds = new Set();
+  const seenTitles = new Set();
+
+  // 1. Récupération ultra-rapide par lot via MediaWiki generator=random (1 requête = ~18 articles complets)
+  let batchAttempts = 0;
+  while (baseCandidates.length < count && batchAttempts < 4) {
+    batchAttempts++;
+    const batch = await fetchRandomWikiCandidatesBatch(18);
+    for (const candidate of batch) {
+      if (baseCandidates.length >= count) break;
+      const lowerTitle = candidate.title.toLowerCase();
+      if (seenIds.has(candidate.id) || seenTitles.has(lowerTitle)) continue;
+      seenIds.add(candidate.id);
+      seenTitles.add(lowerTitle);
+      baseCandidates.push(candidate);
+    }
+  }
+
+  // 2. Fallback parallèle via REST summary si le lot MediaWiki n'a pas suffi à réunir les 6 cartes
+  let fallbackAttempts = 0;
+  while (baseCandidates.length < count && fallbackAttempts < 4) {
+    fallbackAttempts++;
+    const needed = count - baseCandidates.length;
+    const randomTitles = await fetchPureRandomTitles(Math.max(10, needed * 3));
+    const uniqueTitles = randomTitles.filter(
+      (t) => !seenTitles.has(t.trim().toLowerCase())
+    );
+    const results = await Promise.all(
+      uniqueTitles.slice(0, 10).map((t) =>
+        fetchWikiCardByTitle(t).catch(() => null)
+      )
+    );
+    for (const card of results) {
+      if (baseCandidates.length >= count) break;
+      if (
+        card &&
+        card.extract &&
+        card.extract.length >= 50 &&
+        !seenIds.has(card.id) &&
+        !seenTitles.has(card.title.toLowerCase())
+      ) {
+        seenIds.add(card.id);
+        seenTitles.add(card.title.toLowerCase());
+        baseCandidates.push(card);
       }
     }
   }
 
-  const drawnCards = validCards
-    .slice(0, count)
-    .sort((a, b) => (a.views || 0) - (b.views || 0));
+  // 3. Dernier filet de secours avec les articles GIF / encyclopédiques réels si la connexion a perdu 1 ou 2 paquets
+  if (baseCandidates.length > 0 && baseCandidates.length < count) {
+    const emergencyTitles = [...WIKI_GIF_ARTICLES].sort(
+      () => Math.random() - 0.5
+    );
+    const needed = count - baseCandidates.length;
+    const emergencyResults = await Promise.all(
+      emergencyTitles
+        .filter((t) => !seenTitles.has(t.toLowerCase()))
+        .slice(0, needed + 2)
+        .map((t) => fetchWikiCardByTitle(t).catch(() => null))
+    );
+    for (const card of emergencyResults) {
+      if (baseCandidates.length >= count) break;
+      if (card && !seenIds.has(card.id)) {
+        seenIds.add(card.id);
+        baseCandidates.push(card);
+      }
+    }
+  }
+
+  if (baseCandidates.length < count) {
+    throw new Error(
+      `Connexion insuffisante : seulement ${baseCandidates.length}/${count} cartes récupérées.`
+    );
+  }
+
+  const selectedSix = baseCandidates.slice(0, count);
+
+  // 4. Récupération en parallèle des vues sur 30 jours uniquement pour les 6 cartes retenues
+  const cardsWithViews = await Promise.all(
+    selectedSix.map(async (card) => {
+      if (typeof card.views === 'number' && card.rarity) {
+        return card;
+      }
+      const views = await fetchPageViews30Days(card.title);
+      const tier = getRarityByViews(views);
+      return {
+        ...card,
+        views,
+        rarity: tier.code,
+      };
+    })
+  );
+
+  const drawnCards = cardsWithViews.sort(
+    (a, b) => (a.views || 0) - (b.views || 0)
+  );
 
   if (isIconic && drawnCards.length > 0) {
     // Booster Iconique : Garantit strictement 1 ou 2 Légendaires (L) et le reste en Ultra Rare (UR) minimum
@@ -353,29 +509,22 @@ export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitl
   );
 
   let attempts = 0;
-  while (attempts < 6) {
+  while (attempts < 4) {
     attempts++;
-    const randomTitles = await fetchPureRandomTitles(14);
-    for (const title of randomTitles) {
-      if (excludeSet.has(title.trim().toLowerCase())) continue;
-      try {
-        const card = await fetchWikiCardByTitle(title);
-        if (
-          card &&
-          card.extract &&
-          card.extract.length >= 50 &&
-          !excludeSet.has(card.title.trim().toLowerCase()) &&
-          !excludeSet.has(String(card.id))
-        ) {
-          return {
-            ...card,
-            rarity: targetRarityCode,
-            views: getSimulatedViewsForTier(targetRarityCode, card.views),
-          };
-        }
-      } catch {
-        // Continue
+    const batch = await fetchRandomWikiCandidatesBatch(12);
+    for (const candidate of batch) {
+      if (
+        excludeSet.has(candidate.title.trim().toLowerCase()) ||
+        excludeSet.has(String(candidate.id).toLowerCase())
+      ) {
+        continue;
       }
+      const views = await fetchPageViews30Days(candidate.title);
+      return {
+        ...candidate,
+        rarity: targetRarityCode,
+        views: getSimulatedViewsForTier(targetRarityCode, views),
+      };
     }
   }
 

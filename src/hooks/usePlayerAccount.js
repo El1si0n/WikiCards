@@ -192,6 +192,7 @@ export function usePlayerAccount({
   const isServerHydratedRef = useRef(false);
   const skipNextPushRef = useRef(false);
   const isReconcilingRef = useRef(false);
+  const reconcileFnRef = useRef(null);
 
   const bumpLocalUpdatedAt = useCallback(() => {
     const now = setStoredUpdatedAt(Date.now());
@@ -607,6 +608,7 @@ export function usePlayerAccount({
       }
     };
 
+    reconcileFnRef.current = reconcileWithServer;
     reconcileWithServer();
 
     const handleVisibilityOrFocus = () => {
@@ -625,11 +627,18 @@ export function usePlayerAccount({
 
     return () => {
       isCancelled = true;
+      reconcileFnRef.current = null;
       window.removeEventListener('focus', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       clearInterval(interval);
     };
   }, [userCode, applyServerAccountState]);
+
+  const triggerServerReconcile = useCallback(() => {
+    if (typeof reconcileFnRef.current === 'function') {
+      reconcileFnRef.current();
+    }
+  }, []);
 
   // Synchronisation automatique vers data/users/<CODE>.json
   useEffect(() => {
@@ -1125,6 +1134,7 @@ export function usePlayerAccount({
     recycleCards,
     handleUpdateUserProfile,
     handleSyncAccountState,
+    triggerServerReconcile,
     handleLoginSuccess,
     handleLogout,
     handleDeleteAccount,

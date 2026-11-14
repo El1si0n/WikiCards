@@ -15,14 +15,73 @@ import {
   atomicWriteJsonSync,
   loadJsonArrayFile,
   saveJsonArrayFile,
+  addCardsToUserCollection,
   readJsonBody,
   registerDirectoryCacheInvalidator,
 } from '../utils/jsonStorage.js';
 import { sanitizeCode, sanitizeUserPayload } from '../utils/validators.js';
+import { resolveExpiredMarketAuctions } from './marketRoute.js';
 
 let cachedUsersDirectoryJson = null;
 let cachedUsersDirectoryExpiry = 0;
 const DIRECTORY_CACHE_TTL_MS = 5000;
+
+/**
+ * Vérifie dans `market.json` si l'utilisateur a remporté des enchères (status === 'sold')
+ * dont les cartes n'auraient pas encore été intégrées ou acquittées dans son profil.
+ * Protège également contre la perte de cartes si une synchro client intervient au même instant.
+ *
+ * @param {object} userObj - Données actuelles du joueur
+ * @param {string} cleanCode - Code normalisé du joueur
+ * @returns {{ user: object, changed: boolean }} Objet joueur consolidé
+ */
+function ensureUnclaimedMarketWinsApplied(userObj, cleanCode) {
+  if (!userObj || !cleanCode) return { user: userObj, changed: false };
+  try {
+    let listings = loadJsonArrayFile(marketFile);
+    listings = resolveExpiredMarketAuctions(listings);
+
+    const claimed = new Set(
+      Array.isArray(userObj.claimedMarketWins) ? userObj.claimedMarketWins : []
+    );
+    let currentCol = Array.isArray(userObj.collection) ? userObj.collection : [];
+    let changed = false;
+
+    for (const listing of listings) {
+      if (
+        listing &&
+        (listing.status === 'sold' || listing.status === 'ended') &&
+        (listing.buyerCode === cleanCode || listing.highestBidderCode === cleanCode) &&
+        listing.sellerCode !== cleanCode &&
+        listing.card &&
+        listing.id &&
+        !claimed.has(listing.id)
+      ) {
+        currentCol = addCardsToUserCollection(currentCol, [
+          { card: listing.card, qty: 1 },
+        ]);
+        claimed.add(listing.id);
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return { user: userObj, changed: false };
+    }
+
+    return {
+      user: {
+        ...userObj,
+        collection: currentCol,
+        claimedMarketWins: Array.from(claimed).slice(-200),
+        updatedAt: Date.now(),
+      },
+      changed: true,
+    };
+  } catch {
+    return { user: userObj, changed: false };
+  }
+}
 
 /**
  * Invalide immédiatement le cache mémoire de l'annuaire des utilisateurs.
@@ -198,8 +257,18 @@ export async function handleUsersRoute(req, res, pathname) {
     }
     try {
       const raw = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const cleanCode = sanitizeCode(code);
+      const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
+        parsed,
+        cleanCode
+      );
+      if (changed) {
+        atomicWriteJsonSync(filePath, consolidated);
+        invalidateUsersDirectoryCache();
+      }
       res.statusCode = 200;
-      res.end(JSON.stringify({ ok: true, user: JSON.parse(raw) }));
+      res.end(JSON.stringify({ ok: true, user: consolidated }));
     } catch {
       res.statusCode = 500;
       res.end(JSON.stringify({ ok: false, error: 'Erreur de lecture du profil' }));
@@ -217,6 +286,15 @@ export async function handleUsersRoute(req, res, pathname) {
     if (fileExists) {
       try {
         existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
+          existing,
+          cleanCode
+        );
+        if (changed) {
+          existing = consolidated;
+          atomicWriteJsonSync(filePath, existing);
+          invalidateUsersDirectoryCache();
+        }
       } catch {
         existing = {};
       }
@@ -226,12 +304,21 @@ export async function handleUsersRoute(req, res, pathname) {
     if (rawBody.forceOverwrite !== undefined) body.forceOverwrite = rawBody.forceOverwrite;
     if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
 
-    // Protection anti-écrasement : si un appareil obsolète tente d'écraser une session plus récente
+    // Protection anti-écrasement : si le serveur a reçu une mutation asynchrone plus récente
+    // (ex: gain d'enchère, vente créditée, remboursement de surenchère ou échange accepté)
     if (fileExists && existing.code && !body.forceOverwrite) {
       const existingDraws = Number(existing.stats?.totalCardsDrawn || 0);
       const existingBoosters = Number(existing.stats?.boostersOpened || 0);
-      const incomingDraws = Number(body.stats?.totalCardsDrawn || 0);
-      const incomingBoosters = Number(body.stats?.boostersOpened || 0);
+      const incomingDraws = Number(
+        body.stats?.totalCardsDrawn !== undefined
+          ? body.stats.totalCardsDrawn
+          : existingDraws
+      );
+      const incomingBoosters = Number(
+        body.stats?.boostersOpened !== undefined
+          ? body.stats.boostersOpened
+          : existingBoosters
+      );
       const existingUpdatedAt = Number(existing.updatedAt || 0);
       const incomingUpdatedAt = Number(body.clientUpdatedAt || body.updatedAt || 0);
 
@@ -241,10 +328,14 @@ export async function handleUsersRoute(req, res, pathname) {
         incomingUpdatedAt < existingUpdatedAt;
 
       const isIncomingBehindInProgress =
-        (incomingDraws < existingDraws || incomingBoosters < existingBoosters) &&
-        incomingUpdatedAt <= existingUpdatedAt;
+        incomingDraws < existingDraws || incomingBoosters < existingBoosters;
 
-      if (isIncomingStrictlyOlder && isIncomingBehindInProgress) {
+      const hasServerAsyncUpdate =
+        isIncomingStrictlyOlder &&
+        incomingDraws <= existingDraws &&
+        incomingBoosters <= existingBoosters;
+
+      if (hasServerAsyncUpdate || (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)) {
         res.statusCode = 200;
         res.end(
           JSON.stringify({
@@ -266,9 +357,49 @@ export async function handleUsersRoute(req, res, pathname) {
     const resolvedClaimDate =
       incomingClaimDate > existingClaimDate ? incomingClaimDate : existingClaimDate;
 
+    const existingWins = Array.isArray(existing.claimedMarketWins)
+      ? existing.claimedMarketWins
+      : [];
+    const incomingWins = Array.isArray(cleanBody.claimedMarketWins)
+      ? cleanBody.claimedMarketWins
+      : [];
+    const mergedWins = Array.from(new Set([...existingWins, ...incomingWins])).slice(-200);
+
+    // Si le serveur vient de créditer une enchère qui n'était pas encore connue du client
+    // au moment où le client a ouvert un booster simultanément, on fusionne la carte gagnée
+    let mergedCollection = Array.isArray(cleanBody.collection)
+      ? cleanBody.collection
+      : existing.collection || [];
+
+    if (existingWins.length > incomingWins.length && Array.isArray(cleanBody.collection)) {
+      const missingWinIds = existingWins.filter((id) => !incomingWins.includes(id));
+      if (missingWinIds.length > 0) {
+        try {
+          const allListings = loadJsonArrayFile(marketFile);
+          for (const winId of missingWinIds) {
+            const winListing = allListings.find((l) => l && l.id === winId);
+            if (winListing?.card) {
+              const hasCard = mergedCollection.some(
+                (c) => String(c.id) === String(winListing.card.id)
+              );
+              if (!hasCard) {
+                mergedCollection = addCardsToUserCollection(mergedCollection, [
+                  { card: winListing.card, qty: 1 },
+                ]);
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const merged = {
       ...existing,
       ...cleanBody,
+      collection: mergedCollection,
+      claimedMarketWins: mergedWins,
       code: cleanCode,
       lastDailyClaimDate: resolvedClaimDate,
       createdAt: existing.createdAt || cleanBody.createdAt || now,

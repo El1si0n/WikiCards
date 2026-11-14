@@ -57,9 +57,16 @@ export function resolveExpiredMarketAuctions(listings) {
           winner.collection || [],
           [{ card: listing.card, qty: 1 }]
         );
+        const prevWins = Array.isArray(winner.claimedMarketWins)
+          ? winner.claimedMarketWins
+          : [];
+        const nextWins = prevWins.includes(listing.id)
+          ? prevWins
+          : [...prevWins.slice(-200), listing.id];
         saveUserFile(listing.highestBidderCode, {
           ...winner,
           collection: nextCol,
+          claimedMarketWins: nextWins,
         });
       }
 
@@ -67,7 +74,7 @@ export function resolveExpiredMarketAuctions(listings) {
       listing.buyerCode = listing.highestBidderCode;
       listing.buyerUsername = listing.highestBidderUsername;
       listing.finalPrice = listing.currentBid;
-      listing.resolvedAt = listing.bidExpiresAt;
+      listing.resolvedAt = now;
       changed = true;
     }
   }
@@ -298,9 +305,15 @@ export async function handleMarketRoute(req, res, pathname) {
         winner.collection || [],
         [{ card: listing.card, qty: 1 }]
       );
+      const prevAcceptWins = Array.isArray(winner.claimedMarketWins)
+        ? winner.claimedMarketWins
+        : [];
       saveUserFile(listing.highestBidderCode, {
         ...winner,
         collection: nextWinnerCol,
+        claimedMarketWins: prevAcceptWins.includes(listing.id)
+          ? prevAcceptWins
+          : [...prevAcceptWins.slice(-200), listing.id],
       });
 
       listing.status = 'sold';
@@ -435,9 +448,15 @@ export async function handleMarketRoute(req, res, pathname) {
           updatedBidder.collection || [],
           [{ card: listing.card, qty: 1 }]
         );
+        const prevBidBuyoutWins = Array.isArray(updatedBidder.claimedMarketWins)
+          ? updatedBidder.claimedMarketWins
+          : [];
         const finalBidder = saveUserFile(actorCode, {
           ...updatedBidder,
           collection: nextBidderCol,
+          claimedMarketWins: prevBidBuyoutWins.includes(listing.id)
+            ? prevBidBuyoutWins
+            : [...prevBidBuyoutWins.slice(-200), listing.id],
         });
 
         listing.status = 'sold';
@@ -533,10 +552,16 @@ export async function handleMarketRoute(req, res, pathname) {
         buyer.collection || [],
         [{ card: listing.card, qty: 1 }]
       );
+      const prevBuyWins = Array.isArray(buyer.claimedMarketWins)
+        ? buyer.claimedMarketWins
+        : [];
       const updatedBuyer = saveUserFile(actorCode, {
         ...buyer,
         wikithunes: (buyer.wikithunes || 0) - priceToPay,
         collection: nextBuyerCol,
+        claimedMarketWins: prevBuyWins.includes(listing.id)
+          ? prevBuyWins
+          : [...prevBuyWins.slice(-200), listing.id],
       });
 
       listing.status = 'sold';

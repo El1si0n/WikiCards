@@ -1,8 +1,12 @@
 /**
  * @file Rôle : Routeur proxy pour l'API Wikimedia Pageviews avec gestion d'erreurs et mise en cache silencieuse.
  * Dépendances : Aucune (utilise l'API globale `fetch`).
- * Effets de bord : Appels réseau sortants vers `wikimedia.org`.
+ * Effets de bord : Appels réseau sortants vers `wikimedia.org`, cache mémoire TTL.
  */
+
+const pageviewsCache = new Map();
+const PAGEVIEWS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 heure de cache mémoire
+const MAX_PAGEVIEWS_CACHE_SIZE = 1500;
 
 /**
  * Traite les requêtes de proxy vers l'API Wikimedia Pageviews (`GET /api/pageviews`).
@@ -24,38 +28,56 @@ export async function handlePageviewsRoute(_req, res, urlObj) {
 
   if (!title || !start || !end) {
     res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: true, views: 0 }));
     return true;
   }
 
+  const normalizedTitle = title.trim().replace(/ /g, '_');
+  const cacheKey = `${normalizedTitle}::${start}::${end}`;
+  const now = Date.now();
+  const cached = pageviewsCache.get(cacheKey);
+  if (cached && now < cached.expiry) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ ok: true, views: cached.views }));
+    return true;
+  }
+
   try {
-    const normalizedTitle = title.trim().replace(/ /g, '_');
     const wikiUrl = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/fr.wikipedia/all-access/user/${encodeURIComponent(normalizedTitle)}/daily/${start}/${end}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 2200);
 
     const wikiRes = await fetch(wikiUrl, {
       headers: { 'User-Agent': 'WikiCards/1.0 (https://wikicards.elision.dev)' },
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    if (!wikiRes.ok) {
-      // 404 sur Wikimedia signifie 0 vue sur la période : on répond 200 avec views: 0
-      res.statusCode = 200;
-      res.end(JSON.stringify({ ok: true, views: 0 }));
-      return true;
+    let views = 0;
+    if (wikiRes.ok) {
+      const data = await wikiRes.json();
+      views = Array.isArray(data?.items)
+        ? data.items.reduce((sum, item) => sum + (item.views || 0), 0)
+        : 0;
     }
 
-    const data = await wikiRes.json();
-    const views = Array.isArray(data?.items)
-      ? data.items.reduce((sum, item) => sum + (item.views || 0), 0)
-      : 0;
+    if (pageviewsCache.size >= MAX_PAGEVIEWS_CACHE_SIZE) {
+      const oldestKey = pageviewsCache.keys().next().value;
+      if (oldestKey !== undefined) pageviewsCache.delete(oldestKey);
+    }
+    pageviewsCache.set(cacheKey, {
+      views,
+      expiry: Date.now() + PAGEVIEWS_CACHE_TTL_MS,
+    });
 
     res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: true, views }));
     return true;
   } catch {
     res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: true, views: 0 }));
     return true;
   }

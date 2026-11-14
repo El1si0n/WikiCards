@@ -8,7 +8,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchUserTrades,
   fetchMarketListings,
-  syncUserAccountToServer,
 } from '../services/userStorage';
 import { DAILY_REWARD_AMOUNT } from '../config/rarities';
 
@@ -92,6 +91,7 @@ export function useNotifications({
   freeBoostersCount,
   lastFreeBoostersResetTime,
   setActiveTab,
+  onTriggerServerReconcile,
   readNotifIds: externalReadNotifIds,
   setReadNotifIds: setExternalReadNotifIds,
   dismissedNotifIds: externalDismissedNotifIds,
@@ -130,6 +130,12 @@ export function useNotifications({
 
   const [notifications, setNotifications] = useState([]);
   const isFetchingRef = useRef(false);
+  const seenAsyncEventIdsRef = useRef(new Set());
+  const onTriggerServerReconcileRef = useRef(onTriggerServerReconcile);
+
+  useEffect(() => {
+    onTriggerServerReconcileRef.current = onTriggerServerReconcile;
+  }, [onTriggerServerReconcile]);
 
   // Agrégation dynamique des notifications (échanges, marché, boosters, bourse)
   useEffect(() => {
@@ -315,6 +321,21 @@ export function useNotifications({
 
         if (isMounted) {
           setNotifications(validNotifs.slice(0, 20));
+          const asyncEvents = validNotifs.filter((n) =>
+            ['market_won', 'market_sold', 'market_outbid', 'trade_accepted'].includes(
+              n.type
+            )
+          );
+          let hasNewAsyncEvent = false;
+          for (const ev of asyncEvents) {
+            if (!seenAsyncEventIdsRef.current.has(ev.id)) {
+              seenAsyncEventIdsRef.current.add(ev.id);
+              hasNewAsyncEvent = true;
+            }
+          }
+          if (hasNewAsyncEvent && typeof onTriggerServerReconcileRef.current === 'function') {
+            onTriggerServerReconcileRef.current();
+          }
         }
       } catch {
         // ignore
@@ -364,12 +385,9 @@ export function useNotifications({
       } catch {
         // ignore
       }
-      if (userCode) {
-        syncUserAccountToServer(userCode, { readNotifIds: updated });
-      }
       return updated;
     });
-  }, [notifications, userCode]);
+  }, [notifications, setReadNotifIds]);
 
   const handleMarkNotifRead = useCallback((notifId) => {
     if (!notifId) return;
@@ -381,12 +399,9 @@ export function useNotifications({
       } catch {
         // ignore
       }
-      if (userCode) {
-        syncUserAccountToServer(userCode, { readNotifIds: updated });
-      }
       return updated;
     });
-  }, [userCode]);
+  }, [setReadNotifIds]);
 
   const handleDismissNotification = useCallback((notifId) => {
     if (!notifId) return;
@@ -402,12 +417,9 @@ export function useNotifications({
       } catch {
         // ignore
       }
-      if (userCode) {
-        syncUserAccountToServer(userCode, { dismissedNotifIds: updated });
-      }
       return updated;
     });
-  }, [userCode]);
+  }, [setDismissedNotifIds]);
 
   const handleClearAllNotifications = useCallback(() => {
     const allIds = notifications.map((n) => n.id);
@@ -422,16 +434,21 @@ export function useNotifications({
       } catch {
         // ignore
       }
-      if (userCode) {
-        syncUserAccountToServer(userCode, { dismissedNotifIds: updated });
-      }
       return updated;
     });
-  }, [notifications, userCode]);
+  }, [notifications, setDismissedNotifIds]);
 
   const handleSelectNotification = useCallback((notif) => {
     if (!notif) return;
     handleMarkNotifRead(notif.id);
+    if (
+      ['market_won', 'market_sold', 'market_outbid', 'trade_accepted'].includes(
+        notif.type
+      ) &&
+      typeof onTriggerServerReconcileRef.current === 'function'
+    ) {
+      onTriggerServerReconcileRef.current();
+    }
     if (notif.tab && typeof setActiveTab === 'function') {
       setActiveTab(notif.tab);
     }
