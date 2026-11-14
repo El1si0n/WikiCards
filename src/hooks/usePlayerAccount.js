@@ -335,7 +335,7 @@ export function usePlayerAccount({
     bumpLocalUpdatedAt,
   ]);
 
-  // Sauvegarde automatique de l'état dans localStorage et enregistrement des instantanés
+  // Sauvegarde automatique de l'état dans localStorage et enregistrement différé (debounce) des instantanés
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.WIKITHUNES, JSON.stringify(wikithunes));
@@ -343,11 +343,15 @@ export function usePlayerAccount({
       // ignore
     }
     if (
-      typeof wikithunes === 'number' &&
-      userCode &&
-      typeof userCode === 'string' &&
-      userCode.startsWith('WIKI-')
+      typeof wikithunes !== 'number' ||
+      !userCode ||
+      typeof userCode !== 'string' ||
+      !userCode.startsWith('WIKI-')
     ) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
       try {
         const safeCol = Array.isArray(collection) ? collection : [];
         const legendaryCount = countRarityCopies(safeCol, 'L');
@@ -372,7 +376,9 @@ export function usePlayerAccount({
       } catch (snapErr) {
         console.warn('[WikiCards stats snapshot error]:', snapErr);
       }
-    }
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [wikithunes, collection, stats, userCode, playerScore]);
 
   useEffect(() => {

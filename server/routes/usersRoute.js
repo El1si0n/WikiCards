@@ -18,6 +18,7 @@ import {
   addCardsToUserCollection,
   readJsonBody,
   registerDirectoryCacheInvalidator,
+  withLock,
 } from '../utils/jsonStorage.js';
 import { sanitizeCode, sanitizeUserPayload } from '../utils/validators.js';
 import { resolveExpiredMarketAuctions } from './marketRoute.js';
@@ -346,235 +347,239 @@ export async function handleUsersRoute(req, res, pathname) {
   if (req.method === 'POST' || req.method === 'PUT') {
     const rawBody = await readJsonBody(req);
     const cleanCode = sanitizeCode(code);
-    const fileExists = fs.existsSync(filePath);
-    let existing = {};
+    return await withLock(`user:${cleanCode}`, async () => {
+      const fileExists = fs.existsSync(filePath);
+      let existing = {};
 
-    if (fileExists) {
-      try {
-        const rawExisting = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const manualEdit = detectAndApplyManualFileEdit(filePath, rawExisting);
-        const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
-          manualEdit.user,
-          cleanCode
-        );
-        existing = consolidated;
-        if (manualEdit.changed || changed) {
-          atomicWriteJsonSync(filePath, existing);
-          invalidateUsersDirectoryCache();
-        }
-      } catch {
-        existing = {};
-      }
-    }
-
-    const body = sanitizeUserPayload(rawBody, existing);
-    if (rawBody.forceOverwrite !== undefined) body.forceOverwrite = rawBody.forceOverwrite;
-    if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
-
-    // Protection anti-écrasement : si le serveur a reçu une mutation asynchrone plus récente
-    // (ex: édition manuelle sur le disque, gain d'enchère, vente créditée ou échange accepté)
-    if (fileExists && existing.code && !body.forceOverwrite) {
-      const existingDraws = Number(existing.stats?.totalCardsDrawn || 0);
-      const existingBoosters = Number(existing.stats?.boostersOpened || 0);
-      const incomingDraws = Number(
-        body.stats?.totalCardsDrawn !== undefined
-          ? body.stats.totalCardsDrawn
-          : existingDraws
-      );
-      const incomingBoosters = Number(
-        body.stats?.boostersOpened !== undefined
-          ? body.stats.boostersOpened
-          : existingBoosters
-      );
-      const existingUpdatedAt = Number(existing.updatedAt || 0);
-      const incomingUpdatedAt = Number(body.clientUpdatedAt || body.updatedAt || 0);
-      const serverAdminOverrideAt = Number(existing.adminOverrideAt || 0);
-      const clientAdminOverrideAt = Number(rawBody.adminOverrideAt || 0);
-
-      // Si le fichier a été modifié manuellement sur le serveur et que le client n'a pas encore reçu cette révision
-      const hasUnacknowledgedManualEdit =
-        serverAdminOverrideAt > 0 &&
-        (clientAdminOverrideAt < serverAdminOverrideAt ||
-          incomingUpdatedAt < serverAdminOverrideAt);
-
-      const isIncomingStrictlyOlder =
-        incomingUpdatedAt > 0 &&
-        existingUpdatedAt > 0 &&
-        incomingUpdatedAt < existingUpdatedAt;
-
-      const isIncomingBehindInProgress =
-        incomingDraws < existingDraws || incomingBoosters < existingBoosters;
-
-      const hasServerAsyncUpdate =
-        isIncomingStrictlyOlder &&
-        incomingDraws <= existingDraws &&
-        incomingBoosters <= existingBoosters;
-
-      if (
-        hasUnacknowledgedManualEdit ||
-        hasServerAsyncUpdate ||
-        (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)
-      ) {
-        res.statusCode = 200;
-        res.end(
-          JSON.stringify({
-            ok: true,
-            user: existing,
-            serverIsNewer: true,
-          })
-        );
-        return true;
-      }
-    }
-
-    const now = Date.now();
-    const clientTimestamp = Number(body.clientUpdatedAt || body.updatedAt || 0);
-    const { clientUpdatedAt: _omitClientTs, forceOverwrite: _omitForce, ...cleanBody } = body;
-
-    const existingClaimDate = String(existing.lastDailyClaimDate || '');
-    const incomingClaimDate = String(cleanBody.lastDailyClaimDate || '');
-    const resolvedClaimDate =
-      incomingClaimDate > existingClaimDate ? incomingClaimDate : existingClaimDate;
-
-    const existingWins = Array.isArray(existing.claimedMarketWins)
-      ? existing.claimedMarketWins
-      : [];
-    const incomingWins = Array.isArray(cleanBody.claimedMarketWins)
-      ? cleanBody.claimedMarketWins
-      : [];
-    const mergedWins = Array.from(new Set([...existingWins, ...incomingWins])).slice(-200);
-
-    // Si le serveur vient de créditer une enchère qui n'était pas encore connue du client
-    // au moment où le client a ouvert un booster simultanément, on fusionne la carte gagnée
-    let mergedCollection = Array.isArray(cleanBody.collection)
-      ? cleanBody.collection
-      : existing.collection || [];
-
-    if (existingWins.length > incomingWins.length && Array.isArray(cleanBody.collection)) {
-      const missingWinIds = existingWins.filter((id) => !incomingWins.includes(id));
-      if (missingWinIds.length > 0) {
+      if (fileExists) {
         try {
-          const allListings = loadJsonArrayFile(marketFile);
-          for (const winId of missingWinIds) {
-            const winListing = allListings.find((l) => l && l.id === winId);
-            if (winListing?.card) {
-              const hasCard = mergedCollection.some(
-                (c) => String(c.id) === String(winListing.card.id)
-              );
-              if (!hasCard) {
-                mergedCollection = addCardsToUserCollection(mergedCollection, [
-                  { card: winListing.card, qty: 1 },
-                ]);
-              }
-            }
+          const rawExisting = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          const manualEdit = detectAndApplyManualFileEdit(filePath, rawExisting);
+          const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
+            manualEdit.user,
+            cleanCode
+          );
+          existing = consolidated;
+          if (manualEdit.changed || changed) {
+            atomicWriteJsonSync(filePath, existing);
+            invalidateUsersDirectoryCache();
           }
         } catch {
-          // ignore
+          existing = {};
         }
       }
-    }
 
-    const merged = {
-      ...existing,
-      ...cleanBody,
-      collection: mergedCollection,
-      claimedMarketWins: mergedWins,
-      code: cleanCode,
-      lastDailyClaimDate: resolvedClaimDate,
-      createdAt: existing.createdAt || cleanBody.createdAt || now,
-      updatedAt: existing.updatedAt || clientTimestamp || now,
-    };
+      const body = sanitizeUserPayload(rawBody, existing);
+      if (rawBody.forceOverwrite !== undefined) body.forceOverwrite = rawBody.forceOverwrite;
+      if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
 
-    if (Array.isArray(merged.snapshots)) {
-      merged.snapshots = merged.snapshots
-        .filter(
-          (s) =>
-            s &&
-            typeof s.timestamp === 'number' &&
-            (!s.userCode || s.userCode === cleanCode) &&
-            !(
-              s.uniqueCardsCount === 0 &&
-              s.totalCardsCount === 0 &&
-              (s.wikithunes === 3000 || s.wikithunes === 450)
-            )
-        )
-        .map((s) => ({ ...s, userCode: cleanCode }));
-    }
+      // Protection anti-écrasement : si le serveur a reçu une mutation asynchrone plus récente
+      // (ex: édition manuelle sur le disque, gain d'enchère, vente créditée ou échange accepté)
+      if (fileExists && existing.code && !body.forceOverwrite) {
+        const existingDraws = Number(existing.stats?.totalCardsDrawn || 0);
+        const existingBoosters = Number(existing.stats?.boostersOpened || 0);
+        const incomingDraws = Number(
+          body.stats?.totalCardsDrawn !== undefined
+            ? body.stats.totalCardsDrawn
+            : existingDraws
+        );
+        const incomingBoosters = Number(
+          body.stats?.boostersOpened !== undefined
+            ? body.stats.boostersOpened
+            : existingBoosters
+        );
+        const existingUpdatedAt = Number(existing.updatedAt || 0);
+        const incomingUpdatedAt = Number(body.clientUpdatedAt || body.updatedAt || 0);
+        const serverAdminOverrideAt = Number(existing.adminOverrideAt || 0);
+        const clientAdminOverrideAt = Number(rawBody.adminOverrideAt || 0);
 
-    const prevComparable = JSON.stringify({ ...existing, updatedAt: 0 });
-    const nextComparable = JSON.stringify({ ...merged, updatedAt: 0 });
+        // Si le fichier a été modifié manuellement sur le serveur et que le client n'a pas encore reçu cette révision
+        const hasUnacknowledgedManualEdit =
+          serverAdminOverrideAt > 0 &&
+          (clientAdminOverrideAt < serverAdminOverrideAt ||
+            incomingUpdatedAt < serverAdminOverrideAt);
 
-    if (prevComparable !== nextComparable || !fileExists) {
-      merged.updatedAt = fileExists
-        ? Math.max(now, clientTimestamp)
-        : clientTimestamp || now;
-      atomicWriteJsonSync(filePath, merged);
-      invalidateUsersDirectoryCache();
-    }
+        const isIncomingStrictlyOlder =
+          incomingUpdatedAt > 0 &&
+          existingUpdatedAt > 0 &&
+          incomingUpdatedAt < existingUpdatedAt;
 
-    res.statusCode = 200;
-    res.end(
-      JSON.stringify({
-        ok: true,
-        user: merged,
-        serverIsNewer: false,
-      })
-    );
-    return true;
+        const isIncomingBehindInProgress =
+          incomingDraws < existingDraws || incomingBoosters < existingBoosters;
+
+        const hasServerAsyncUpdate =
+          isIncomingStrictlyOlder &&
+          incomingDraws <= existingDraws &&
+          incomingBoosters <= existingBoosters;
+
+        if (
+          hasUnacknowledgedManualEdit ||
+          hasServerAsyncUpdate ||
+          (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)
+        ) {
+          res.statusCode = 200;
+          res.end(
+            JSON.stringify({
+              ok: true,
+              user: existing,
+              serverIsNewer: true,
+            })
+          );
+          return true;
+        }
+      }
+
+      const now = Date.now();
+      const clientTimestamp = Number(body.clientUpdatedAt || body.updatedAt || 0);
+      const { clientUpdatedAt: _omitClientTs, forceOverwrite: _omitForce, ...cleanBody } = body;
+
+      const existingClaimDate = String(existing.lastDailyClaimDate || '');
+      const incomingClaimDate = String(cleanBody.lastDailyClaimDate || '');
+      const resolvedClaimDate =
+        incomingClaimDate > existingClaimDate ? incomingClaimDate : existingClaimDate;
+
+      const existingWins = Array.isArray(existing.claimedMarketWins)
+        ? existing.claimedMarketWins
+        : [];
+      const incomingWins = Array.isArray(cleanBody.claimedMarketWins)
+        ? cleanBody.claimedMarketWins
+        : [];
+      const mergedWins = Array.from(new Set([...existingWins, ...incomingWins])).slice(-200);
+
+      // Si le serveur vient de créditer une enchère qui n'était pas encore connue du client
+      // au moment où le client a ouvert un booster simultanément, on fusionne la carte gagnée
+      let mergedCollection = Array.isArray(cleanBody.collection)
+        ? cleanBody.collection
+        : existing.collection || [];
+
+      if (existingWins.length > incomingWins.length && Array.isArray(cleanBody.collection)) {
+        const missingWinIds = existingWins.filter((id) => !incomingWins.includes(id));
+        if (missingWinIds.length > 0) {
+          try {
+            const allListings = loadJsonArrayFile(marketFile);
+            for (const winId of missingWinIds) {
+              const winListing = allListings.find((l) => l && l.id === winId);
+              if (winListing?.card) {
+                const hasCard = mergedCollection.some(
+                  (c) => String(c.id) === String(winListing.card.id)
+                );
+                if (!hasCard) {
+                  mergedCollection = addCardsToUserCollection(mergedCollection, [
+                    { card: winListing.card, qty: 1 },
+                  ]);
+                }
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      const merged = {
+        ...existing,
+        ...cleanBody,
+        collection: mergedCollection,
+        claimedMarketWins: mergedWins,
+        code: cleanCode,
+        lastDailyClaimDate: resolvedClaimDate,
+        createdAt: existing.createdAt || cleanBody.createdAt || now,
+        updatedAt: existing.updatedAt || clientTimestamp || now,
+      };
+
+      if (Array.isArray(merged.snapshots)) {
+        merged.snapshots = merged.snapshots
+          .filter(
+            (s) =>
+              s &&
+              typeof s.timestamp === 'number' &&
+              (!s.userCode || s.userCode === cleanCode) &&
+              !(
+                s.uniqueCardsCount === 0 &&
+                s.totalCardsCount === 0 &&
+                (s.wikithunes === 3000 || s.wikithunes === 450)
+              )
+          )
+          .map((s) => ({ ...s, userCode: cleanCode }));
+      }
+
+      const prevComparable = JSON.stringify({ ...existing, updatedAt: 0 });
+      const nextComparable = JSON.stringify({ ...merged, updatedAt: 0 });
+
+      if (prevComparable !== nextComparable || !fileExists) {
+        merged.updatedAt = fileExists
+          ? Math.max(now, clientTimestamp)
+          : clientTimestamp || now;
+        atomicWriteJsonSync(filePath, merged);
+        invalidateUsersDirectoryCache();
+      }
+
+      res.statusCode = 200;
+      res.end(
+        JSON.stringify({
+          ok: true,
+          user: merged,
+          serverIsNewer: false,
+        })
+      );
+      return true;
+    });
   }
 
   // DELETE /api/users/:code (suppression de compte et nettoyage en cascade)
   if (req.method === 'DELETE') {
     const cleanCode = sanitizeCode(code);
-    if (fs.existsSync(filePath)) {
+    return await withLock(`user:${cleanCode}`, async () => {
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          invalidateUsersDirectoryCache();
+        } catch (unlinkErr) {
+          console.error('[WikiCards Delete User Error]:', unlinkErr);
+          res.statusCode = 500;
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: 'Erreur lors de la suppression du fichier utilisateur',
+            })
+          );
+          return true;
+        }
+      }
+
+      // Nettoyer en cascade les annonces du marché créées par cet utilisateur
       try {
-        fs.unlinkSync(filePath);
-        invalidateUsersDirectoryCache();
-      } catch (unlinkErr) {
-        console.error('[WikiCards Delete User Error]:', unlinkErr);
-        res.statusCode = 500;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Erreur lors de la suppression du fichier utilisateur',
-          })
+        const allListings = loadJsonArrayFile(marketFile);
+        const nextListings = allListings.filter((l) => l.sellerCode !== cleanCode);
+        if (nextListings.length !== allListings.length) {
+          saveJsonArrayFile(marketFile, nextListings);
+        }
+      } catch (marketErr) {
+        console.error('[Clean Market Error]:', marketErr);
+      }
+
+      // Nettoyer en cascade les offres d'échange impliquant cet utilisateur
+      try {
+        const allTrades = loadJsonArrayFile(tradesFile);
+        const nextTrades = allTrades.filter(
+          (t) => t.fromCode !== cleanCode && t.toCode !== cleanCode
         );
-        return true;
+        if (nextTrades.length !== allTrades.length) {
+          saveJsonArrayFile(tradesFile, nextTrades);
+        }
+      } catch (tradeErr) {
+        console.error('[Clean Trades Error]:', tradeErr);
       }
-    }
 
-    // Nettoyer en cascade les annonces du marché créées par cet utilisateur
-    try {
-      const allListings = loadJsonArrayFile(marketFile);
-      const nextListings = allListings.filter((l) => l.sellerCode !== cleanCode);
-      if (nextListings.length !== allListings.length) {
-        saveJsonArrayFile(marketFile, nextListings);
-      }
-    } catch (marketErr) {
-      console.error('[Clean Market Error]:', marketErr);
-    }
-
-    // Nettoyer en cascade les offres d'échange impliquant cet utilisateur
-    try {
-      const allTrades = loadJsonArrayFile(tradesFile);
-      const nextTrades = allTrades.filter(
-        (t) => t.fromCode !== cleanCode && t.toCode !== cleanCode
+      res.statusCode = 200;
+      res.end(
+        JSON.stringify({
+          ok: true,
+          message: 'Compte supprimé avec succès',
+        })
       );
-      if (nextTrades.length !== allTrades.length) {
-        saveJsonArrayFile(tradesFile, nextTrades);
-      }
-    } catch (tradeErr) {
-      console.error('[Clean Trades Error]:', tradeErr);
-    }
-
-    res.statusCode = 200;
-    res.end(
-      JSON.stringify({
-        ok: true,
-        message: 'Compte supprimé avec succès',
-      })
-    );
-    return true;
+      return true;
+    });
   }
 
   return false;

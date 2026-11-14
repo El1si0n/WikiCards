@@ -120,6 +120,8 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
     /^\/api\/trades\/([^/]+)\/(accept|decline|cancel)$/
   );
   if (req.method === 'POST' && tradeActionMatch) {
+    const rawBody = await readJsonBody(req).catch(() => ({}));
+    const actorCode = sanitizeCode(rawBody?.userCode || '');
     return await withLock('trades', async () => {
       const tradeId = decodeURIComponent(tradeActionMatch[1]);
       const action = tradeActionMatch[2];
@@ -219,11 +221,15 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
       trade.resolvedAt = Date.now();
       saveJsonArrayFile(tradesFile, allTrades);
 
+      const updatedUser =
+        actorCode && actorCode === trade.fromCode ? updatedFrom : updatedTo;
+
       res.statusCode = 200;
       res.end(
         JSON.stringify({
           ok: true,
           trade,
+          updatedUser,
           updatedFrom,
           updatedTo,
         })

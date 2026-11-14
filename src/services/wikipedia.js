@@ -629,37 +629,35 @@ export async function fetchRandomDuelCard(
 
   let card = null;
 
-  // Tirage 100 % en direct sur Wikipédia FR (2,6 millions d'articles)
+  // Tirage ultra-rapide par lot MediaWiki sur Wikipédia FR (2,6 millions d'articles)
   let duelAttempts = 0;
-  while (!card && duelAttempts < 6) {
+  while (!card && duelAttempts < 4) {
     duelAttempts++;
     try {
-      const randomTitles = await fetchPureRandomTitles(14);
-      for (const title of randomTitles) {
-        if (excludeSet.has(title.trim().toLowerCase())) continue;
-        try {
-          const fetched = await fetchWikiCardByTitle(title);
-          if (
-            fetched &&
-            fetched.extract &&
-            fetched.extract.length >= 45 &&
-            !excludeSet.has(fetched.title.trim().toLowerCase()) &&
-            !excludeSet.has(String(fetched.id))
-          ) {
-            if (pickedTier && pickedTier !== 'C') {
-              card = {
-                ...fetched,
-                rarity: pickedTier,
-                views: getSimulatedViewsForTier(pickedTier, fetched.views),
-              };
-            } else {
-              card = fetched;
-            }
-            break;
-          }
-        } catch {
-          // Continue
+      const batch = await fetchRandomWikiCandidatesBatch(14);
+      for (const candidate of batch) {
+        if (
+          excludeSet.has(candidate.title.trim().toLowerCase()) ||
+          excludeSet.has(String(candidate.id).toLowerCase())
+        ) {
+          continue;
         }
+        const actualViews = await fetchPageViews30Days(candidate.title);
+        const actualTier = getRarityByViews(actualViews);
+        if (pickedTier && pickedTier !== 'C') {
+          card = {
+            ...candidate,
+            rarity: pickedTier,
+            views: getSimulatedViewsForTier(pickedTier, actualViews),
+          };
+        } else {
+          card = {
+            ...candidate,
+            rarity: actualTier.code,
+            views: actualViews,
+          };
+        }
+        break;
       }
     } catch {
       // Continue

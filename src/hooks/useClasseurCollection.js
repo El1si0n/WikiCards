@@ -2,7 +2,7 @@
 // Dépendances : React, rarities.js, themes.js.
 // Effets de bord : Met à jour les sélections locales de recyclage et déclenche le callback de recyclage.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getCardRecycleValue } from '../config/rarities';
 import { WIKI_THEMES, detectCardTheme } from '../config/themes';
 
@@ -23,7 +23,7 @@ export function useClasseurCollection({ collection = [], favorites = [], searchQ
   const [isRecycleMode, setIsRecycleMode] = useState(false);
   const [selectedRecycleCounts, setSelectedRecycleCounts] = useState({});
 
-  const handleToggleSelectForRecycle = (card) => {
+  const handleToggleSelectForRecycle = useCallback((card) => {
     const cardIdStr = String(card.id);
     const isFav = favorites.some((id) => String(id) === cardIdStr);
     const currentCount = card.count || 1;
@@ -39,7 +39,7 @@ export function useClasseurCollection({ collection = [], favorites = [], searchQ
       }
       return { ...prev, [cardIdStr]: currentSelected + 1 };
     });
-  };
+  }, [favorites]);
 
   const totalSelectedRecycleCount = useMemo(() => {
     return Object.values(selectedRecycleCounts).reduce((sum, count) => sum + (count || 0), 0);

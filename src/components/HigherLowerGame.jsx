@@ -4,7 +4,7 @@
  * Effets de bord : Débit/crédit de Wikithunes et mise à jour des statistiques de jeu.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
 import { fetchRandomDuelCard } from '../services/wikipedia';
@@ -19,6 +19,37 @@ import {
   Check,
   X,
 } from 'lucide-react';
+
+const HIGHER_LOWER_SESSION_KEY = 'wikicards_higher_lower_session_v1';
+
+function loadSavedHigherLowerSession() {
+  try {
+    const raw = sessionStorage.getItem(HIGHER_LOWER_SESSION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        (parsed.gameState === 'playing' || parsed.gameState === 'won_round') &&
+        parsed.leftCard &&
+        parsed.rightCard &&
+        Number(parsed.activeBet) > 0
+      ) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function clearSavedHigherLowerSession() {
+  try {
+    sessionStorage.removeItem(HIGHER_LOWER_SESSION_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Jeu de pari sur les visiteurs Wikipédia avec série gagnante et multiplicateurs croissants.
@@ -36,19 +67,83 @@ export default function HigherLowerGame({
   stats: _stats,
   onUpdateStats,
 }) {
-  // 'idle' | 'loading' | 'playing' | 'won_round' | 'lost_round'
-  const [gameState, setGameState] = useState('idle');
-  const [betAmount, setBetAmount] = useState(100);
-  const [activeBet, setActiveBet] = useState(0);
-  const [streak, setStreak] = useState(0);
+  const initialSession = loadSavedHigherLowerSession();
 
-  const [leftCard, setLeftCard] = useState(null);
-  const [rightCard, setRightCard] = useState(null);
-  const [seenCards, setSeenCards] = useState([]);
+  // 'idle' | 'loading' | 'playing' | 'won_round' | 'lost_round'
+  const [gameState, setGameState] = useState(
+    () => initialSession?.gameState || 'idle'
+  );
+  const [betAmount, setBetAmount] = useState(
+    () => Number(initialSession?.betAmount) || 100
+  );
+  const [activeBet, setActiveBet] = useState(
+    () => Number(initialSession?.activeBet) || 0
+  );
+  const [streak, setStreak] = useState(
+    () => Number(initialSession?.streak) || 0
+  );
+
+  const [leftCard, setLeftCard] = useState(
+    () => initialSession?.leftCard || null
+  );
+  const [rightCard, setRightCard] = useState(
+    () => initialSession?.rightCard || null
+  );
+  const [seenCards, setSeenCards] = useState(
+    () =>
+      Array.isArray(initialSession?.seenCards)
+        ? initialSession.seenCards
+        : []
+  );
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   // Historique glissant des 100 dernières cartes vues dans la session
   // Empêche les cartes de se répéter entre plusieurs parties successives
-  const [sessionSeenTitles, setSessionSeenTitles] = useState([]);
+  const [sessionSeenTitles, setSessionSeenTitles] = useState(() =>
+    Array.isArray(initialSession?.sessionSeenTitles)
+      ? initialSession.sessionSeenTitles
+      : []
+  );
+
+  const preloadedNextCardPromiseRef = useRef(null);
+
+  // Sauvegarde automatique de la série en cours dans sessionStorage (anti-perte F5 ou changement d'onglet)
+  useEffect(() => {
+    if (
+      (gameState === 'playing' || gameState === 'won_round') &&
+      leftCard &&
+      rightCard &&
+      activeBet > 0
+    ) {
+      try {
+        sessionStorage.setItem(
+          HIGHER_LOWER_SESSION_KEY,
+          JSON.stringify({
+            gameState,
+            betAmount,
+            activeBet,
+            streak,
+            leftCard,
+            rightCard,
+            seenCards: seenCards.slice(-30),
+            sessionSeenTitles: sessionSeenTitles.slice(-100),
+          })
+        );
+      } catch {
+        // ignore
+      }
+    } else if (gameState === 'idle' || gameState === 'lost_round') {
+      clearSavedHigherLowerSession();
+    }
+  }, [
+    gameState,
+    betAmount,
+    activeBet,
+    streak,
+    leftCard,
+    rightCard,
+    seenCards,
+    sessionSeenTitles,
+  ]);
 
   const currentPot =
     streak > 0
@@ -67,22 +162,37 @@ export default function HigherLowerGame({
     setStreak(0);
     setSeenCards([]);
     setGameState('loading');
+    preloadedNextCardPromiseRef.current = null;
 
     // Le gain potentiel du tour 1 (mise * multiplicateur pour streak = 1)
     const round1PotentialGain = Math.round(betAmount * getMultiplierForStreak(1));
 
-    const firstCard = await fetchRandomDuelCard(sessionSeenTitles, null, null, round1PotentialGain);
-    const secondExcluded = [
-      ...sessionSeenTitles,
-      firstCard?.title,
-      firstCard?.id,
-    ].filter(Boolean);
-    const secondCard = await fetchRandomDuelCard(
-      secondExcluded,
-      firstCard?.views ?? null,
-      firstCard?.rarity ?? null,
-      round1PotentialGain
-    );
+    // Tirage en parallèle de la 1re carte et d'une candidate pour la 2e carte afin de diviser le temps par 2
+    const [firstCard, parallelCandidate] = await Promise.all([
+      fetchRandomDuelCard(sessionSeenTitles, null, null, round1PotentialGain),
+      fetchRandomDuelCard(sessionSeenTitles, null, null, round1PotentialGain),
+    ]);
+
+    let secondCard = parallelCandidate;
+    if (
+      !secondCard ||
+      (firstCard &&
+        (secondCard.id === firstCard.id ||
+          secondCard.title === firstCard.title ||
+          secondCard.views === firstCard.views))
+    ) {
+      const secondExcluded = [
+        ...sessionSeenTitles,
+        firstCard?.title,
+        firstCard?.id,
+      ].filter(Boolean);
+      secondCard = await fetchRandomDuelCard(
+        secondExcluded,
+        firstCard?.views ?? null,
+        firstCard?.rarity ?? null,
+        round1PotentialGain
+      );
+    }
 
     if (firstCard && secondCard) {
       setLeftCard(firstCard);
@@ -124,7 +234,27 @@ export default function HigherLowerGame({
       onUpdateStats?.({
         recordStreak: nextStreak,
       });
+
+      // Précharge immédiatement en tâche de fond la carte du prochain tour pour que le clic sur "Suivant" soit instantané
+      const allExcluded = [
+        ...sessionSeenTitles,
+        ...seenCards.map((c) => c?.title),
+        ...seenCards.map((c) => c?.id),
+        rightCard.title,
+        rightCard.id,
+      ].filter(Boolean);
+      const nextPotentialGain = Math.round(
+        activeBet * getMultiplierForStreak(nextStreak + 1)
+      );
+      preloadedNextCardPromiseRef.current = fetchRandomDuelCard(
+        allExcluded,
+        rightCard.views,
+        rightCard.rarity,
+        nextPotentialGain
+      ).catch(() => null);
     } else {
+      clearSavedHigherLowerSession();
+      preloadedNextCardPromiseRef.current = null;
       setGameState('lost_round');
       soundManager.playUpgradeLoss();
       onUpdateStats?.({
@@ -139,25 +269,40 @@ export default function HigherLowerGame({
 
     setIsLoadingNext(true);
     const newRefCard = rightCard;
-    const allExcluded = [
-      ...sessionSeenTitles,
-      ...seenCards.map((c) => c?.title),
-      ...seenCards.map((c) => c?.id),
-      newRefCard.title,
-      newRefCard.id,
-    ].filter(Boolean);
+    let newRightCard = null;
 
-    // Gain potentiel pour ce prochain palier (activeBet * multiplicateur streak + 1)
-    const nextPotentialGain = Math.round(
-      activeBet * getMultiplierForStreak(streak + 1)
-    );
+    if (preloadedNextCardPromiseRef.current) {
+      const preloaded = await preloadedNextCardPromiseRef.current;
+      preloadedNextCardPromiseRef.current = null;
+      if (
+        preloaded &&
+        preloaded.id !== newRefCard.id &&
+        preloaded.title !== newRefCard.title
+      ) {
+        newRightCard = preloaded;
+      }
+    }
 
-    const newRightCard = await fetchRandomDuelCard(
-      allExcluded,
-      newRefCard.views,
-      newRefCard.rarity,
-      nextPotentialGain
-    );
+    if (!newRightCard) {
+      const allExcluded = [
+        ...sessionSeenTitles,
+        ...seenCards.map((c) => c?.title),
+        ...seenCards.map((c) => c?.id),
+        newRefCard.title,
+        newRefCard.id,
+      ].filter(Boolean);
+
+      const nextPotentialGain = Math.round(
+        activeBet * getMultiplierForStreak(streak + 1)
+      );
+
+      newRightCard = await fetchRandomDuelCard(
+        allExcluded,
+        newRefCard.views,
+        newRefCard.rarity,
+        nextPotentialGain
+      );
+    }
 
     setIsLoadingNext(false);
     if (newRightCard) {
@@ -176,6 +321,8 @@ export default function HigherLowerGame({
   // Encaisser les gains et terminer la série
   const handleCashOut = () => {
     if (streak <= 0) return;
+    clearSavedHigherLowerSession();
+    preloadedNextCardPromiseRef.current = null;
     const payout = Math.round(activeBet * getMultiplierForStreak(streak));
     const netProfit = payout - activeBet;
     onAddWikithunes(payout);
@@ -195,6 +342,8 @@ export default function HigherLowerGame({
 
   // Terminer après une défaite
   const handleFinishLost = () => {
+    clearSavedHigherLowerSession();
+    preloadedNextCardPromiseRef.current = null;
     setGameState('idle');
     setLeftCard(null);
     setRightCard(null);

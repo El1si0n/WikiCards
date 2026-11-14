@@ -611,15 +611,17 @@ export async function createTradeOffer({
  * Répond à une offre d'échange reçue ou annule une offre émise.
  * @param {string} tradeId - Identifiant de l'échange
  * @param {'accept'|'decline'|'cancel'} action - Action à exécuter
+ * @param {string} [userCode] - Code du joueur initiant l'action
  * @returns {Promise<Object>} Réponse du serveur
  */
-export async function respondToTradeOffer(tradeId, action) {
+export async function respondToTradeOffer(tradeId, action, userCode) {
   // action: 'accept' | 'decline' | 'cancel'
   const res = await fetch(
     `/api/trades/${encodeURIComponent(tradeId)}/${action}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userCode: userCode || '' }),
     }
   );
   const json = await res.json();

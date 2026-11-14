@@ -15,6 +15,32 @@ import { fitSummaryToCard, cleanCardTitle } from '../utils/cardText';
 import WikithuneIcon from './WikithuneIcon';
 import RarityWavePattern from './card/RarityWavePattern';
 
+// Observateur unique partagé entre toutes les cartes pour éviter d'instancier 400 ResizeObserver dans le classeur
+const cardResizeListeners = new Map();
+let sharedCardResizeObserver = null;
+
+function observeCardElement(element, callback) {
+  if (!element || typeof ResizeObserver === 'undefined') return () => {};
+  if (!sharedCardResizeObserver) {
+    sharedCardResizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const cb = cardResizeListeners.get(entry.target);
+        if (cb) cb(entry.contentRect.width);
+      }
+    });
+  }
+  cardResizeListeners.set(element, callback);
+  sharedCardResizeObserver.observe(element);
+  return () => {
+    cardResizeListeners.delete(element);
+    try {
+      sharedCardResizeObserver?.unobserve(element);
+    } catch {
+      // ignore
+    }
+  };
+}
+
 /**
  * Composant de présentation normalisé pour une carte Wikipédia.
  * @param {Object} props
@@ -35,7 +61,7 @@ import RarityWavePattern from './card/RarityWavePattern';
  * @param {string|null} [props.selectionBadgeText=null] - Texte personnalisé du badge de sélection
  * @param {boolean} [props.hideViewsAndRarity=false] - Masquage pour cartes mystères (ex: Plus ou Moins)
  */
-export default function WikiCard({
+function WikiCard({
   card,
   onToggleFavorite,
   isFavorite = false,
@@ -105,20 +131,13 @@ export default function WikiCard({
 
   useEffect(() => {
     const el = cardRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
-        if (width <= 0) continue;
-        const nextTier =
-          width < 185 ? 'small' : width > 260 ? 'large' : 'medium';
-        setSizeTier((prev) => (prev !== nextTier ? nextTier : prev));
-      }
+    if (!el) return;
+    return observeCardElement(el, (width) => {
+      if (width <= 0) return;
+      const nextTier =
+        width < 185 ? 'small' : width > 260 ? 'large' : 'medium';
+      setSizeTier((prev) => (prev !== nextTier ? nextTier : prev));
     });
-
-    observer.observe(el);
-    return () => observer.disconnect();
   }, []);
 
   // Configuration typographique et textuelle proportionnelle à la largeur réelle de la carte
@@ -594,3 +613,5 @@ export default function WikiCard({
     </div>
   );
 }
+
+export default React.memo(WikiCard);
