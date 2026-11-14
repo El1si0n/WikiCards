@@ -29,6 +29,21 @@ export function sanitizeNumberInput(val) {
 /** Seuil de déclenchement de l'anti-sniping côté affichage (5 minutes) */
 export const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
 
+const MARKET_CACHE_KEY = 'wikicards_cached_market_listings_v1';
+
+function loadCachedMarketListings() {
+  try {
+    const raw = localStorage.getItem(MARKET_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
 /**
  * Détermine si une enchère est entrée dans sa fenêtre d'anti-sniping (<= 5 min restantes).
  * @param {number|null} bidExpiresAt - Timestamp d'expiration
@@ -87,8 +102,10 @@ export function useAuctionMarket({
   onSyncAccountState,
 }) {
   const [activeSubTab, setActiveSubTab] = useState('browse');
-  const [listings, setListings] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [listings, setListings] = useState(() => loadCachedMarketListings());
+  const [isLoading, setIsLoading] = useState(
+    () => loadCachedMarketListings().length === 0
+  );
   const [rarityFilter, setRarityFilter] = useState('ALL');
   const [feedback, setFeedback] = useState(null);
 
@@ -118,10 +135,17 @@ export function useAuctionMarket({
     if (!silent) setIsLoading(true);
     try {
       const data = await fetchMarketListings();
-      setListings(data);
+      if (Array.isArray(data)) {
+        setListings(data);
+        try {
+          localStorage.setItem(MARKET_CACHE_KEY, JSON.stringify(data));
+        } catch {
+          // ignore
+        }
+      }
     } finally {
       isFetchingRef.current = false;
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 

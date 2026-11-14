@@ -101,6 +101,7 @@ export default function AuctionMarket({
           <MarketBrowseTab
             activeListings={market.activeListings}
             filteredBrowseListings={market.filteredBrowseListings}
+            isLoading={market.isLoading}
             rarityFilter={market.rarityFilter}
             setRarityFilter={market.setRarityFilter}
             userCode={userCode}
@@ -134,6 +135,7 @@ export default function AuctionMarket({
         ) : (
           <MarketMyListingsTab
             myListings={market.myListings}
+            isLoading={market.isLoading}
             handleMarketAction={market.handleMarketAction}
             now={market.now}
             formatRemainingTime={formatRemainingTime}

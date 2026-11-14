@@ -18,6 +18,36 @@ import { calculatePlayerScore } from '../config/playerScore';
 import { getCardRecycleValue } from '../config/rarities';
 import { countRarityCopies, countGifCopies } from '../utils/statsHistory';
 
+const DIRECTORY_CACHE_KEY = 'wikicards_cached_users_directory_v1';
+const TRADES_CACHE_KEY_PREFIX = 'wikicards_cached_trades_v1_';
+
+function loadCachedUsersList() {
+  try {
+    const raw = localStorage.getItem(DIRECTORY_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function loadCachedTradesList(userCode) {
+  if (!userCode) return [];
+  try {
+    const raw = localStorage.getItem(`${TRADES_CACHE_KEY_PREFIX}${userCode}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
 /**
  * Hook personnalisé encapsulant toutes les interactions sociales et d'échange de cartes.
  * @param {Object} params
@@ -43,8 +73,10 @@ export default function useSocialHub({
 }) {
   const [activeSubTab, setActiveSubTab] = useState('directory');
 
-  const [usersList, setUsersList] = useState([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [usersList, setUsersList] = useState(() => loadCachedUsersList());
+  const [isLoadingUsers, setIsLoadingUsers] = useState(
+    () => loadCachedUsersList().length === 0
+  );
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   const [selectedPeer, setSelectedPeer] = useState(null);
@@ -60,8 +92,10 @@ export default function useSocialHub({
 
   const [historyModalMetric, setHistoryModalMetric] = useState(null);
 
-  const [trades, setTrades] = useState([]);
-  const [isLoadingTrades, setIsLoadingTrades] = useState(false);
+  const [trades, setTrades] = useState(() => loadCachedTradesList(userCode));
+  const [isLoadingTrades, setIsLoadingTrades] = useState(
+    () => loadCachedTradesList(userCode).length === 0
+  );
   const [tradeActionError, setTradeActionError] = useState(null);
   const isFetchingRef = useRef(false);
 
@@ -77,14 +111,33 @@ export default function useSocialHub({
         fetchAllUsersDirectory(),
         fetchUserTrades(userCode),
       ]);
-      setUsersList(allUsers);
-      setTrades(myTrades);
+      if (Array.isArray(allUsers) && allUsers.length > 0) {
+        setUsersList(allUsers);
+        try {
+          localStorage.setItem(DIRECTORY_CACHE_KEY, JSON.stringify(allUsers));
+        } catch {
+          // ignore
+        }
+      } else if (Array.isArray(allUsers)) {
+        setUsersList((prev) => (prev.length > 0 ? prev : allUsers));
+      }
+      if (Array.isArray(myTrades)) {
+        setTrades(myTrades);
+        if (userCode) {
+          try {
+            localStorage.setItem(
+              `${TRADES_CACHE_KEY_PREFIX}${userCode}`,
+              JSON.stringify(myTrades)
+            );
+          } catch {
+            // ignore
+          }
+        }
+      }
     } finally {
       isFetchingRef.current = false;
-      if (!silent) {
-        setIsLoadingUsers(false);
-        setIsLoadingTrades(false);
-      }
+      setIsLoadingUsers(false);
+      setIsLoadingTrades(false);
     }
   }, [userCode]);
 

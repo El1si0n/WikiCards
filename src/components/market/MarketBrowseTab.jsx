@@ -8,13 +8,14 @@ import React from 'react';
 import WikiCard from '../WikiCard';
 import WikithuneIcon from '../WikithuneIcon';
 import { RARITY_TIERS } from '../../config/rarities';
-import { Gavel, ShoppingBag, Clock, Check, X } from 'lucide-react';
+import { Gavel, ShoppingBag, Clock, Check, X, Loader2 } from 'lucide-react';
 
 /**
  * Sous-composant de parcours des annonces actives avec compte à rebours de 24h et actions.
  * @param {Object} props
  * @param {Array<Object>} props.activeListings - Ensemble des annonces actives
  * @param {Array<Object>} props.filteredBrowseListings - Annonces filtrées par rareté
+ * @param {boolean} [props.isLoading=false] - Indicateur de chargement initial du marché
  * @param {string} props.rarityFilter - Filtre de rareté actif
  * @param {function(string): void} props.setRarityFilter - Sélecteur de rareté
  * @param {string} props.userCode - Code du joueur courant
@@ -31,6 +32,7 @@ import { Gavel, ShoppingBag, Clock, Check, X } from 'lucide-react';
 export default function MarketBrowseTab({
   activeListings,
   filteredBrowseListings,
+  isLoading = false,
   rarityFilter,
   setRarityFilter,
   userCode,
@@ -255,9 +257,16 @@ export default function MarketBrowseTab({
             );
           })}
         </div>
+      ) : isLoading ? (
+        <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <Loader2 className="w-5 h-5 animate-spin text-[#3366cc]" />
+          <p className="text-[13.5px] font-medium text-[#54595d] dark:text-[#a2a9b1] m-0">
+            Chargement des enchères du marché...
+          </p>
+        </div>
       ) : (
-        <div className="py-12 text-center bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px]">
-          <p className="text-[14px] text-[#54595d] m-0">
+        <div className="py-12 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <p className="text-[14px] text-[#54595d] dark:text-[#a2a9b1] m-0">
             Aucune carte en vente actuellement. Cliquez sur « Mettre en vente » pour publier la première enchère !
           </p>
         </div>

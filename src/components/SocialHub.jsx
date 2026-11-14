@@ -39,6 +39,8 @@ export default function SocialHub({
     activeSubTab,
     setActiveSubTab,
     usersList,
+    isLoadingUsers,
+    isLoadingTrades,
     userSearchQuery,
     setUserSearchQuery,
     selectedPeer,
@@ -220,6 +222,7 @@ export default function SocialHub({
         ) : activeSubTab === 'directory' ? (
           <SocialDirectoryTab
             filteredUsers={filteredUsers}
+            isLoadingUsers={isLoadingUsers}
             userSearchQuery={userSearchQuery}
             setUserSearchQuery={setUserSearchQuery}
             userCode={userCode}
@@ -232,6 +235,7 @@ export default function SocialHub({
         ) : (
           <SocialTradesTab
             trades={trades}
+            isLoadingTrades={isLoadingTrades}
             tradeActionError={tradeActionError}
             userCode={userCode}
             handleTradeAction={handleTradeAction}

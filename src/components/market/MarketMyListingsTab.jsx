@@ -5,12 +5,13 @@
  */
 
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 
 /**
  * Sous-composant affichant l'historique et l'état des ventes du joueur.
  * @param {Object} props
  * @param {Array<Object>} props.myListings - Annonces dont l'auteur est le joueur courant
+ * @param {boolean} [props.isLoading=false] - Indicateur de chargement initial du marché
  * @param {function(string, string): Promise<void>} props.handleMarketAction - Action d'acceptation ou de retrait
  * @param {number} props.now - Horodatage courant
  * @param {function(number|null, string|null, number): string} props.formatRemainingTime - Formateur de temps restant
@@ -18,6 +19,7 @@ import { Check, X } from 'lucide-react';
  */
 export default function MarketMyListingsTab({
   myListings,
+  isLoading = false,
   handleMarketAction,
   now,
   formatRemainingTime,
@@ -77,9 +79,16 @@ export default function MarketMyListingsTab({
             )}
           </div>
         ))
+      ) : isLoading ? (
+        <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <Loader2 className="w-5 h-5 animate-spin text-[#3366cc]" />
+          <p className="text-[13.5px] font-medium text-[#54595d] dark:text-[#a2a9b1] m-0">
+            Chargement de vos annonces...
+          </p>
+        </div>
       ) : (
-        <div className="py-12 text-center bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px]">
-          <p className="text-[14px] text-[#54595d] m-0">
+        <div className="py-12 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <p className="text-[14px] text-[#54595d] dark:text-[#a2a9b1] m-0">
             Vous n'avez pas encore publié d'annonce sur le marché.
           </p>
         </div>

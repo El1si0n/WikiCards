@@ -5,19 +5,21 @@
  */
 
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 import WikiCard from '../WikiCard';
 
 /**
  * Sous-composant listant les offres d'échange actives ou passées du joueur.
  * @param {Object} props
  * @param {Array<Object>} props.trades - Liste des échanges concernant le joueur
+ * @param {boolean} [props.isLoadingTrades=false] - Indicateur de chargement initial des échanges
  * @param {string|null} props.tradeActionError - Message d'erreur éventuel lors d'une action
  * @param {string} props.userCode - Code WIKI du compte joueur local
  * @param {function(string, 'accept'|'decline'|'cancel'): Promise<void>} props.handleTradeAction - Action sur un échange
  */
 export default function SocialTradesTab({
   trades,
+  isLoadingTrades = false,
   tradeActionError,
   userCode,
   handleTradeAction,
@@ -162,9 +164,16 @@ export default function SocialTradesTab({
             );
           })}
         </div>
+      ) : isLoadingTrades ? (
+        <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <Loader2 className="w-5 h-5 animate-spin text-[#3366cc]" />
+          <p className="text-[13.5px] font-medium text-[#54595d] dark:text-[#a2a9b1] m-0">
+            Chargement des propositions d'échange...
+          </p>
+        </div>
       ) : (
-        <div className="py-12 text-center bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px]">
-          <p className="text-[14px] text-[#54595d] m-0">
+        <div className="py-12 text-center bg-[#f8f9fa] dark:bg-[#161a20] border border-[#eaecf0] dark:border-[#2d3542] rounded-[2px]">
+          <p className="text-[14px] text-[#54595d] dark:text-[#a2a9b1] m-0">
             Aucune proposition d'échange pour le moment. Cliquez sur un joueur dans l'onglet Joueurs pour lui proposer un échange !
           </p>
         </div>

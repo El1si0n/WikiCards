@@ -543,13 +543,13 @@ export async function fetchAllUsersDirectory() {
   } catch {
     // ignore
   }
-  return [];
+  return null;
 }
 
 /**
  * Récupère la liste des propositions d'échanges actives ou passées d'un joueur.
  * @param {string} userCode - Code du joueur
- * @returns {Promise<Array<Object>>} Liste des échanges
+ * @returns {Promise<Array<Object>|null>} Liste des échanges
  */
 export async function fetchUserTrades(userCode) {
   try {
@@ -566,7 +566,7 @@ export async function fetchUserTrades(userCode) {
   } catch {
     // ignore
   }
-  return [];
+  return null;
 }
 
 /**
@@ -643,7 +643,7 @@ export async function fetchMarketListings() {
   } catch {
     // ignore
   }
-  return [];
+  return null;
 }
 
 /**
