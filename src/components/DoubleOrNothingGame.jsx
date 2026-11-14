@@ -1,5 +1,5 @@
 /**
- * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 59% C, 56% PC, 53% R, 50% SR, 47% UR avec malus anti-farm dégressif).
+ * @file Rôle : Mini-jeu de casino Quitte ou Double (pari de duplication de cartes à 58% C, 55% PC, 52% R, 49% SR, 46% UR avec malus anti-farm dégressif).
  * Dépendances : React, `lucide-react`, `./WikiCard`, `../config/casino`, `../hooks/useDoubleOrNothing`, `./casino/CasinoCardPicker`.
  * Effets de bord : Consommation de cartes, attribution de doublons, sons procéduraux et animations multi-roues.
  */

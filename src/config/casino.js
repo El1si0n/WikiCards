@@ -55,14 +55,14 @@ export const MAX_SELECTED_CARDS = 8;
 
 /**
  * Pourcentages de chance de doubler de base selon l'échelon de rareté de la carte misée.
- * C: 59%, PC: 56%, R: 53%, SR: 50%, UR: 47%.
+ * C: 58%, PC: 55%, R: 52%, SR: 49%, UR: 46%.
  */
 export const DOUBLE_CHANCE_BY_RARITY = {
-  C: 59,
-  PC: 56,
-  R: 53,
-  SR: 50,
-  UR: 47,
+  C: 58,
+  PC: 55,
+  R: 52,
+  SR: 49,
+  UR: 46,
 };
 
 /** Plancher minimal de probabilité de succès au Quitte ou Double (%) */
