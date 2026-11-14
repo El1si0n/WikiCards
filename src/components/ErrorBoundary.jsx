@@ -76,7 +76,7 @@ export default class ErrorBoundary extends React.Component {
             {/* Message explicatif */}
             <div className="text-[13.5px] text-[#202122] space-y-2 mb-6">
               <p>
-                Rassurez-vous : vos <strong>cartes</strong>, votre <strong>solde en Wikithunes</strong> et votre <strong>progression</strong> sont en sécurité sur le serveur.
+                Rassurez-vous : vos <strong>cartes</strong>, votre <strong>solde en Wikifeet</strong> et votre <strong>progression</strong> sont en sécurité sur le serveur.
               </p>
               <p className="text-[12.5px] text-[#54595d]">
                 Le redémarrage du conteneur ou une mise en cache temporaire de votre navigateur peut être à l'origine de cet écran blanc.

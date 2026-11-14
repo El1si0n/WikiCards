@@ -65,7 +65,7 @@ export default function ProfileDeleteModal({
           <div className="p-2.5 bg-[#fff5f5] dark:bg-[#251515] border border-[#f54739]/40 dark:border-[#b32424]/50 rounded-[2px] text-[12.5px] text-[#bf3c2c] dark:text-[#f87171] leading-relaxed">
             <p className="font-bold m-0 mb-1">Attention : action irréversible</p>
             <p className="m-0 text-[#202122] dark:text-[#c8ccd1]">
-              Toutes vos cartes ({collectionLength}), vos Wikithunes ({new Intl.NumberFormat('fr-FR').format(wikithunes)}&nbsp;₩) et vos données associées au code <span className="font-mono font-bold text-[#101418] dark:text-white">{userCode}</span> seront définitivement effacées.
+              Toutes vos cartes ({collectionLength}), vos Wikifeet ({new Intl.NumberFormat('fr-FR').format(wikithunes)}&nbsp;₩) et vos données associées au code <span className="font-mono font-bold text-[#101418] dark:text-white">{userCode}</span> seront définitivement effacées.
             </p>
           </div>
 

@@ -34,6 +34,8 @@ export default function BoosterPackView({
   isIconicPack,
   highestRarityKey = 'C',
   highestRarityConfig = null,
+  isFakeOutShock = false,
+  fakeOutState = null,
   activePrice,
   freeBoostersCount,
   boosterPrice,
@@ -79,6 +81,51 @@ export default function BoosterPackView({
         />
       )}
 
+      {/* Onde de choc lumineuse lors d'un Fake-Out gacha */}
+      {stage === 'tearing' && isFakeOutShock && (
+        <>
+          <motion.div
+            key="fakeout-screen-flash"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.72, 0.25, 0] }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+            className="absolute inset-0 pointer-events-none z-30"
+            style={{
+              background:
+                highestRarityKey === 'L'
+                  ? 'radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 234, 90, 0.78) 38%, rgba(222, 178, 38, 0.35) 68%, transparent 100%)'
+                  : highestRarityKey === 'UR'
+                  ? 'radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 208, 138, 0.75) 38%, rgba(232, 131, 28, 0.32) 68%, transparent 100%)'
+                  : 'radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.9) 0%, rgba(247, 190, 219, 0.72) 38%, rgba(220, 109, 163, 0.3) 68%, transparent 100%)',
+            }}
+          />
+          <motion.div
+            key="fakeout-shockwave-ring"
+            initial={{ opacity: 0.95, scale: 0.3 }}
+            animate={{ opacity: 0, scale: 2.35 }}
+            transition={{ duration: 0.68, ease: 'easeOut' }}
+            className="absolute w-64 h-64 rounded-full pointer-events-none z-20"
+            style={{
+              top: '150px',
+              border: `3px solid ${
+                highestRarityKey === 'L'
+                  ? '#ffea5a'
+                  : highestRarityKey === 'UR'
+                  ? '#f7a440'
+                  : '#ea8eba'
+              }`,
+              boxShadow: `0 0 28px ${
+                highestRarityKey === 'L'
+                  ? '#deb226'
+                  : highestRarityKey === 'UR'
+                  ? '#e8831c'
+                  : '#d15892'
+              }`,
+            }}
+          />
+        </>
+      )}
+
       {/* Sachet de booster bien de face */}
       <div
         ref={packRef}
@@ -102,20 +149,39 @@ export default function BoosterPackView({
           initial={{ y: 0, scale: 1, opacity: 1 }}
           animate={
             stage === 'tearing'
-              ? {
-                  y: [0, -6, 110],
-                  scale: [1, 1.03, 0.95],
-                  opacity: [1, 1, 0],
-                }
+              ? isFakeOutShock
+                ? {
+                    x: [0, -11, 11, -8, 8, -4, 4, 0],
+                    y: [-6, -12, -8, 115],
+                    rotate: [0, -2.5, 2.5, -1.5, 1.5, 0],
+                    scale: [1.02, 1.09, 1.05, 0.95],
+                    opacity: [1, 1, 1, 0],
+                  }
+                : fakeOutState
+                ? {
+                    y: [0, -6, -6],
+                    scale: [1, 1.02, 1.02],
+                    opacity: [1, 1, 1],
+                  }
+                : {
+                    y: [0, -6, 110],
+                    scale: [1, 1.03, 0.95],
+                    opacity: [1, 1, 0],
+                  }
               : {
+                  x: 0,
                   y: glare.isHovered ? -4 : 0,
+                  rotate: 0,
                   scale: 1,
                   opacity: 1,
                 }
           }
           transition={
             stage === 'tearing'
-              ? { duration: 0.82, ease: 'easeInOut' }
+              ? {
+                  duration: isFakeOutShock ? 0.9 : fakeOutState ? 0.42 : 0.82,
+                  ease: 'easeInOut',
+                }
               : { duration: 0.25 }
           }
           className="relative w-[284px] flex flex-col items-center"
@@ -123,34 +189,54 @@ export default function BoosterPackView({
           {/* Effet de lumière Walkout Glow interne lors de la déchirure */}
           {stage === 'tearing' && (
             <motion.div
-              initial={{ opacity: 0, scaleY: 0.08 }}
+              key={isFakeOutShock ? 'walkout-shock' : 'walkout-normal'}
+              initial={
+                isFakeOutShock
+                  ? { opacity: 0.9, scaleY: 0.75, scaleX: 0.92 }
+                  : { opacity: 0, scaleY: 0.08, scaleX: 1 }
+              }
               animate={{
-                opacity:
-                  highestRarityKey === 'L'
-                    ? [0, 0.95, 0.82, 0]
-                    : highestRarityKey === 'UR'
-                    ? [0, 0.8, 0.65, 0]
-                    : [0, 0.62, 0.48, 0],
-                scaleY: [0.08, 0.9, 1, 1.05],
+                opacity: isFakeOutShock
+                  ? [1, 1, 0.9, 0]
+                  : highestRarityKey === 'L'
+                  ? [0, 0.95, 0.82, 0]
+                  : highestRarityKey === 'UR'
+                  ? [0, 0.8, 0.65, 0]
+                  : fakeOutState
+                  ? [0, 0.72, 0.75]
+                  : [0, 0.62, 0.48, 0],
+                scaleY: isFakeOutShock
+                  ? [0.8, 1.32, 1.18, 1.25]
+                  : fakeOutState
+                  ? [0.08, 0.85, 0.9]
+                  : [0.08, 0.9, 1, 1.05],
+                scaleX: isFakeOutShock ? [0.95, 1.12, 1.04, 1] : 1,
               }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
+              transition={{
+                duration: isFakeOutShock ? 0.88 : fakeOutState ? 0.4 : 0.8,
+                ease: 'easeOut',
+              }}
               className="absolute inset-x-0 pointer-events-none z-10 overflow-visible"
               style={{
-                top: '-55px',
-                height: highestRarityKey === 'L' ? '112px' : '92px',
+                top: isFakeOutShock ? '-68px' : '-55px',
+                height:
+                  highestRarityKey === 'L' || isFakeOutShock ? '118px' : '92px',
                 transformOrigin: '50% 100%',
               }}
             >
               <div
-                className="absolute inset-x-[2px] bottom-0 h-full"
+                className="absolute inset-x-[2px] bottom-0 h-full transition-all duration-150"
                 style={{
                   clipPath: 'polygon(0% 0%, 100% 0%, 98% 100%, 2% 100%)',
                   background: walkout.beam,
-                  filter: highestRarityKey === 'L' ? 'blur(5px)' : 'blur(4px)',
+                  filter:
+                    highestRarityKey === 'L' || isFakeOutShock
+                      ? 'blur(5px)'
+                      : 'blur(4px)',
                 }}
               />
               <div
-                className="absolute -inset-x-[12px] bottom-0 h-full"
+                className="absolute -inset-x-[12px] bottom-0 h-full transition-all duration-150"
                 style={{
                   background: walkout.ray,
                   WebkitMaskImage:
@@ -161,30 +247,78 @@ export default function BoosterPackView({
                 }}
               />
               <div
-                className="absolute inset-x-[2px] bottom-[1px] h-[3.5px] rounded-full"
+                className="absolute inset-x-[2px] bottom-[1px] h-[3.5px] rounded-full transition-all duration-150"
                 style={{
                   background: walkout.crackLine,
                   boxShadow: walkout.shadow,
                 }}
               />
-              {/* Particules et éclats jaillissants pour UR et L */}
-              {(highestRarityKey === 'UR' || highestRarityKey === 'L') && (
+              {/* Éclairs de rupture lors d'un Fake-Out */}
+              {isFakeOutShock && (
+                <motion.svg
+                  initial={{ opacity: 1, scale: 0.85 }}
+                  animate={{ opacity: [1, 1, 0], scale: [0.9, 1.18, 1.25] }}
+                  transition={{ duration: 0.48, ease: 'easeOut' }}
+                  viewBox="0 0 284 110"
+                  className="absolute inset-x-0 bottom-0 w-full h-[110px] pointer-events-none overflow-visible"
+                >
+                  <path
+                    d="M142 108 L128 74 L148 64 L122 22 M142 108 L164 78 L150 62 L182 26 M92 108 L76 76 L90 58 L64 30 M194 108 L210 78 L196 60 L222 32"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      filter: `drop-shadow(0 0 8px ${
+                        highestRarityKey === 'L'
+                          ? '#ffea5a'
+                          : highestRarityKey === 'UR'
+                          ? '#f7a440'
+                          : '#ea8eba'
+                      })`,
+                    }}
+                  />
+                </motion.svg>
+              )}
+              {/* Particules et éclats jaillissants pour UR, L ou Fake-Out */}
+              {(highestRarityKey === 'UR' ||
+                highestRarityKey === 'L' ||
+                isFakeOutShock) && (
                 <div className="absolute inset-x-0 bottom-0 flex justify-around pointer-events-none">
-                  {[-24, -12, 0, 12, 24].map((offset, i) => (
+                  {(isFakeOutShock
+                    ? [-42, -28, -14, 0, 14, 28, 42]
+                    : [-24, -12, 0, 12, 24]
+                  ).map((offset, i) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, y: 0, scale: 0.5 }}
                       animate={{
                         opacity: [0, 1, 0],
-                        y: [-8, -50 - i * 8],
+                        y: [-8, -56 - (i % 4) * 12],
                         x: [0, offset],
-                        scale: [0.5, 1.3, 0.2],
+                        scale: [0.5, isFakeOutShock ? 1.55 : 1.3, 0.2],
                       }}
-                      transition={{ duration: 0.72, delay: i * 0.04, ease: 'easeOut' }}
+                      transition={{
+                        duration: 0.72,
+                        delay: i * 0.03,
+                        ease: 'easeOut',
+                      }}
                       className="w-1.5 h-1.5 rounded-full"
                       style={{
-                        backgroundColor: highestRarityKey === 'L' ? '#ffea5a' : '#ffd08a',
-                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#deb226' : '#e8831c'}`,
+                        backgroundColor:
+                          highestRarityKey === 'L'
+                            ? '#ffea5a'
+                            : highestRarityKey === 'UR'
+                            ? '#ffd08a'
+                            : '#fbd0e5',
+                        boxShadow: `0 0 8px ${
+                          highestRarityKey === 'L'
+                            ? '#deb226'
+                            : highestRarityKey === 'UR'
+                            ? '#e8831c'
+                            : '#e074a8'
+                        }`,
                       }}
                     />
                   ))}

@@ -216,6 +216,8 @@ export default function useBoosterOpening({
   const [isFetching, setIsFetching] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  // Animation "Fake-Out" lors du Walkout : { fakeRarityKey, trueRarityKey, phase: 'disguised' | 'shock' }
+  const [fakeOutState, setFakeOutState] = useState(null);
 
   const [isIconicRoll, setIsIconicRoll] = useState(() =>
     getOrRollNextBoosterIsIconic()
@@ -248,6 +250,7 @@ export default function useBoosterOpening({
   const [glare, setGlare] = useState({ x: 50, y: 35, isHovered: false });
 
   const tearTimerRef = useRef(null);
+  const fakeOutTimerRef = useRef(null);
   const isOpeningRef = useRef(false);
   const stageRef = useRef(stage);
   const pendingCardsRef = useRef(null);
@@ -281,6 +284,9 @@ export default function useBoosterOpening({
       clearInterval(keepWarmInterval);
       if (tearTimerRef.current) {
         clearTimeout(tearTimerRef.current);
+      }
+      if (fakeOutTimerRef.current) {
+        clearTimeout(fakeOutTimerRef.current);
       }
       if (pendingCardsRef.current && onCardsOpenedRef.current) {
         onCardsOpenedRef.current(pendingCardsRef.current);
@@ -350,7 +356,7 @@ export default function useBoosterOpening({
     if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
       updateStage('pack');
-      setErrorMsg("Vous n'avez pas assez de Wikithunes");
+      setErrorMsg("Vous n'avez pas assez de Wikifeet");
       isOpeningRef.current = false;
       setIsOpening(false);
       return;
@@ -454,6 +460,53 @@ export default function useBoosterOpening({
       return { ...c, isNew };
     });
 
+    // Détection de la plus haute rareté réelle du booster pour préparer un éventuel "Fake-Out"
+    const packHighestRarity = annotatedCards.reduce((highest, card) => {
+      const code = card?.rarity || 'C';
+      const rank = RARITY_ORDER[code] || 1;
+      const highestRank = RARITY_ORDER[highest] || 1;
+      return rank > highestRank ? code : highest;
+    }, 'C');
+
+    // Déclenche une animation "Fake-Out" gacha si le booster contient une UR, une L ou une SR (à probabilité)
+    const shouldFakeOut =
+      packHighestRarity === 'L'
+        ? Math.random() < 0.65
+        : packHighestRarity === 'UR'
+        ? Math.random() < 0.55
+        : packHighestRarity === 'SR'
+        ? Math.random() < 0.3
+        : false;
+
+    const fakeDisguises =
+      packHighestRarity === 'SR' ? ['C', 'PC'] : ['C', 'PC', 'R'];
+    const chosenFakeRarity = shouldFakeOut
+      ? fakeDisguises[Math.floor(Math.random() * fakeDisguises.length)]
+      : null;
+
+    if (fakeOutTimerRef.current) {
+      clearTimeout(fakeOutTimerRef.current);
+      fakeOutTimerRef.current = null;
+    }
+
+    if (shouldFakeOut && chosenFakeRarity) {
+      setFakeOutState({
+        fakeRarityKey: chosenFakeRarity,
+        trueRarityKey: packHighestRarity,
+        phase: 'disguised',
+      });
+      fakeOutTimerRef.current = setTimeout(() => {
+        soundManager.playFakeOutShock(packHighestRarity);
+        setFakeOutState({
+          fakeRarityKey: chosenFakeRarity,
+          trueRarityKey: packHighestRarity,
+          phase: 'shock',
+        });
+      }, 360);
+    } else {
+      setFakeOutState(null);
+    }
+
     soundManager.playPackRip();
 
     setPackCards(annotatedCards);
@@ -466,8 +519,10 @@ export default function useBoosterOpening({
     if (tearTimerRef.current) {
       clearTimeout(tearTimerRef.current);
     }
+    const tearDurationMs = shouldFakeOut ? 1280 : 850;
     tearTimerRef.current = setTimeout(() => {
       setLockedPackState(null);
+      setFakeOutState(null);
       updateStage('card_by_card');
       if (onCardsOpenedRef.current && pendingCardsRef.current) {
         onCardsOpenedRef.current(pendingCardsRef.current);
@@ -477,7 +532,7 @@ export default function useBoosterOpening({
       triggerCardConfettiIfRare(annotatedCards[0]);
       isOpeningRef.current = false;
       setIsOpening(false);
-    }, 850);
+    }, tearDurationMs);
   };
 
   const handleReopenBooster = () => {
@@ -561,15 +616,24 @@ export default function useBoosterOpening({
     }, 'C');
   }, [packCards]);
 
+  // Rareté actuellement affichée par la lueur du Walkout (prend en compte le déguisement initial du Fake-Out)
+  const displayedRarityKey =
+    fakeOutState?.phase === 'disguised'
+      ? fakeOutState.fakeRarityKey
+      : highestRarityKey;
+
   const highestRarityConfig =
-    RARITIES[highestRarityKey] || RARITIES.C;
+    RARITIES[displayedRarityKey] || RARITIES.C;
+  const isFakeOutShock = fakeOutState?.phase === 'shock';
 
   return {
     stage,
     setStage,
     packCards,
-    highestRarityKey,
+    highestRarityKey: displayedRarityKey,
     highestRarityConfig,
+    isFakeOutShock,
+    fakeOutState,
     currentCardIdx,
     isFetching,
     isOpening,

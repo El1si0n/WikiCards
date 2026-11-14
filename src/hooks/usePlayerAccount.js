@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import confetti from 'canvas-confetti';
 import {
   getStoredUserCode,
   clearStoredUserCode,
@@ -789,15 +788,6 @@ export function usePlayerAccount({
     }
 
     soundManager.playRarityReveal('R');
-    try {
-      confetti({
-        particleCount: 55,
-        spread: 60,
-        origin: { y: 0.15 },
-      });
-    } catch {
-      // ignore
-    }
     setDailyRewardToast(
       `Bourse quotidienne réclamée : +${DAILY_REWARD_AMOUNT} ₩ ont été crédités à votre solde !`
     );

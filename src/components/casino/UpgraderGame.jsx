@@ -161,7 +161,7 @@ export default function UpgraderGame({
           </div>
         </div>
 
-        {/* COLONNE CENTRALE (4 col) : Jauge circulaire SVG + Boost en Wikithunes + Bouton Lancer */}
+        {/* COLONNE CENTRALE (4 col) : Jauge circulaire SVG + Boost en Wikifeet + Bouton Lancer */}
         <div className="lg:col-span-4 flex flex-col items-center justify-between bg-white border border-[#c8ccd1] rounded-[2px] p-4">
           <div className="w-full flex items-center justify-between border-b border-[#eaecf0] pb-2 mb-2">
             <span className="text-[13px] font-bold text-[#202122] uppercase tracking-wider">
@@ -395,7 +395,7 @@ export default function UpgraderGame({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[12.5px] font-bold text-[#202122]">
-                  Boost en Wikithunes
+                  Boost en Wikifeet
                 </span>
                 <span className="text-[12.5px] font-bold text-[#3366cc] inline-flex items-center gap-1">
                   <span>+{effectiveBonusPercent}&nbsp;%</span>
@@ -458,7 +458,7 @@ export default function UpgraderGame({
                   {spinState === 'spinning'
                     ? 'Tirage en cours...'
                     : moneyCost > 0 && wikithunes < moneyCost
-                    ? 'Pas assez de Wikithunes'
+                    ? 'Pas assez de Wikifeet'
                     : "Lancer l'Upgrade"}
                 </span>
               </button>

@@ -40,7 +40,7 @@ export const METRIC_DEFINITIONS = {
     title: 'Solde actuel',
     unit: ' ₩',
     isCurrency: true,
-    description: 'Évolution des liquidités en Wikithunes en banque.',
+    description: 'Évolution des liquidités en Wikifeet en banque.',
     icon: Coins,
   },
   uniqueCardsCount: {

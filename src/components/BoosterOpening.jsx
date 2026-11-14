@@ -47,6 +47,8 @@ export default function BoosterOpening({
     packCards,
     highestRarityKey,
     highestRarityConfig,
+    isFakeOutShock,
+    fakeOutState,
     currentCardIdx,
     isFetching,
     isOpening,
@@ -85,6 +87,8 @@ export default function BoosterOpening({
             isIconicPack={isIconicPack}
             highestRarityKey={highestRarityKey}
             highestRarityConfig={highestRarityConfig}
+            isFakeOutShock={isFakeOutShock}
+            fakeOutState={fakeOutState}
             activePrice={activePrice}
             freeBoostersCount={freeBoostersCount}
             boosterPrice={boosterPrice}

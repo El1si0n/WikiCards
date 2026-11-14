@@ -159,6 +159,83 @@ class SoundManager {
     });
   }
 
+  // Son électrique et explosion dramatique pour un "Fake-Out" à l'ouverture du booster
+  playFakeOutShock(targetRarityCode = 'L') {
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+
+    // 1. Court-circuit / crépitement électrique (bruit haute fréquence haché)
+    this._playFilteredNoise({
+      startTime: now,
+      duration: 0.16,
+      startFreq: 3200,
+      endFreq: 7500,
+      q: 4.5,
+      peakGain: 0.2,
+      filterType: 'bandpass',
+    });
+
+    // 2. Glitch / tension ascendante (oscillateur dent de scie rapide)
+    const zapOsc = ctx.createOscillator();
+    const zapGain = ctx.createGain();
+    zapOsc.type = 'sawtooth';
+    zapOsc.frequency.setValueAtTime(140, now + 0.02);
+    zapOsc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+
+    zapGain.gain.setValueAtTime(0.001, now + 0.02);
+    zapGain.gain.linearRampToValueAtTime(0.14, now + 0.08);
+    zapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+
+    zapOsc.connect(zapGain);
+    zapGain.connect(ctx.destination);
+    zapOsc.start(now + 0.02);
+    zapOsc.stop(now + 0.2);
+
+    // 3. Impact sourd (shatter / bris du sceau) au moment du basculement de couleur (0.18s)
+    const boomOsc = ctx.createOscillator();
+    const boomGain = ctx.createGain();
+    boomOsc.type = 'sine';
+    boomOsc.frequency.setValueAtTime(170, now + 0.17);
+    boomOsc.frequency.exponentialRampToValueAtTime(38, now + 0.52);
+
+    boomGain.gain.setValueAtTime(0.001, now + 0.17);
+    boomGain.gain.linearRampToValueAtTime(0.32, now + 0.2);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    boomOsc.connect(boomGain);
+    boomGain.connect(ctx.destination);
+    boomOsc.start(now + 0.17);
+    boomOsc.stop(now + 0.57);
+
+    // 4. Souffle cristallin d'explosion lumineuse
+    this._playFilteredNoise({
+      startTime: now + 0.18,
+      duration: 0.35,
+      startFreq: 1800,
+      endFreq: 6400,
+      q: 1.4,
+      peakGain: 0.18,
+      filterType: 'bandpass',
+    });
+
+    // 5. Accord héroïque de révélation du vrai Walkout (UR ou L)
+    const chord =
+      targetRarityCode === 'L'
+        ? [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98, 2093.0]
+        : [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51];
+    chord.forEach((freq, idx) => {
+      this._playTone({
+        freq,
+        startTime: now + 0.19 + idx * 0.038,
+        duration: 0.55,
+        peakGain: 0.085,
+        type: 'triangle',
+      });
+    });
+  }
+
   // Son de glissement / retournement de carte carton (whoosh + snap)
   playCardSlide() {
     const ctx = this.initContext();
