@@ -184,7 +184,7 @@ export default function BoosterPackView({
                       className="w-1.5 h-1.5 rounded-full"
                       style={{
                         backgroundColor: highestRarityKey === 'L' ? '#ffea5a' : '#ffffff',
-                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#ef4444' : '#f59e0b'}`,
+                        boxShadow: `0 0 8px ${highestRarityKey === 'L' ? '#deb226' : '#f59e0b'}`,
                       }}
                     />
                   ))}

@@ -18,6 +18,26 @@ import { soundManager } from '../services/sound';
 
 const STORAGE_KEY_NEXT_BOOSTER_ICONIC = 'wikicards_next_booster_is_iconic_v1';
 
+/**
+ * Précharge en mémoire les illustrations d'un lot de cartes afin que leur affichage
+ * lors de l'ouverture du booster soit instantané sans clignotement réseau.
+ * @param {Array<Object>} cards - Cartes dont les images doivent être mises en cache navigateur
+ */
+function preloadCardImages(cards) {
+  if (typeof window === 'undefined' || !Array.isArray(cards)) return;
+  for (const card of cards) {
+    if (card?.image && typeof card.image === 'string') {
+      try {
+        const img = new window.Image();
+        img.decoding = 'async';
+        img.src = card.image;
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
 function getOrRollNextBoosterIsIconic() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC);
@@ -152,9 +172,11 @@ export default function useBoosterOpening({
       try {
         const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
         if (Array.isArray(cards) && cards.length >= 6) {
+          const sixCards = cards.slice(0, 6);
+          preloadCardImages(sixCards);
           preloadedPackRef.current = {
             isIconic: desiredIconic,
-            cards: cards.slice(0, 6),
+            cards: sixCards,
           };
           return preloadedPackRef.current.cards;
         }
@@ -317,6 +339,7 @@ export default function useBoosterOpening({
     }
 
     const validSixCards = cards.slice(0, 6);
+    preloadCardImages(validSixCards);
 
     if (isFree) {
       if (onUseFreeBooster) {

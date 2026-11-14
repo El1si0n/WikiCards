@@ -93,7 +93,7 @@ export default function BoosterRevealView({
             transition={{ duration: 0.3 }}
             className="absolute inset-x-0 mx-auto pointer-events-none select-none z-10 brightness-95"
           >
-            <WikiCard card={nextCard} />
+            <WikiCard card={nextCard} eagerImage />
           </motion.div>
         )}
 
@@ -135,6 +135,7 @@ export default function BoosterRevealView({
               card={currentCard}
               isFavorite={favorites.includes(currentCard.id)}
               onToggleFavorite={onToggleFavorite}
+              eagerImage
             />
           </motion.div>
         </AnimatePresence>

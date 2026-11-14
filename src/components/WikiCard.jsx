@@ -60,6 +60,7 @@ function observeCardElement(element, callback) {
  * @param {boolean} [props.isDisabledSelection=false] - Sélection désactivée
  * @param {string|null} [props.selectionBadgeText=null] - Texte personnalisé du badge de sélection
  * @param {boolean} [props.hideViewsAndRarity=false] - Masquage pour cartes mystères (ex: Plus ou Moins)
+ * @param {boolean} [props.eagerImage=false] - Force le chargement prioritaire immédiat de l'image (ex: ouverture de booster)
  */
 function WikiCard({
   card,
@@ -78,6 +79,7 @@ function WikiCard({
   isDisabledSelection = false,
   selectionBadgeText = null,
   hideViewsAndRarity = false,
+  eagerImage = false,
 }) {
   const cardRef = useRef(null);
   const [imgError, setImgError] = useState(false);
@@ -430,7 +432,9 @@ function WikiCard({
                   src={card.image}
                   alt={card.title}
                   onError={() => setImgError(true)}
-                  loading="lazy"
+                  loading={eagerImage ? 'eager' : 'lazy'}
+                  fetchPriority={eagerImage ? 'high' : 'auto'}
+                  decoding="async"
                   className={`w-full h-full ${
                     card.imageContain
                       ? 'object-contain p-3.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]'

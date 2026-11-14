@@ -180,10 +180,11 @@ export async function fetchWikiCardByTitle(title) {
   const thumbUrl = summary.thumbnail?.source || '';
   const isGif = isGifImageUrl(originalUrl) || isGifImageUrl(thumbUrl);
 
-  // Si c'est un .gif, on privilégie l'originalimage pour conserver l'animation .gif fluide
+  // Si c'est un .gif, on privilégie l'originalimage pour conserver l'animation .gif fluide ;
+  // sinon on utilise exclusivement la miniature (thumbnail) optimisée pour l'affichage web.
   const finalImage = isGif
     ? originalUrl || thumbUrl
-    : thumbUrl || originalUrl || null;
+    : thumbUrl || null;
 
   const sanitizedTitle = cleanCardTitle(summary.title || cleanTitle);
   const baseCard = {
@@ -280,9 +281,11 @@ async function fetchRandomWikiCandidatesBatch(limit = 16) {
       const originalUrl = page.original?.source || '';
       const thumbUrl = page.thumbnail?.source || '';
       const isGif = isGifImageUrl(originalUrl) || isGifImageUrl(thumbUrl);
+      // Utilise systématiquement la miniature redimensionnée (420px) hors fichiers .gif animés :
+      // évite de télécharger des fichiers originaux de 5 à 20 Mo ou des TIFF/SVG non supportés par <img>.
       const finalImage = isGif
         ? originalUrl || thumbUrl
-        : thumbUrl || originalUrl || null;
+        : thumbUrl || null;
 
       const sanitizedTitle = cleanCardTitle(page.title);
       const encoded = encodeURIComponent(page.title.trim().replace(/ /g, '_'));

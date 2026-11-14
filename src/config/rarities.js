@@ -195,12 +195,12 @@ export const RARITY_TIERS = [
     subTextColor: '#302400',
     dividerColor: 'rgba(31, 23, 0, 0.22)',
     walkout: {
-      beam: 'linear-gradient(to top, rgba(254, 202, 202, 0.95) 0%, rgba(248, 113, 113, 0.72) 20%, rgba(220, 38, 38, 0.32) 55%, transparent 100%)',
-      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(248, 113, 113, 0.58) 12deg, transparent 24deg, rgba(254, 242, 242, 0.8) 40deg, transparent 52deg, rgba(239, 68, 68, 0.95) 65deg, transparent 78deg, rgba(254, 240, 138, 0.8) 88deg, transparent 102deg, rgba(248, 113, 113, 0.58) 116deg, transparent 130deg)',
-      crackLine: 'linear-gradient(90deg, rgba(239,68,68,0.5) 0%, rgba(255,255,255,1) 22%, #fff1f2 50%, rgba(255,234,90,1) 78%, rgba(239,68,68,0.5) 100%)',
-      shadow: '0 -1px 20px 5px rgba(220, 38, 38, 0.95), 0 0 25px rgba(254, 240, 138, 0.6)',
-      tearBarBg: '#dc2626',
-      tearBarShadow: '0 0 18px #ef4444',
+      beam: 'linear-gradient(to top, rgba(255, 234, 90, 0.96) 0%, rgba(246, 220, 107, 0.78) 22%, rgba(212, 161, 29, 0.36) 55%, transparent 100%)',
+      ray: 'conic-gradient(from 295deg at 50% 108%, transparent 0deg, rgba(255, 234, 90, 0.62) 12deg, transparent 24deg, rgba(255, 248, 190, 0.85) 40deg, transparent 52deg, rgba(212, 161, 29, 0.95) 65deg, transparent 78deg, rgba(255, 234, 90, 0.85) 88deg, transparent 102deg, rgba(246, 220, 107, 0.62) 116deg, transparent 130deg)',
+      crackLine: 'linear-gradient(90deg, rgba(212,161,29,0.55) 0%, rgba(255,255,255,1) 22%, #fffbeb 50%, rgba(255,234,90,1) 78%, rgba(212,161,29,0.55) 100%)',
+      shadow: '0 -1px 20px 5px rgba(212, 161, 29, 0.95), 0 0 26px rgba(255, 234, 90, 0.75)',
+      tearBarBg: '#deb226',
+      tearBarShadow: '0 0 18px #ffea5a',
     },
   },
 ];

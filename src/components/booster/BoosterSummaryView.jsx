@@ -55,6 +55,7 @@ export default function BoosterSummaryView({
               card={card}
               isFavorite={favorites.includes(card.id)}
               onToggleFavorite={onToggleFavorite}
+              eagerImage
             />
           </motion.div>
         ))}
