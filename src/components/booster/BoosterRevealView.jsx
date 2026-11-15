@@ -93,7 +93,11 @@ export default function BoosterRevealView({
             transition={{ duration: 0.3 }}
             className="absolute inset-x-0 mx-auto pointer-events-none select-none z-10 brightness-95"
           >
-            <WikiCard card={nextCard} eagerImage />
+            <WikiCard
+              card={nextCard}
+              duplicateCount={nextCard.packCopyCount || 1}
+              eagerImage
+            />
           </motion.div>
         )}
 
@@ -133,6 +137,7 @@ export default function BoosterRevealView({
           >
             <WikiCard
               card={currentCard}
+              duplicateCount={currentCard.packCopyCount || 1}
               isFavorite={favorites.includes(currentCard.id)}
               onToggleFavorite={onToggleFavorite}
               eagerImage

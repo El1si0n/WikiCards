@@ -311,10 +311,13 @@ export function recordStatsSnapshot(data = {}) {
         ? data.totalCardsCount
         : safeCol.reduce((sum, c) => sum + (Number(c?.count) || 1), 0);
 
+    const rawDraws = Number(data.stats?.totalCardsDrawn || 0);
     const totalCardsDrawn = hasExplicitStats
       ? boostersOpened > 0
-        ? boostersOpened * 6
-        : Number(data.stats.totalCardsDrawn || 0)
+        ? rawDraws >= boostersOpened * 4 && rawDraws <= boostersOpened * 12
+          ? rawDraws
+          : boostersOpened * 6
+        : rawDraws
       : Number(last?.totalCardsDrawn || 0);
 
     const resolvedCollectionValue =
@@ -688,9 +691,12 @@ export function generateMetricTimeSeries(
         return Number(safeStats?.wonCards || 0) - Number(safeStats?.lostCards || 0);
       case 'totalCardsDrawn': {
         const boosters = Number(safeStats?.boostersOpened || 0);
+        const rawDraws = Number(safeStats?.totalCardsDrawn || 0);
         return boosters > 0
-          ? boosters * 6
-          : Number(safeStats?.totalCardsDrawn || 0);
+          ? rawDraws >= boosters * 4 && rawDraws <= boosters * 12
+            ? rawDraws
+            : boosters * 6
+          : rawDraws;
       }
       case 'lostCards':
         return Number(safeStats?.lostCards || 0);

@@ -153,7 +153,11 @@ export default function useUserProfile({
 
   const totalCardsDrawn = useMemo(() => {
     const boosters = Number(stats?.boostersOpened || 0);
-    return boosters > 0 ? boosters * 6 : Number(stats?.totalCardsDrawn || 0);
+    const raw = Number(stats?.totalCardsDrawn || 0);
+    if (boosters > 0) {
+      return raw >= boosters * 4 && raw <= boosters * 12 ? raw : boosters * 6;
+    }
+    return raw;
   }, [stats]);
 
   const playerScore = useMemo(

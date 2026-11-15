@@ -53,6 +53,9 @@ export default function BoosterOpening({
     isFetching,
     isOpening,
     errorMsg,
+    boosterType,
+    boosterConfig,
+    openedBoosterConfig,
     isIconicPack,
     activePrice,
     packRef,
@@ -84,6 +87,8 @@ export default function BoosterOpening({
         {stage === 'pack' || stage === 'tearing' ? (
           <BoosterPackView
             stage={stage}
+            boosterType={boosterType}
+            boosterConfig={boosterConfig}
             isIconicPack={isIconicPack}
             highestRarityKey={highestRarityKey}
             highestRarityConfig={highestRarityConfig}
@@ -116,6 +121,7 @@ export default function BoosterOpening({
         ) : stage === 'summary' ? (
           <BoosterSummaryView
             packCards={packCards}
+            openedBoosterConfig={openedBoosterConfig}
             favorites={favorites}
             onToggleFavorite={onToggleFavorite}
             handleReopenBooster={handleReopenBooster}

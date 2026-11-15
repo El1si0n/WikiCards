@@ -170,9 +170,15 @@ export function sanitizeUserPayload(payload, existingUser = {}) {
     const rawStats = payload.stats;
     const boostersOpened = Math.max(0, Math.floor(Number(rawStats.boostersOpened) || 0));
     const rawTotalDrawn = Math.max(0, Math.floor(Number(rawStats.totalCardsDrawn) || 0));
+    const resolvedTotalDrawn =
+      boostersOpened > 0
+        ? rawTotalDrawn >= boostersOpened * 4 && rawTotalDrawn <= boostersOpened * 12
+          ? rawTotalDrawn
+          : boostersOpened * 6
+        : rawTotalDrawn;
     sanitized.stats = {
       boostersOpened,
-      totalCardsDrawn: boostersOpened > 0 ? boostersOpened * 6 : rawTotalDrawn,
+      totalCardsDrawn: resolvedTotalDrawn,
       wonCards: Math.max(0, Math.floor(Number(rawStats.wonCards) || 0)),
       lostCards: Math.max(0, Math.floor(Number(rawStats.lostCards) || 0)),
       lostMoneyCasino: Math.max(0, Math.floor(Number(rawStats.lostMoneyCasino) || 0)),

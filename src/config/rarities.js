@@ -29,10 +29,16 @@
 
 export const BOOSTER_PRICE = 200; // Ajusté à 200 ₩ (au lieu de 300 ₩)
 export const ICONIC_BOOSTER_PRICE = 1000; // Ajusté à 1 000 ₩ (5x le booster standard)
+export const CHRISTMAS_BOOSTER_PRICE = 220; // Booster de Noël (8 cartes)
+export const HALLOWEEN_BOOSTER_PRICE = 220; // Booster d'Halloween (4 cartes sans Commune)
+export const SUMMER_BOOSTER_PRICE = 20; // Booster Estival (6 cartes à prix réduit)
+export const SPRING_BOOSTER_PRICE = 320; // Booster de Printemps (6 cartes en double = 12 cartes)
 export const INITIAL_WIKITHUNES = 3000;
 export const DAILY_REWARD_AMOUNT = 550; // Bourse journalière augmentée à 550 ₩ (au lieu de 250 ₩)
 export const SHINY_RECYCLE_MULTIPLIER = 3;
 export const ICONIC_PACK_CHANCE = 0.005; // 0,5 % de chance (1 sur 200 boosters) que le prochain booster soit un Booster Iconique
+export const FREE_SURPRISE_PACK_CHANCE = 0.05; // 5 % de chance que le prochain booster soit offert (0 ₩)
+export const SEASONAL_PACK_CHANCE = 0.25; // 25 % de chance (max <= 30 %) d'obtenir le booster saisonnier pendant sa période
 
 export const RARITY_TIERS = [
   {
@@ -255,5 +261,190 @@ export const RARITIES = RARITY_TIERS.reduce((acc, tier) => {
   acc[tier.code] = tier;
   return acc;
 }, {});
+
+/**
+ * Définition complète des types de boosters (Standard, Offert, Iconique et Saisonniers).
+ */
+export const BOOSTER_TYPES = {
+  standard: {
+    id: 'standard',
+    label: 'Booster',
+    badgeLabel: 'Booster',
+    price: BOOSTER_PRICE,
+    cardCount: 6,
+    copiesPerCard: 1,
+    excludeCommon: false,
+    isIconic: false,
+    canUseFreeBooster: true,
+    isSpecial: false,
+  },
+  free_surprise: {
+    id: 'free_surprise',
+    label: 'Booster',
+    badgeLabel: 'Booster',
+    price: 0,
+    cardCount: 6,
+    copiesPerCard: 1,
+    excludeCommon: false,
+    isIconic: false,
+    canUseFreeBooster: false,
+    isSpecial: false,
+  },
+  iconic: {
+    id: 'iconic',
+    label: 'Booster Iconique',
+    badgeLabel: 'Booster Iconique',
+    price: ICONIC_BOOSTER_PRICE,
+    cardCount: 6,
+    copiesPerCard: 1,
+    excludeCommon: false,
+    isIconic: true,
+    canUseFreeBooster: false,
+    isSpecial: true,
+  },
+  christmas: {
+    id: 'christmas',
+    label: 'Booster de Noël',
+    badgeLabel: 'Booster de Noël',
+    price: CHRISTMAS_BOOSTER_PRICE,
+    cardCount: 8,
+    copiesPerCard: 1,
+    excludeCommon: false,
+    isIconic: false,
+    canUseFreeBooster: false,
+    isSpecial: true,
+    seasonLabel: '1er déc. – 31 déc. (8 cartes)',
+  },
+  halloween: {
+    id: 'halloween',
+    label: "Booster d'Halloween",
+    badgeLabel: "Booster d'Halloween",
+    price: HALLOWEEN_BOOSTER_PRICE,
+    cardCount: 4,
+    copiesPerCard: 1,
+    excludeCommon: true,
+    isIconic: false,
+    canUseFreeBooster: false,
+    isSpecial: true,
+    seasonLabel: '15 oct. – 2 nov. (4 cartes sans C)',
+  },
+  summer: {
+    id: 'summer',
+    label: 'Booster Estival',
+    badgeLabel: 'Booster Estival',
+    price: SUMMER_BOOSTER_PRICE,
+    cardCount: 6,
+    copiesPerCard: 1,
+    excludeCommon: false,
+    isIconic: false,
+    canUseFreeBooster: false,
+    isSpecial: true,
+    seasonLabel: '15 juil. – 15 août (20 ₩)',
+  },
+  spring: {
+    id: 'spring',
+    label: 'Booster de Printemps',
+    badgeLabel: 'Booster de Printemps',
+    price: SPRING_BOOSTER_PRICE,
+    cardCount: 6,
+    copiesPerCard: 2,
+    excludeCommon: false,
+    isIconic: false,
+    canUseFreeBooster: false,
+    isSpecial: true,
+    seasonLabel: '15 mars – 15 avril (6 cartes ×2 = 12)',
+  },
+};
+
+/**
+ * Récupère la configuration d'un type de booster par son identifiant.
+ * @param {string} [typeId='standard'] - Identifiant du type de booster
+ * @returns {Object} Configuration du booster
+ */
+export function getBoosterTypeConfig(typeId = 'standard') {
+  return BOOSTER_TYPES[typeId] || BOOSTER_TYPES.standard;
+}
+
+/**
+ * Détermine si la date fournie se situe dans l'une des périodes saisonnières actives.
+ * - Printemps / Pâques : 15 mars – 15 avril
+ * - Estival / Odyssée : 15 juillet – 15 août
+ * - Halloween / Nocturne : 15 octobre – 2 novembre
+ * - Noël / Givré : 1er décembre – 31 décembre
+ *
+ * @param {Date} [date=new Date()] - Date à évaluer
+ * @returns {'christmas'|'halloween'|'summer'|'spring'|null} Identifiant du booster saisonnier actif ou null
+ */
+export function getActiveSeasonalBoosterType(date = new Date()) {
+  const month = date.getMonth() + 1; // 1 à 12
+  const day = date.getDate(); // 1 à 31
+
+  // Noël : du 1er au 31 décembre
+  if (month === 12 && day >= 1 && day <= 31) {
+    return 'christmas';
+  }
+  // Halloween : du 15 octobre au 2 novembre
+  if ((month === 10 && day >= 15) || (month === 11 && day <= 2)) {
+    return 'halloween';
+  }
+  // Estival : du 15 juillet au 15 août
+  if ((month === 7 && day >= 15) || (month === 8 && day <= 15)) {
+    return 'summer';
+  }
+  // Printemps / Pâques : du 15 mars au 15 avril
+  if ((month === 3 && day >= 15) || (month === 4 && day <= 15)) {
+    return 'spring';
+  }
+
+  return null;
+}
+
+/**
+ * Tire aléatoirement le prochain type de booster selon les probabilités officielles :
+ * - 0,5 % : Booster Iconique ('iconic')
+ * - 5 % : Booster Offert ('free_surprise', 0 ₩)
+ * - 25 % (si période active, max <= 30 %) : Booster Saisonnier de la période
+ * - Reste : Booster Standard ('standard')
+ *
+ * @param {Date} [date=new Date()] - Date courante pour la détection saisonnière
+ * @returns {string} Identifiant du type de booster tiré
+ */
+export function rollNextBoosterType(date = new Date()) {
+  const r = Math.random();
+  if (r < ICONIC_PACK_CHANCE) {
+    return 'iconic';
+  }
+  if (r < ICONIC_PACK_CHANCE + FREE_SURPRISE_PACK_CHANCE) {
+    return 'free_surprise';
+  }
+  const activeSeason = getActiveSeasonalBoosterType(date);
+  if (
+    activeSeason &&
+    r < ICONIC_PACK_CHANCE + FREE_SURPRISE_PACK_CHANCE + SEASONAL_PACK_CHANCE
+  ) {
+    return activeSeason;
+  }
+  return 'standard';
+}
+
+/**
+ * Détecte si l'application s'exécute en environnement local de développement/test
+ * (y compris via `npm run build` puis serveur local sur localhost / 127.0.0.1).
+ * Retourne toujours false sur un domaine public hébergé en production.
+ *
+ * @returns {boolean} Vrai si exécuté localement
+ */
+export function isLocalDevEnvironment() {
+  if (typeof window === 'undefined') return false;
+  const host = String(window.location.hostname || '').toLowerCase();
+  return (
+    Boolean(import.meta?.env?.DEV) ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local')
+  );
+}
 
 export const DEMO_CARDS = [];

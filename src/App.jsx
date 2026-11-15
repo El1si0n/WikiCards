@@ -13,6 +13,7 @@ import NavigationTabs from './components/NavigationTabs';
 import DailyRewardBanner from './components/DailyRewardBanner';
 import AppTabContent from './components/AppTabContent';
 import WikiFooter from './components/WikiFooter';
+import LocalDebugMenu from './components/LocalDebugMenu';
 
 /**
  * Composant racine de l'application WikiCards.
@@ -183,6 +184,11 @@ export default function App() {
 
         <WikiFooter />
       </div>
+
+      <LocalDebugMenu
+        onSelectBoosterTab={setActiveTab}
+        onAddWikithunes={account.addWikithunes}
+      />
     </div>
   );
 }

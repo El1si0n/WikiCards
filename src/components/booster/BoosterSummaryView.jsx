@@ -23,6 +23,7 @@ import WikiCard from '../WikiCard';
  */
 export default function BoosterSummaryView({
   packCards,
+  openedBoosterConfig = null,
   favorites = [],
   onToggleFavorite,
   handleReopenBooster,
@@ -32,6 +33,8 @@ export default function BoosterSummaryView({
   handleResetToNewPack,
 }) {
   const isBusy = isFetching || isOpening;
+  const copiesPerCard = openedBoosterConfig?.copiesPerCard || 1;
+  const totalAddedCount = packCards.length * copiesPerCard;
 
   return (
     <motion.div
@@ -41,7 +44,7 @@ export default function BoosterSummaryView({
       transition={{ duration: 0.3 }}
       className="flex flex-col"
     >
-      {/* Grille récapitulative des 6 cartes obtenues (2 colonnes sur mobile, 3 sur tablette/desktop) */}
+      {/* Grille récapitulative des cartes obtenues (2 colonnes sur mobile, 3 sur tablette/desktop) */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6 py-2 max-w-[940px] mx-auto justify-items-center w-full">
         {packCards.map((card, index) => (
           <motion.div
@@ -53,6 +56,7 @@ export default function BoosterSummaryView({
           >
             <WikiCard
               card={card}
+              duplicateCount={card.packCopyCount || copiesPerCard}
               isFavorite={favorites.includes(card.id)}
               onToggleFavorite={onToggleFavorite}
               eagerImage
@@ -64,7 +68,9 @@ export default function BoosterSummaryView({
       {/* Barre d'actions sous le résumé */}
       <div className="mt-6 pt-4 border-t border-[#eaecf0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <span className="text-[13px] text-[#54595d] text-center sm:text-left">
-          Ces 6 cartes ont été ajoutées à votre classeur.
+          {copiesPerCard > 1
+            ? `Ces ${packCards.length} cartes en double (${totalAddedCount} cartes au total) ont été ajoutées à votre classeur.`
+            : `Ces ${packCards.length} cartes ont été ajoutées à votre classeur.`}
         </span>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">

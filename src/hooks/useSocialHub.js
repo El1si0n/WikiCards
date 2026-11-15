@@ -422,10 +422,13 @@ export default function useSocialHub({
     const casinoBilan = netCasinoGains - lostMoneyCasino;
     const netCardsBilan = wonCards - lostCards;
 
+    const rawDrawn = Number(raw.totalCardsDrawn || 0);
     const totalCardsDrawn =
       boostersOpened > 0
-        ? boostersOpened * 6
-        : Number(raw.totalCardsDrawn || 0);
+        ? rawDrawn >= boostersOpened * 4 && rawDrawn <= boostersOpened * 12
+          ? rawDrawn
+          : boostersOpened * 6
+        : rawDrawn;
 
     return {
       wikithunes: money,

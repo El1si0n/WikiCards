@@ -29,8 +29,222 @@ import WikithuneIcon from '../WikithuneIcon';
  * @param {boolean} [props.isOpening=false] - Indicateur d'ouverture en cours
  * @param {string|null} props.errorMsg - Message d'erreur éventuel
  */
+const PACK_THEMES = {
+  standard: {
+    halo: null,
+    borderClass: 'border-[#b5bcc4]',
+    sealBg:
+      'linear-gradient(90deg, #d8dde3 0%, #f5f7f9 18%, #ffffff 50%, #f5f7f9 82%, #d8dde3 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(114,119,125,0.28) 0px, rgba(114,119,125,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)',
+    tearTextClass: 'text-[#54595d]',
+    bodyBg:
+      'linear-gradient(90deg, #dfe5ec 0%, #f4f7fb 12%, #ffffff 32%, #f8fbff 50%, #ffffff 68%, #f4f7fb 88%, #dfe5ec 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(32, 33, 34, 0.14),
+      inset -22px 0 28px -14px rgba(32, 33, 34, 0.16),
+      inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
+      inset 0 -18px 24px -12px rgba(32, 33, 34, 0.10),
+      0 20px 38px -12px rgba(32, 33, 34, 0.22),
+      0 4px 10px rgba(32, 33, 34, 0.08)
+    `,
+    innerFrameShadow:
+      '0 0 0 1px rgba(255,255,255,0.85), 0 4px 16px rgba(32,33,34,0.06), inset 0 1px 0 rgba(255,255,255,0.9)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(234,243,255,0.45) 0%, rgba(255,255,255,0.2) 50%, rgba(221,236,249,0.5) 100%)',
+    wave1: 'rgba(221, 236, 249, 0.45)',
+    wave2: 'rgba(167, 215, 249, 0.35)',
+    headerBorderClass: 'border-[#a7d7f9]',
+    invertWordmark: false,
+    medallionBorderClass: 'border-[#c8ccd1]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #ffffff 0%, #eef5fb 70%, #ddecf9 100%)',
+    medallionShadow:
+      '0 10px 24px -6px rgba(51, 102, 204, 0.18), inset 0 2px 4px rgba(255, 255, 255, 1)',
+    badgeClass: 'bg-[#3366cc] text-white',
+    subtitleClass: 'text-[#54595d]',
+  },
+  iconic: {
+    halo: 'radial-gradient(circle, #ffea5a 0%, #f0b429 55%, transparent 100%)',
+    borderClass: 'border-[#d4a11d]',
+    sealBg:
+      'linear-gradient(90deg, #e5c878 0%, #fff6d6 20%, #ffffff 50%, #fff6d6 80%, #e5c878 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(180,130,20,0.28) 0px, rgba(180,130,20,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)',
+    tearTextClass: 'text-[#6e4f00]',
+    bodyBg:
+      'linear-gradient(90deg, #ead59b 0%, #fbf3dc 12%, #ffffff 32%, #fffdf5 50%, #ffffff 68%, #fbf3dc 88%, #ead59b 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(140, 95, 10, 0.18),
+      inset -22px 0 28px -14px rgba(140, 95, 10, 0.20),
+      inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
+      inset 0 -18px 24px -12px rgba(140, 95, 10, 0.14),
+      0 20px 42px -10px rgba(212, 161, 29, 0.35),
+      0 4px 12px rgba(32, 33, 34, 0.10)
+    `,
+    innerFrameShadow:
+      '0 0 0 1px rgba(255,240,180,0.9), 0 4px 16px rgba(180,130,20,0.12), inset 0 1px 0 rgba(255,255,255,0.95)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(255,238,165,0.45) 0%, rgba(255,255,255,0.25) 50%, rgba(246,220,107,0.42) 100%)',
+    wave1: 'rgba(255, 228, 130, 0.42)',
+    wave2: 'rgba(235, 190, 75, 0.35)',
+    headerBorderClass: 'border-[#deb226]',
+    invertWordmark: false,
+    medallionBorderClass: 'border-[#d4a11d]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #ffffff 0%, #fff8dc 65%, #f6dc6b 100%)',
+    medallionShadow:
+      '0 10px 26px -4px rgba(212, 161, 29, 0.38), inset 0 2px 4px rgba(255, 255, 255, 1)',
+    badgeClass:
+      'bg-gradient-to-r from-[#b37e08] via-[#d4a11d] to-[#9a6b05] text-white',
+    subtitleClass: 'text-[#6e4f00]',
+  },
+  christmas: {
+    halo: 'radial-gradient(circle, rgba(220, 38, 38, 0.45) 0%, rgba(234, 179, 8, 0.25) 55%, transparent 100%)',
+    borderClass: 'border-[#e5c158]',
+    sealBg:
+      'linear-gradient(90deg, #d4af37 0%, #fff8dc 22%, #ffffff 50%, #fff8dc 78%, #d4af37 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(153,27,27,0.25) 0px, rgba(153,27,27,0.25) 2px, rgba(255,255,255,0.9) 2px, rgba(255,255,255,0.9) 5px)',
+    tearTextClass: 'text-[#7f1d1d]',
+    bodyBg:
+      'linear-gradient(90deg, #6b0f1a 0%, #8f1d2c 14%, #b91c1c 35%, #dc2626 50%, #b91c1c 65%, #8f1d2c 86%, #6b0f1a 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(45, 5, 10, 0.45),
+      inset -22px 0 28px -14px rgba(45, 5, 10, 0.45),
+      inset 0 18px 22px -12px rgba(255, 240, 200, 0.5),
+      inset 0 -18px 24px -12px rgba(45, 5, 10, 0.4),
+      0 20px 42px -10px rgba(185, 28, 28, 0.42),
+      0 4px 12px rgba(32, 33, 34, 0.16)
+    `,
+    innerFrameShadow:
+      '0 0 0 1.5px rgba(253,224,71,0.75), 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.65)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(254,240,138,0.08) 50%, rgba(127,29,29,0.35) 100%)',
+    wave1: 'rgba(254, 240, 138, 0.18)',
+    wave2: 'rgba(255, 255, 255, 0.16)',
+    headerBorderClass: 'border-[#fde047]/60',
+    invertWordmark: true,
+    medallionBorderClass: 'border-[#fde047]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #ffffff 0%, #fffbeb 65%, #fde68a 100%)',
+    medallionShadow:
+      '0 10px 26px -4px rgba(0, 0, 0, 0.45), 0 0 18px rgba(253, 224, 71, 0.4), inset 0 2px 4px rgba(255, 255, 255, 1)',
+    badgeClass:
+      'bg-gradient-to-r from-[#991b1b] via-[#b91c1c] to-[#7f1d1d] text-[#fef08a] border border-[#fde047]/70',
+    subtitleClass: 'text-[#fef9c3]',
+  },
+  halloween: {
+    halo: 'radial-gradient(circle, rgba(249, 115, 22, 0.42) 0%, rgba(147, 51, 234, 0.35) 55%, transparent 100%)',
+    borderClass: 'border-[#f97316]',
+    sealBg:
+      'linear-gradient(90deg, #3b0764 0%, #7e22ce 22%, #f97316 50%, #7e22ce 78%, #3b0764 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(15,10,28,0.48) 0px, rgba(15,10,28,0.48) 2px, rgba(251,146,60,0.45) 2px, rgba(251,146,60,0.45) 5px)',
+    tearTextClass: 'text-[#ffedd5]',
+    bodyBg:
+      'linear-gradient(90deg, #0d0914 0%, #1a1025 15%, #2e1065 36%, #3b0764 50%, #2e1065 64%, #1a1025 85%, #0d0914 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(0, 0, 0, 0.65),
+      inset -22px 0 28px -14px rgba(0, 0, 0, 0.65),
+      inset 0 18px 22px -12px rgba(249, 115, 22, 0.35),
+      inset 0 -18px 24px -12px rgba(147, 51, 234, 0.4),
+      0 20px 42px -10px rgba(147, 51, 234, 0.48),
+      0 4px 14px rgba(249, 115, 22, 0.25)
+    `,
+    innerFrameShadow:
+      '0 0 0 1.5px rgba(249,115,22,0.65), 0 4px 18px rgba(147,51,234,0.35), inset 0 1px 0 rgba(251,146,60,0.4)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(147,51,234,0.22) 0%, rgba(249,115,22,0.12) 50%, rgba(15,10,25,0.5) 100%)',
+    wave1: 'rgba(249, 115, 22, 0.22)',
+    wave2: 'rgba(168, 85, 247, 0.25)',
+    headerBorderClass: 'border-[#f97316]/60',
+    invertWordmark: true,
+    medallionBorderClass: 'border-[#f97316]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #fff7ed 0%, #fed7aa 62%, #fb923c 100%)',
+    medallionShadow:
+      '0 10px 28px -4px rgba(249, 115, 22, 0.48), 0 0 20px rgba(168, 85, 247, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.9)',
+    badgeClass:
+      'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#9333ea] text-white border border-[#fdba74]/60',
+    subtitleClass: 'text-[#fed7aa]',
+  },
+  summer: {
+    halo: 'radial-gradient(circle, rgba(56, 189, 248, 0.42) 0%, rgba(250, 204, 21, 0.32) 55%, transparent 100%)',
+    borderClass: 'border-[#eab308]',
+    sealBg:
+      'linear-gradient(90deg, #facc15 0%, #fef08a 22%, #ffffff 50%, #fef08a 78%, #facc15 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(14,165,233,0.28) 0px, rgba(14,165,233,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)',
+    tearTextClass: 'text-[#0369a1]',
+    bodyBg:
+      'linear-gradient(180deg, #bae6fd 0%, #e0f2fe 26%, #ffffff 52%, #fef9c3 78%, #fde047 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(2, 132, 199, 0.2),
+      inset -22px 0 28px -14px rgba(2, 132, 199, 0.2),
+      inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
+      inset 0 -18px 24px -12px rgba(202, 138, 4, 0.22),
+      0 20px 42px -10px rgba(14, 165, 233, 0.32),
+      0 4px 12px rgba(32, 33, 34, 0.10)
+    `,
+    innerFrameShadow:
+      '0 0 0 1px rgba(250,204,21,0.8), 0 4px 16px rgba(14,165,233,0.14), inset 0 1px 0 rgba(255,255,255,0.95)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(56,189,248,0.25) 0%, rgba(255,255,255,0.3) 50%, rgba(253,224,71,0.35) 100%)',
+    wave1: 'rgba(56, 189, 248, 0.35)',
+    wave2: 'rgba(250, 204, 21, 0.38)',
+    headerBorderClass: 'border-[#38bdf8]',
+    invertWordmark: false,
+    medallionBorderClass: 'border-[#eab308]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #ffffff 0%, #e0f2fe 62%, #fef08a 100%)',
+    medallionShadow:
+      '0 10px 26px -4px rgba(14, 165, 233, 0.32), inset 0 2px 4px rgba(255, 255, 255, 1)',
+    badgeClass:
+      'bg-gradient-to-r from-[#0284c7] via-[#0ea5e9] to-[#eab308] text-white',
+    subtitleClass: 'text-[#0c4a6e]',
+  },
+  spring: {
+    halo: 'radial-gradient(circle, rgba(244, 114, 182, 0.35) 0%, rgba(52, 211, 153, 0.32) 55%, transparent 100%)',
+    borderClass: 'border-[#d4a11d]',
+    sealBg:
+      'linear-gradient(90deg, #f9a8d4 0%, #fce7f3 22%, #ffffff 50%, #d1fae5 78%, #6ee7b7 100%)',
+    sealStripes:
+      'repeating-linear-gradient(90deg, rgba(212,161,29,0.28) 0px, rgba(212,161,29,0.28) 2px, rgba(255,255,255,0.88) 2px, rgba(255,255,255,0.88) 5px)',
+    tearTextClass: 'text-[#065f46]',
+    bodyBg:
+      'linear-gradient(155deg, #fce7f3 0%, #fdf2f8 25%, #ffffff 50%, #ecfdf5 75%, #a7f3d0 100%)',
+    bodyShadow: `
+      inset 22px 0 28px -14px rgba(219, 39, 119, 0.15),
+      inset -22px 0 28px -14px rgba(16, 185, 129, 0.18),
+      inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
+      inset 0 -18px 24px -12px rgba(212, 161, 29, 0.16),
+      0 20px 42px -10px rgba(16, 185, 129, 0.28),
+      0 4px 12px rgba(236, 72, 153, 0.15)
+    `,
+    innerFrameShadow:
+      '0 0 0 1.5px rgba(234,179,8,0.65), 0 4px 16px rgba(16,185,129,0.12), inset 0 1px 0 rgba(255,255,255,0.95)',
+    innerFrameBg:
+      'linear-gradient(180deg, rgba(251,207,232,0.4) 0%, rgba(255,255,255,0.3) 50%, rgba(167,243,208,0.42) 100%)',
+    wave1: 'rgba(244, 114, 182, 0.28)',
+    wave2: 'rgba(52, 211, 153, 0.3)',
+    headerBorderClass: 'border-[#f472b6]/60',
+    invertWordmark: false,
+    medallionBorderClass: 'border-[#d4a11d]',
+    medallionBg:
+      'radial-gradient(circle at 40% 35%, #ffffff 0%, #fdf2f8 62%, #d1fae5 100%)',
+    medallionShadow:
+      '0 10px 26px -4px rgba(236, 72, 153, 0.28), inset 0 2px 4px rgba(255, 255, 255, 1)',
+    badgeClass:
+      'bg-gradient-to-r from-[#059669] via-[#10b981] to-[#db2777] text-white',
+    subtitleClass: 'text-[#065f46]',
+  },
+};
+
 export default function BoosterPackView({
   stage,
+  boosterType = 'standard',
+  boosterConfig = null,
   isIconicPack,
   highestRarityKey = 'C',
   highestRarityConfig = null,
@@ -50,6 +264,20 @@ export default function BoosterPackView({
   errorMsg,
 }) {
   const isLocked = stage !== 'pack' || isOpening || isFetching;
+  const visualKey =
+    boosterType === 'free_surprise'
+      ? 'standard'
+      : PACK_THEMES[boosterType]
+      ? boosterType
+      : isIconicPack
+      ? 'iconic'
+      : 'standard';
+  const packTheme = PACK_THEMES[visualKey] || PACK_THEMES.standard;
+  const badgeLabel =
+    boosterConfig?.badgeLabel ||
+    (isIconicPack ? 'Booster Iconique' : 'Booster');
+  const cardCount = boosterConfig?.cardCount || 6;
+  const isSpecialPack = Boolean(boosterConfig?.isSpecial || isIconicPack);
 
   // Lueur de Walkout personnalisée selon la plus haute rareté contenue dans le booster
   const walkout = highestRarityConfig?.walkout || {
@@ -70,13 +298,12 @@ export default function BoosterPackView({
       transition={{ duration: 0.2 }}
       className="bg-[#f8f9fa] border border-[#eaecf0] rounded-[2px] py-10 px-4 flex flex-col items-center justify-center relative overflow-hidden min-h-[600px]"
     >
-      {/* Halo doré subtil pour booster iconique */}
-      {isIconicPack && (
+      {/* Halo subtil pour booster iconique ou saisonnier */}
+      {packTheme.halo && (
         <div
           className="absolute w-96 h-96 rounded-full pointer-events-none blur-3xl opacity-35"
           style={{
-            background:
-              'radial-gradient(circle, #ffea5a 0%, #f0b429 55%, transparent 100%)',
+            background: packTheme.halo,
           }}
         />
       )}
@@ -341,28 +568,20 @@ export default function BoosterPackView({
                 : { y: 0, x: 0, rotate: 0, opacity: 1 }
             }
             transition={{ duration: 0.42, ease: 'easeIn' }}
-            className={`w-full h-[36px] rounded-t-[8px] relative z-30 flex flex-col justify-between overflow-hidden border border-b-0 ${
-              isIconicPack ? 'border-[#d4a11d]' : 'border-[#b5bcc4]'
-            }`}
+            className={`w-full h-[36px] rounded-t-[8px] relative z-30 flex flex-col justify-between overflow-hidden border border-b-0 ${packTheme.borderClass}`}
             style={{
-              background: isIconicPack
-                ? 'linear-gradient(90deg, #e5c878 0%, #fff6d6 20%, #ffffff 50%, #fff6d6 80%, #e5c878 100%)'
-                : 'linear-gradient(90deg, #d8dde3 0%, #f5f7f9 18%, #ffffff 50%, #f5f7f9 82%, #d8dde3 100%)',
+              background: packTheme.sealBg,
               boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.9)',
             }}
           >
             <div
               className="w-full h-[15px]"
               style={{
-                backgroundImage: isIconicPack
-                  ? 'repeating-linear-gradient(90deg, rgba(180,130,20,0.28) 0px, rgba(180,130,20,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)'
-                  : 'repeating-linear-gradient(90deg, rgba(114,119,125,0.28) 0px, rgba(114,119,125,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)',
+                backgroundImage: packTheme.sealStripes,
               }}
             />
             <div
-              className={`w-full px-3 pb-1 flex items-center justify-between text-[10px] font-bold tracking-wider uppercase ${
-                isIconicPack ? 'text-[#6e4f00]' : 'text-[#54595d]'
-              }`}
+              className={`w-full px-3 pb-1 flex items-center justify-between text-[10px] font-bold tracking-wider uppercase ${packTheme.tearTextClass}`}
             >
               <span>▸</span>
               <span>Déchirer ici</span>
@@ -385,41 +604,17 @@ export default function BoosterPackView({
 
           {/* Corps du sachet */}
           <div
-            className={`w-full h-[386px] relative z-20 overflow-hidden flex flex-col items-center justify-between px-6 py-6 border ${
-              isIconicPack ? 'border-[#d4a11d]' : 'border-[#b5bcc4]'
-            }`}
+            className={`w-full h-[386px] relative z-20 overflow-hidden flex flex-col items-center justify-between px-6 py-6 border ${packTheme.borderClass}`}
             style={{
-              background: isIconicPack
-                ? 'linear-gradient(90deg, #ead59b 0%, #fbf3dc 12%, #ffffff 32%, #fffdf5 50%, #ffffff 68%, #fbf3dc 88%, #ead59b 100%)'
-                : 'linear-gradient(90deg, #dfe5ec 0%, #f4f7fb 12%, #ffffff 32%, #f8fbff 50%, #ffffff 68%, #f4f7fb 88%, #dfe5ec 100%)',
-              boxShadow: isIconicPack
-                ? `
-                  inset 22px 0 28px -14px rgba(140, 95, 10, 0.18),
-                  inset -22px 0 28px -14px rgba(140, 95, 10, 0.20),
-                  inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
-                  inset 0 -18px 24px -12px rgba(140, 95, 10, 0.14),
-                  0 20px 42px -10px rgba(212, 161, 29, 0.35),
-                  0 4px 12px rgba(32, 33, 34, 0.10)
-                `
-                : `
-                  inset 22px 0 28px -14px rgba(32, 33, 34, 0.14),
-                  inset -22px 0 28px -14px rgba(32, 33, 34, 0.16),
-                  inset 0 18px 22px -12px rgba(255, 255, 255, 0.95),
-                  inset 0 -18px 24px -12px rgba(32, 33, 34, 0.10),
-                  0 20px 38px -12px rgba(32, 33, 34, 0.22),
-                  0 4px 10px rgba(32, 33, 34, 0.08)
-                `,
+              background: packTheme.bodyBg,
+              boxShadow: packTheme.bodyShadow,
             }}
           >
             <div
               className="absolute inset-x-[22px] inset-y-[18px] rounded-[14px] pointer-events-none"
               style={{
-                boxShadow: isIconicPack
-                  ? '0 0 0 1px rgba(255,240,180,0.9), 0 4px 16px rgba(180,130,20,0.12), inset 0 1px 0 rgba(255,255,255,0.95)'
-                  : '0 0 0 1px rgba(255,255,255,0.85), 0 4px 16px rgba(32,33,34,0.06), inset 0 1px 0 rgba(255,255,255,0.9)',
-                background: isIconicPack
-                  ? 'linear-gradient(180deg, rgba(255,238,165,0.45) 0%, rgba(255,255,255,0.25) 50%, rgba(246,220,107,0.42) 100%)'
-                  : 'linear-gradient(180deg, rgba(234,243,255,0.45) 0%, rgba(255,255,255,0.2) 50%, rgba(221,236,249,0.5) 100%)',
+                boxShadow: packTheme.innerFrameShadow,
+                background: packTheme.innerFrameBg,
               }}
             />
 
@@ -430,21 +625,93 @@ export default function BoosterPackView({
             >
               <path
                 d="M-30,85 C70,40 190,130 330,75 L330,400 L-30,400 Z"
-                fill={
-                  isIconicPack
-                    ? 'rgba(255, 228, 130, 0.42)'
-                    : 'rgba(221, 236, 249, 0.45)'
-                }
+                fill={packTheme.wave1}
               />
               <path
                 d="M-30,275 C90,225 210,310 330,260 L330,400 L-30,400 Z"
-                fill={
-                  isIconicPack
-                    ? 'rgba(235, 190, 75, 0.35)'
-                    : 'rgba(167, 215, 249, 0.35)'
-                }
+                fill={packTheme.wave2}
               />
             </svg>
+
+            {/* Motifs saisonniers subtils (Flocons pour Noël, Étoiles mystiques pour Halloween, Pétales pour Printemps) */}
+            {visualKey === 'christmas' && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-75">
+                {[
+                  { top: '14%', left: '14%', size: '14px' },
+                  { top: '22%', right: '15%', size: '12px' },
+                  { top: '52%', left: '12%', size: '11px' },
+                  { top: '58%', right: '13%', size: '15px' },
+                  { top: '76%', left: '18%', size: '12px' },
+                  { top: '74%', right: '18%', size: '11px' },
+                ].map((flake, idx) => (
+                  <span
+                    key={idx}
+                    className="absolute text-white/85 select-none drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]"
+                    style={{
+                      top: flake.top,
+                      left: flake.left,
+                      right: flake.right,
+                      fontSize: flake.size,
+                    }}
+                  >
+                    ❄
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {visualKey === 'halloween' && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-75">
+                {[
+                  { top: '16%', left: '15%', size: '12px', color: '#fb923c' },
+                  { top: '24%', right: '14%', size: '14px', color: '#c084fc' },
+                  { top: '54%', left: '13%', size: '13px', color: '#c084fc' },
+                  { top: '60%', right: '14%', size: '12px', color: '#fb923c' },
+                  { top: '75%', left: '18%', size: '11px', color: '#fb923c' },
+                  { top: '73%', right: '18%', size: '13px', color: '#c084fc' },
+                ].map((spark, idx) => (
+                  <span
+                    key={idx}
+                    className="absolute select-none"
+                    style={{
+                      top: spark.top,
+                      left: spark.left,
+                      right: spark.right,
+                      fontSize: spark.size,
+                      color: spark.color,
+                      textShadow: `0 0 8px ${spark.color}`,
+                    }}
+                  >
+                    ✦
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {visualKey === 'spring' && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-70">
+                {[
+                  { top: '16%', left: '15%', size: '13px', color: '#f472b6' },
+                  { top: '22%', right: '15%', size: '12px', color: '#10b981' },
+                  { top: '55%', left: '13%', size: '12px', color: '#10b981' },
+                  { top: '58%', right: '14%', size: '13px', color: '#f472b6' },
+                ].map((petal, idx) => (
+                  <span
+                    key={idx}
+                    className="absolute select-none"
+                    style={{
+                      top: petal.top,
+                      left: petal.left,
+                      right: petal.right,
+                      fontSize: petal.size,
+                      color: petal.color,
+                    }}
+                  >
+                    ❀
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div
               className="absolute top-0 left-0 w-12 h-12 pointer-events-none opacity-40"
@@ -470,34 +737,30 @@ export default function BoosterPackView({
             />
 
             <div
-              className={`relative z-10 w-full flex flex-col items-center border-b pb-3 pt-1 ${
-                isIconicPack ? 'border-[#deb226]' : 'border-[#a7d7f9]'
-              }`}
+              className={`relative z-10 w-full flex flex-col items-center border-b pb-3 pt-1 ${packTheme.headerBorderClass}`}
             >
               <img
                 alt="Wikipédia"
                 src="https://fr.wikipedia.org/static/images/mobile/copyright/wikipedia-wordmark-fr.svg"
-                className="h-[22px] w-auto object-contain"
+                className={`h-[22px] w-auto object-contain ${
+                  packTheme.invertWordmark ? 'brightness-0 invert' : ''
+                }`}
               />
               <img
                 alt="l'encyclopédie libre"
                 src="https://fr.wikipedia.org/static/images/mobile/copyright/wikipedia-tagline-fr.svg"
-                className="h-[13px] w-auto object-contain mt-1 opacity-85"
+                className={`h-[13px] w-auto object-contain mt-1 opacity-85 ${
+                  packTheme.invertWordmark ? 'brightness-0 invert' : ''
+                }`}
               />
             </div>
 
             <div className="relative z-10 my-2 flex items-center justify-center">
               <div
-                className={`w-[148px] h-[148px] rounded-full flex items-center justify-center p-4 border relative ${
-                  isIconicPack ? 'border-[#d4a11d]' : 'border-[#c8ccd1]'
-                }`}
+                className={`w-[148px] h-[148px] rounded-full flex items-center justify-center p-4 border relative ${packTheme.medallionBorderClass}`}
                 style={{
-                  background: isIconicPack
-                    ? 'radial-gradient(circle at 40% 35%, #ffffff 0%, #fff8dc 65%, #f6dc6b 100%)'
-                    : 'radial-gradient(circle at 40% 35%, #ffffff 0%, #eef5fb 70%, #ddecf9 100%)',
-                  boxShadow: isIconicPack
-                    ? '0 10px 26px -4px rgba(212, 161, 29, 0.38), inset 0 2px 4px rgba(255, 255, 255, 1)'
-                    : '0 10px 24px -6px rgba(51, 102, 204, 0.18), inset 0 2px 4px rgba(255, 255, 255, 1)',
+                  background: packTheme.medallionBg,
+                  boxShadow: packTheme.medallionShadow,
                 }}
               >
                 <img
@@ -510,21 +773,15 @@ export default function BoosterPackView({
 
             <div className="relative z-10 w-full flex flex-col items-center text-center">
               <div
-                className={`px-3.5 py-1 rounded-[3px] text-[11.5px] font-bold tracking-wider uppercase shadow-2xs inline-flex items-center gap-1.5 ${
-                  isIconicPack
-                    ? 'bg-gradient-to-r from-[#b37e08] via-[#d4a11d] to-[#9a6b05] text-white'
-                    : 'bg-[#3366cc] text-white'
-                }`}
+                className={`px-3.5 py-1 rounded-[3px] text-[11.5px] font-bold tracking-wider uppercase shadow-2xs inline-flex items-center gap-1.5 ${packTheme.badgeClass}`}
               >
                 <span>
-                  {isIconicPack ? 'Booster Iconique' : 'Booster'} • {activePrice}
+                  {badgeLabel} • {activePrice}
                 </span>
                 <WikithuneIcon className="w-[13px] h-[13px]" />
               </div>
               <div
-                className={`wiki-serif text-[13px] mt-1.5 ${
-                  isIconicPack ? 'text-[#6e4f00]' : 'text-[#54595d]'
-                }`}
+                className={`wiki-serif text-[13px] mt-1.5 ${packTheme.subtitleClass}`}
               >
                 Articles aléatoires de Wikipédia
               </div>
@@ -533,21 +790,15 @@ export default function BoosterPackView({
 
           {/* Soudure inférieure */}
           <div
-            className={`w-full h-[22px] rounded-b-[8px] relative z-20 overflow-hidden border border-t-0 ${
-              isIconicPack ? 'border-[#d4a11d]' : 'border-[#b5bcc4]'
-            }`}
+            className={`w-full h-[22px] rounded-b-[8px] relative z-20 overflow-hidden border border-t-0 ${packTheme.borderClass}`}
             style={{
-              background: isIconicPack
-                ? 'linear-gradient(90deg, #e5c878 0%, #fff6d6 20%, #ffffff 50%, #fff6d6 80%, #e5c878 100%)'
-                : 'linear-gradient(90deg, #d8dde3 0%, #f5f7f9 18%, #ffffff 50%, #f5f7f9 82%, #d8dde3 100%)',
+              background: packTheme.sealBg,
             }}
           >
             <div
               className="w-full h-full"
               style={{
-                backgroundImage: isIconicPack
-                  ? 'repeating-linear-gradient(90deg, rgba(180,130,20,0.28) 0px, rgba(180,130,20,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)'
-                  : 'repeating-linear-gradient(90deg, rgba(114,119,125,0.28) 0px, rgba(114,119,125,0.28) 2px, rgba(255,255,255,0.85) 2px, rgba(255,255,255,0.85) 5px)',
+                backgroundImage: packTheme.sealStripes,
               }}
             />
           </div>
@@ -559,7 +810,7 @@ export default function BoosterPackView({
         {isFetching || (isOpening && stage === 'pack') ? (
           <div className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3366cc]">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Tirage des 6 pages sur Wikipédia...</span>
+            <span>Tirage des {cardCount} pages sur Wikipédia...</span>
           </div>
         ) : stage === 'tearing' ? (
           <div className="inline-flex items-center gap-2 text-[13px] font-medium text-[#3366cc]">
@@ -568,9 +819,12 @@ export default function BoosterPackView({
         ) : (
           <div className="flex flex-col items-center gap-1">
             <span className="text-[13px] text-[#54595d]">
-              Cliquez sur le booster pour l'ouvrir et découvrir vos 6 cartes
+              Cliquez sur le booster pour l'ouvrir et découvrir vos {cardCount} cartes
+              {boosterConfig?.copiesPerCard > 1
+                ? ` en double (${cardCount * boosterConfig.copiesPerCard} cartes)`
+                : ''}
             </span>
-            {isIconicPack && (
+            {isSpecialPack && (
               <button
                 type="button"
                 onClick={handleSkipIconicToStandard}

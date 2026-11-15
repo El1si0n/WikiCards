@@ -351,7 +351,7 @@ async function fetchPureRandomTitles(limit = 12) {
  * @returns {Promise<WikiCard[]>} Liste des cartes du paquet triées
  */
 export async function fetchBoosterPackCards(count = 6, options = {}) {
-  const { isIconic = false } = options;
+  const { isIconic = false, excludeCommon = false } = options;
 
   const baseCandidates = [];
   const seenIds = new Set();
@@ -479,6 +479,21 @@ export async function fetchBoosterPackCards(count = 6, options = {}) {
     });
 
     return promoted.sort((a, b) => (a.views || 0) - (b.views || 0));
+  }
+
+  if (excludeCommon && drawnCards.length > 0) {
+    // Booster d'Halloween : aucune carte Commune (C), toutes les cartes sont Peu Communes (PC) minimum
+    const promotedNoCommon = drawnCards.map((card) => {
+      if (card.rarity === 'C' || (card.views || 0) < 50) {
+        return {
+          ...card,
+          rarity: 'PC',
+          views: getSimulatedViewsForTier('PC', card.views),
+        };
+      }
+      return card;
+    });
+    return promotedNoCommon.sort((a, b) => (a.views || 0) - (b.views || 0));
   }
 
   return drawnCards;

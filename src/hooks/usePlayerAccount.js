@@ -23,6 +23,7 @@ import {
   INITIAL_WIKITHUNES,
   DAILY_REWARD_AMOUNT,
   getCardRecycleValue,
+  isLocalDevEnvironment,
 } from '../config/rarities';
 import { detectCardTheme } from '../config/themes';
 import { calculatePlayerScore } from '../config/playerScore';
@@ -61,6 +62,34 @@ export function getTodayDateKey() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+const LOCAL_DEV_USER_CODE = 'WIKI-DEV0';
+
+function getOrInitLocalUserCode() {
+  const existing = getStoredUserCode();
+  if (existing) return existing;
+  if (isLocalDevEnvironment()) {
+    try {
+      setStoredUserCode(LOCAL_DEV_USER_CODE);
+    } catch {
+      // ignore
+    }
+    return LOCAL_DEV_USER_CODE;
+  }
+  return null;
+}
+
+function resolveTotalCardsDrawn(boostersOpened, rawTotalCardsDrawn) {
+  const boosters = Math.max(0, Math.floor(Number(boostersOpened) || 0));
+  const raw = Math.max(0, Math.floor(Number(rawTotalCardsDrawn) || 0));
+  if (boosters <= 0) return raw;
+  // Un booster peut contenir de 4 cartes (Halloween) à 12 cartes (Printemps 6x2).
+  // Si raw est dans la fourchette plausible des boosters ouverts, on conserve le décompte exact.
+  if (raw >= boosters * 4 && raw <= boosters * 12) {
+    return raw;
+  }
+  return boosters * 6;
+}
+
 /**
  * Hook centralisant l'intégralité de l'état joueur, de sa collection et de la synchronisation serveur.
  * @param {Object} [options={}]
@@ -76,9 +105,9 @@ export function usePlayerAccount({
   dismissedNotifIds = [],
   onHydrateNotifIds,
 } = {}) {
-  const [userCode, setUserCode] = useState(() => getStoredUserCode());
+  const [userCode, setUserCode] = useState(() => getOrInitLocalUserCode());
   const [userProfile, setUserProfile] = useState(() => {
-    const code = getStoredUserCode();
+    const code = getOrInitLocalUserCode();
     return code ? loadLocalProfile(code) : getDefaultProfile('WIKI-0000');
   });
 
@@ -144,8 +173,10 @@ export function usePlayerAccount({
           netCasinoGains: 0,
           recordStreak: 0,
           ...parsed,
-          totalCardsDrawn:
-            boosters > 0 ? boosters * 6 : Number(parsed?.totalCardsDrawn || 0),
+          totalCardsDrawn: resolveTotalCardsDrawn(
+            boosters,
+            parsed?.totalCardsDrawn
+          ),
         };
       }
     } catch {
@@ -315,7 +346,7 @@ export function usePlayerAccount({
         // ignore
       }
       const now = bumpLocalUpdatedAt();
-      if (userCode) {
+      if (userCode && userCode !== LOCAL_DEV_USER_CODE) {
         syncUserAccountToServer(userCode, {
           profile: userProfile,
           collection,
@@ -456,19 +487,19 @@ export function usePlayerAccount({
       }
       if (serverAccount.stats && typeof serverAccount.stats === 'object') {
         const serverBoosters = Number(serverAccount.stats.boostersOpened || 0);
+        const resolvedDraws = resolveTotalCardsDrawn(
+          serverBoosters,
+          serverAccount.stats.totalCardsDrawn
+        );
         setStats({
           boostersOpened: serverBoosters,
-          totalCardsDrawn:
-            serverBoosters > 0
-              ? serverBoosters * 6
-              : Number(serverAccount.stats.totalCardsDrawn || 0),
           lostMoneyCasino: Number(serverAccount.stats.lostMoneyCasino || 0),
           lostCards: Number(serverAccount.stats.lostCards || 0),
           wonCards: Number(serverAccount.stats.wonCards || 0),
           netCasinoGains: Number(serverAccount.stats.netCasinoGains || 0),
           recordStreak: Number(serverAccount.stats.recordStreak || 0),
           ...serverAccount.stats,
-          ...(serverBoosters > 0 ? { totalCardsDrawn: serverBoosters * 6 } : {}),
+          totalCardsDrawn: resolvedDraws,
         });
       }
       if (serverAccount.lastDailyClaimDate) {
@@ -578,6 +609,12 @@ export function usePlayerAccount({
       return;
     }
 
+    // Mode test local (WIKI-DEV0) : évite de polluer data/users/ avec un fichier de compte temporaire
+    if (userCode === LOCAL_DEV_USER_CODE) {
+      isServerHydratedRef.current = true;
+      return;
+    }
+
     let isCancelled = false;
 
     const reconcileWithServer = async () => {
@@ -684,7 +721,7 @@ export function usePlayerAccount({
 
   // Synchronisation automatique vers data/users/<CODE>.json
   useEffect(() => {
-    if (!userCode || !isServerHydratedRef.current) return;
+    if (!userCode || userCode === LOCAL_DEV_USER_CODE || !isServerHydratedRef.current) return;
     if (skipNextPushRef.current) {
       skipNextPushRef.current = false;
       return;
@@ -773,7 +810,7 @@ export function usePlayerAccount({
       console.warn('[WikiCards Snapshot Daily Reward Error]:', snapErr);
     }
 
-    if (userCode) {
+    if (userCode && userCode !== LOCAL_DEV_USER_CODE) {
       syncUserAccountToServer(userCode, {
         profile: userProfile,
         collection,
@@ -937,6 +974,7 @@ export function usePlayerAccount({
     setUserProfile(nextProfile);
     saveLocalProfile(nextProfile, userCode);
     const now = bumpLocalUpdatedAt();
+    if (userCode === LOCAL_DEV_USER_CODE) return;
     try {
       await syncUserAccountToServer(userCode, {
         profile: nextProfile,
@@ -998,14 +1036,16 @@ export function usePlayerAccount({
     const loginBoosters = Number(account.stats?.boostersOpened || 0);
     setStats({
       boostersOpened: 0,
-      totalCardsDrawn: 0,
       lostMoneyCasino: 0,
       lostCards: 0,
       wonCards: 0,
       netCasinoGains: 0,
       recordStreak: 0,
       ...(account.stats || {}),
-      ...(loginBoosters > 0 ? { totalCardsDrawn: loginBoosters * 6 } : {}),
+      totalCardsDrawn: resolveTotalCardsDrawn(
+        loginBoosters,
+        account.stats?.totalCardsDrawn
+      ),
     });
     if (Array.isArray(account.snapshots) && account.snapshots.length > 0) {
       try {
@@ -1089,10 +1129,12 @@ export function usePlayerAccount({
 
   const handleDeleteAccount = useCallback(async () => {
     if (!userCode) return;
-    try {
-      await deleteUserAccount(userCode);
-    } catch (err) {
-      console.error('[handleDeleteAccount Error]:', err);
+    if (userCode !== LOCAL_DEV_USER_CODE) {
+      try {
+        await deleteUserAccount(userCode);
+      } catch (err) {
+        console.error('[handleDeleteAccount Error]:', err);
+      }
     }
 
     try {

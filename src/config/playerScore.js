@@ -121,7 +121,11 @@ export function calculatePlayerScore(playerData = {}) {
   const boostersOpened = Number(stats.boostersOpened || 0);
   const rawTotalDrawn = Number(playerData.totalCardsDrawn ?? stats.totalCardsDrawn ?? 0);
   const totalCardsDrawn =
-    boostersOpened > 0 ? boostersOpened * 6 : rawTotalDrawn;
+    boostersOpened > 0
+      ? rawTotalDrawn >= boostersOpened * 4 && rawTotalDrawn <= boostersOpened * 12
+        ? rawTotalDrawn
+        : boostersOpened * 6
+      : rawTotalDrawn;
 
   // 6. Points de Rareté (~4x par palier supérieur)
   let rarityPoints = 0;

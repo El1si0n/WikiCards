@@ -10,20 +10,31 @@ import { fetchBoosterPackCards } from '../services/wikipedia';
 import {
   BOOSTER_PRICE,
   ICONIC_BOOSTER_PRICE,
-  ICONIC_PACK_CHANCE,
+  BOOSTER_TYPES,
+  getBoosterTypeConfig,
+  rollNextBoosterType,
   RARITY_ORDER,
   RARITIES,
 } from '../config/rarities';
 import { soundManager } from '../services/sound';
 
-const STORAGE_KEY_NEXT_BOOSTER_ICONIC = 'wikicards_next_booster_is_iconic_v1';
-const STORAGE_KEY_PRELOADED_PACK = 'wikicards_preloaded_booster_pack_v1';
+const STORAGE_KEY_NEXT_BOOSTER_TYPE = 'wikicards_next_booster_type_v2';
+const STORAGE_KEY_PRELOADED_PACK = 'wikicards_preloaded_booster_pack_v2';
 
 // Cache global de module : persiste entre les changements d'onglets (Classeur, Casino, Marché, Social -> Accueil)
 // et démarre dès l'import du module pour que le 1er booster soit déjà prêt au clic.
 let globalPreloadedPack = null;
 let globalPreloadPromise = null;
 let globalIsPreloading = false;
+let globalForceNextFakeOut = false;
+
+/**
+ * Permet au Debug Menu local de forcer un Fake-Out sur le prochain booster ouvert.
+ * @param {boolean} [value=true] - Vrai pour forcer le Fake-Out
+ */
+export function setDebugForceNextFakeOut(value = true) {
+  globalForceNextFakeOut = Boolean(value);
+}
 
 /**
  * Précharge en mémoire les illustrations d'un lot de cartes afin que leur affichage
@@ -45,22 +56,33 @@ function preloadCardImages(cards) {
   }
 }
 
+function normalizeBoosterTypeId(rawType) {
+  if (typeof rawType === 'boolean') {
+    return rawType ? 'iconic' : 'standard';
+  }
+  if (typeof rawType === 'string' && BOOSTER_TYPES[rawType]) {
+    return rawType;
+  }
+  return 'standard';
+}
+
 function loadPersistedPreloadedPack() {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PRELOADED_PACK);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    const typeId = normalizeBoosterTypeId(parsed?.boosterType);
+    const cfg = getBoosterTypeConfig(typeId);
     if (
       parsed &&
-      typeof parsed.isIconic === 'boolean' &&
       Array.isArray(parsed.cards) &&
-      parsed.cards.length >= 6 &&
+      parsed.cards.length >= cfg.cardCount &&
       parsed.cards.every((c) => c && c.id && c.title)
     ) {
       const pack = {
-        isIconic: parsed.isIconic,
-        cards: parsed.cards.slice(0, 6),
+        boosterType: typeId,
+        cards: parsed.cards.slice(0, cfg.cardCount),
       };
       preloadCardImages(pack.cards);
       return pack;
@@ -74,14 +96,16 @@ function loadPersistedPreloadedPack() {
 function savePersistedPreloadedPack(pack) {
   if (typeof window === 'undefined') return;
   try {
-    if (!pack || !Array.isArray(pack.cards) || pack.cards.length < 6) {
+    if (!pack || !Array.isArray(pack.cards) || pack.cards.length === 0) {
       localStorage.removeItem(STORAGE_KEY_PRELOADED_PACK);
     } else {
+      const typeId = normalizeBoosterTypeId(pack.boosterType);
+      const cfg = getBoosterTypeConfig(typeId);
       localStorage.setItem(
         STORAGE_KEY_PRELOADED_PACK,
         JSON.stringify({
-          isIconic: Boolean(pack.isIconic),
-          cards: pack.cards.slice(0, 6),
+          boosterType: typeId,
+          cards: pack.cards.slice(0, cfg.cardCount),
         })
       );
     }
@@ -90,28 +114,28 @@ function savePersistedPreloadedPack(pack) {
   }
 }
 
-function getOrRollNextBoosterIsIconic() {
+function getOrRollNextBoosterType() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC);
-    if (saved !== null) {
-      return saved === 'true';
+    const saved = localStorage.getItem(STORAGE_KEY_NEXT_BOOSTER_TYPE);
+    if (saved && BOOSTER_TYPES[saved]) {
+      return saved;
     }
   } catch {
     // ignore
   }
-  const rolled = Math.random() < ICONIC_PACK_CHANCE;
+  const rolled = rollNextBoosterType();
   try {
-    localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC, String(rolled));
+    localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_TYPE, rolled);
   } catch {
     // ignore
   }
   return rolled;
 }
 
-function rollAndSaveNextBoosterIsIconic() {
-  const rolled = Math.random() < ICONIC_PACK_CHANCE;
+function rollAndSaveNextBoosterType() {
+  const rolled = rollNextBoosterType();
   try {
-    localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC, String(rolled));
+    localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_TYPE, rolled);
   } catch {
     // ignore
   }
@@ -119,28 +143,29 @@ function rollAndSaveNextBoosterIsIconic() {
 }
 
 /**
- * Assure qu'un booster de 6 cartes est toujours préchargé en mémoire et dans localStorage,
+ * Assure qu'un booster est toujours préchargé en mémoire et dans localStorage,
  * quelle que soit la page ou l'onglet visité par le joueur.
- * @param {boolean} [targetIsIconic] - Indique si le booster à préparer est iconique
- * @returns {Promise<Array<Object>|null>} Les 6 cartes préchargées
+ * @param {string|boolean} [targetType] - Identifiant du type de booster à préparer
+ * @returns {Promise<Array<Object>|null>} Les cartes préchargées
  */
 export function ensureBoosterPreloaded(
-  targetIsIconic = getOrRollNextBoosterIsIconic()
+  targetType = getOrRollNextBoosterType()
 ) {
-  const desiredIconic = Boolean(targetIsIconic);
+  const desiredType = normalizeBoosterTypeId(targetType);
+  const cfg = getBoosterTypeConfig(desiredType);
 
   if (!globalPreloadedPack) {
     const restored = loadPersistedPreloadedPack();
-    if (restored && restored.isIconic === desiredIconic) {
+    if (restored && restored.boosterType === desiredType) {
       globalPreloadedPack = restored;
     }
   }
 
   if (
     globalPreloadedPack &&
-    globalPreloadedPack.isIconic === desiredIconic &&
+    globalPreloadedPack.boosterType === desiredType &&
     Array.isArray(globalPreloadedPack.cards) &&
-    globalPreloadedPack.cards.length >= 6
+    globalPreloadedPack.cards.length >= cfg.cardCount
   ) {
     preloadCardImages(globalPreloadedPack.cards);
     return Promise.resolve(globalPreloadedPack.cards);
@@ -149,7 +174,7 @@ export function ensureBoosterPreloaded(
   if (
     globalIsPreloading &&
     globalPreloadPromise &&
-    globalPreloadPromise.isIconic === desiredIconic
+    globalPreloadPromise.boosterType === desiredType
   ) {
     return globalPreloadPromise.promise;
   }
@@ -157,13 +182,16 @@ export function ensureBoosterPreloaded(
   globalIsPreloading = true;
   const promise = (async () => {
     try {
-      const cards = await fetchBoosterPackCards(6, { isIconic: desiredIconic });
-      if (Array.isArray(cards) && cards.length >= 6) {
-        const sixCards = cards.slice(0, 6);
-        preloadCardImages(sixCards);
+      const cards = await fetchBoosterPackCards(cfg.cardCount, {
+        isIconic: cfg.isIconic,
+        excludeCommon: cfg.excludeCommon,
+      });
+      if (Array.isArray(cards) && cards.length >= cfg.cardCount) {
+        const slicedCards = cards.slice(0, cfg.cardCount);
+        preloadCardImages(slicedCards);
         const pack = {
-          isIconic: desiredIconic,
-          cards: sixCards,
+          boosterType: desiredType,
+          cards: slicedCards,
         };
         globalPreloadedPack = pack;
         savePersistedPreloadedPack(pack);
@@ -178,7 +206,7 @@ export function ensureBoosterPreloaded(
     return null;
   })();
 
-  globalPreloadPromise = { isIconic: desiredIconic, promise };
+  globalPreloadPromise = { boosterType: desiredType, promise };
   return promise;
 }
 
@@ -219,23 +247,34 @@ export default function useBoosterOpening({
   // Animation "Fake-Out" lors du Walkout : { fakeRarityKey, trueRarityKey, phase: 'disguised' | 'shock' }
   const [fakeOutState, setFakeOutState] = useState(null);
 
-  const [isIconicRoll, setIsIconicRoll] = useState(() =>
-    getOrRollNextBoosterIsIconic()
+  const [boosterTypeRoll, setBoosterTypeRoll] = useState(() =>
+    getOrRollNextBoosterType()
   );
   // Instantané visuel figé dès le clic d'ouverture jusqu'à la fin de l'animation de déchirure ('tearing')
   const [lockedPackState, setLockedPackState] = useState(null);
+  const [openedBoosterType, setOpenedBoosterType] = useState('standard');
 
-  const liveIsIconicPack = isIconicRoll;
-  const liveIsFreeStandardPack = !liveIsIconicPack && freeBoostersCount > 0;
-  const liveActivePrice = liveIsIconicPack
-    ? iconicBoosterPrice
-    : liveIsFreeStandardPack
+  const liveBoosterConfig = getBoosterTypeConfig(boosterTypeRoll);
+  const liveIsIconicPack = liveBoosterConfig.isIconic;
+  const liveUsesFreeCharge =
+    liveBoosterConfig.canUseFreeBooster && freeBoostersCount > 0;
+  const liveIsFreeStandardPack =
+    liveUsesFreeCharge || liveBoosterConfig.id === 'free_surprise';
+  const liveActivePrice = liveUsesFreeCharge
     ? 0
-    : boosterPrice;
+    : liveBoosterConfig.id === 'iconic'
+    ? iconicBoosterPrice
+    : liveBoosterConfig.id === 'standard'
+    ? boosterPrice
+    : liveBoosterConfig.price;
 
   const isPackVisualLocked = Boolean(
     lockedPackState && (isOpening || isFetching || stage === 'tearing')
   );
+  const activeBoosterType = isPackVisualLocked
+    ? lockedPackState.boosterType
+    : liveBoosterConfig.id;
+  const activeBoosterConfig = getBoosterTypeConfig(activeBoosterType);
   const isIconicPack = isPackVisualLocked
     ? lockedPackState.isIconic
     : liveIsIconicPack;
@@ -270,18 +309,54 @@ export default function useBoosterOpening({
   };
 
   const preloadNextBooster = (
-    targetIsIconic = getOrRollNextBoosterIsIconic()
-  ) => ensureBoosterPreloaded(targetIsIconic);
+    targetType = getOrRollNextBoosterType()
+  ) => ensureBoosterPreloaded(targetType);
 
   useEffect(() => {
-    preloadNextBooster(isIconicRoll);
+    preloadNextBooster(boosterTypeRoll);
     const keepWarmInterval = setInterval(() => {
       if (!globalPreloadedPack && !globalIsPreloading) {
-        preloadNextBooster(getOrRollNextBoosterIsIconic());
+        preloadNextBooster(getOrRollNextBoosterType());
       }
     }, 5000);
+
+    // Écouteur d'événement personnalisé pour permettre au Debug Menu local de faire spawn un booster précis
+    const handleDebugSpawnBooster = (event) => {
+      const requestedType = normalizeBoosterTypeId(event?.detail?.boosterType);
+      if (isOpeningRef.current) return;
+      soundManager.playBoosterCharge();
+      setErrorMsg(null);
+      setLockedPackState(null);
+      setBoosterTypeRoll(requestedType);
+      try {
+        localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_TYPE, requestedType);
+      } catch {
+        // ignore
+      }
+      globalPreloadedPack = null;
+      globalPreloadPromise = null;
+      savePersistedPreloadedPack(null);
+      updateStage('pack');
+      setPackCards([]);
+      setCurrentCardIdx(0);
+      preloadNextBooster(requestedType);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener(
+        'wikicards:debug-spawn-booster',
+        handleDebugSpawnBooster
+      );
+    }
+
     return () => {
       clearInterval(keepWarmInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(
+          'wikicards:debug-spawn-booster',
+          handleDebugSpawnBooster
+        );
+      }
       if (tearTimerRef.current) {
         clearTimeout(tearTimerRef.current);
       }
@@ -330,7 +405,7 @@ export default function useBoosterOpening({
     }
   };
 
-  const handleOpenPack = async (overrideIsIconic = null) => {
+  const handleOpenPack = async (overrideType = null) => {
     // Sécurité stricte : bloque tout double-clic ou tentative d'ouverture concurrente
     if (
       isOpeningRef.current ||
@@ -343,15 +418,25 @@ export default function useBoosterOpening({
     setIsOpening(true);
     setErrorMsg(null);
 
-    const isPackIconic =
-      typeof overrideIsIconic === 'boolean' ? overrideIsIconic : liveIsIconicPack;
-    setIsIconicRoll(isPackIconic);
-    const isFree = !isPackIconic && freeBoostersCount > 0;
-    const priceToPay = isFree
+    const chosenType =
+      overrideType !== null && overrideType !== undefined
+        ? normalizeBoosterTypeId(overrideType)
+        : liveBoosterConfig.id;
+    const packConfig = getBoosterTypeConfig(chosenType);
+    const targetCardCount = packConfig.cardCount || 6;
+
+    setBoosterTypeRoll(chosenType);
+    setOpenedBoosterType(chosenType);
+
+    const usesFreeBoosterCharge =
+      packConfig.canUseFreeBooster && freeBoostersCount > 0;
+    const priceToPay = usesFreeBoosterCharge
       ? 0
-      : isPackIconic
+      : chosenType === 'iconic'
       ? iconicBoosterPrice
-      : boosterPrice;
+      : chosenType === 'standard'
+      ? boosterPrice
+      : packConfig.price;
 
     if (wikithunes < priceToPay) {
       soundManager.playErrorSound();
@@ -365,14 +450,15 @@ export default function useBoosterOpening({
     // Verrouille l'apparence exacte du sachet en cours d'ouverture (type et prix affiché)
     // afin que le débit du booster gratuit ou le tirage du prochain booster ne modifie pas le sachet pendant 'tearing'
     setLockedPackState({
-      isIconic: isPackIconic,
-      isFree,
+      boosterType: chosenType,
+      isIconic: packConfig.isIconic,
+      isFree: usesFreeBoosterCharge || chosenType === 'free_surprise',
       price: priceToPay,
     });
 
     if (!globalPreloadedPack) {
       const restored = loadPersistedPreloadedPack();
-      if (restored && restored.isIconic === isPackIconic) {
+      if (restored && restored.boosterType === chosenType) {
         globalPreloadedPack = restored;
       }
     }
@@ -380,24 +466,24 @@ export default function useBoosterOpening({
     let cards = null;
     if (
       globalPreloadedPack &&
-      globalPreloadedPack.isIconic === isPackIconic &&
+      globalPreloadedPack.boosterType === chosenType &&
       Array.isArray(globalPreloadedPack.cards) &&
-      globalPreloadedPack.cards.length >= 6
+      globalPreloadedPack.cards.length >= targetCardCount
     ) {
-      cards = globalPreloadedPack.cards.slice(0, 6);
+      cards = globalPreloadedPack.cards.slice(0, targetCardCount);
       globalPreloadedPack = null;
       savePersistedPreloadedPack(null);
     } else if (
       globalIsPreloading &&
       globalPreloadPromise &&
-      globalPreloadPromise.isIconic === isPackIconic
+      globalPreloadPromise.boosterType === chosenType
     ) {
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
         const awaited = await globalPreloadPromise.promise;
-        if (Array.isArray(awaited) && awaited.length >= 6) {
-          cards = awaited.slice(0, 6);
+        if (Array.isArray(awaited) && awaited.length >= targetCardCount) {
+          cards = awaited.slice(0, targetCardCount);
           globalPreloadedPack = null;
           savePersistedPreloadedPack(null);
         }
@@ -407,14 +493,17 @@ export default function useBoosterOpening({
       setIsFetching(false);
     }
 
-    if (!cards || cards.length < 6) {
+    if (!cards || cards.length < targetCardCount) {
       soundManager.playBoosterCharge();
       setIsFetching(true);
       try {
-        cards = await fetchBoosterPackCards(6, { isIconic: isPackIconic });
+        cards = await fetchBoosterPackCards(targetCardCount, {
+          isIconic: packConfig.isIconic,
+          excludeCommon: packConfig.excludeCommon,
+        });
       } catch {
         setErrorMsg(
-          'Connexion instable : impossible de récupérer les 6 cartes sur Wikipédia. Aucun booster débité, veuillez réessayer.'
+          `Connexion instable : impossible de récupérer les ${targetCardCount} cartes sur Wikipédia. Aucun booster débité, veuillez réessayer.`
         );
         setIsFetching(false);
         setLockedPackState(null);
@@ -426,9 +515,9 @@ export default function useBoosterOpening({
       setIsFetching(false);
     }
 
-    if (!Array.isArray(cards) || cards.length < 6) {
+    if (!Array.isArray(cards) || cards.length < targetCardCount) {
       setErrorMsg(
-        'Connexion instable : moins de 6 articles ont pu être chargés. Aucun booster débité, veuillez réessayer.'
+        `Connexion instable : moins de ${targetCardCount} articles ont pu être chargés. Aucun booster débité, veuillez réessayer.`
       );
       setLockedPackState(null);
       updateStage('pack');
@@ -437,10 +526,10 @@ export default function useBoosterOpening({
       return;
     }
 
-    const validSixCards = cards.slice(0, 6);
-    preloadCardImages(validSixCards);
+    const validPackCards = cards.slice(0, targetCardCount);
+    preloadCardImages(validPackCards);
 
-    if (isFree) {
+    if (usesFreeBoosterCharge) {
       if (onUseFreeBooster) {
         onUseFreeBooster();
       }
@@ -450,15 +539,24 @@ export default function useBoosterOpening({
 
     // Sauvegarde le tirage du prochain booster en localStorage sans écraser
     // le type visuel ni le prix du booster actuellement en cours d'animation ('tearing').
-    const nextRolled = rollAndSaveNextBoosterIsIconic();
+    const nextRolled = rollAndSaveNextBoosterType();
 
+    const copiesPerCard = packConfig.copiesPerCard || 1;
     const ownedSet = new Set(existingCardIds);
     const seenInPack = new Set();
-    const annotatedCards = validSixCards.map((c) => {
+    const annotatedCards = validPackCards.map((c) => {
       const isNew = !ownedSet.has(c.id) && !seenInPack.has(c.id);
       seenInPack.add(c.id);
-      return { ...c, isNew };
+      return { ...c, isNew, packCopyCount: copiesPerCard };
     });
+
+    // Pour le classeur, si copiesPerCard === 2 (Booster de Printemps), chaque carte est ajoutée en double (12 cartes)
+    const cardsForCollection =
+      copiesPerCard > 1
+        ? annotatedCards.flatMap((c) =>
+            Array.from({ length: copiesPerCard }, () => ({ ...c }))
+          )
+        : annotatedCards;
 
     // Détection de la plus haute rareté réelle du booster pour préparer un éventuel "Fake-Out"
     const packHighestRarity = annotatedCards.reduce((highest, card) => {
@@ -468,18 +566,28 @@ export default function useBoosterOpening({
       return rank > highestRank ? code : highest;
     }, 'C');
 
-    // Déclenche une animation "Fake-Out" gacha si le booster contient une UR, une L ou une SR (à probabilité)
-    const shouldFakeOut =
-      packHighestRarity === 'L'
-        ? Math.random() < 0.65
-        : packHighestRarity === 'UR'
-        ? Math.random() < 0.55
-        : packHighestRarity === 'SR'
-        ? Math.random() < 0.3
-        : false;
+    const forcedFakeOut = globalForceNextFakeOut;
+    if (forcedFakeOut) {
+      globalForceNextFakeOut = false;
+    }
+
+    // Déclenche une animation "Fake-Out" gacha si le booster contient une UR, une L ou une SR (ou si forcé en debug)
+    const shouldFakeOut = forcedFakeOut
+      ? packHighestRarity !== 'C'
+      : packHighestRarity === 'L'
+      ? Math.random() < 0.65
+      : packHighestRarity === 'UR'
+      ? Math.random() < 0.55
+      : packHighestRarity === 'SR'
+      ? Math.random() < 0.3
+      : false;
 
     const fakeDisguises =
-      packHighestRarity === 'SR' ? ['C', 'PC'] : ['C', 'PC', 'R'];
+      packHighestRarity === 'SR' || packHighestRarity === 'PC'
+        ? ['C']
+        : packHighestRarity === 'R'
+        ? ['C', 'PC']
+        : ['C', 'PC', 'R'];
     const chosenFakeRarity = shouldFakeOut
       ? fakeDisguises[Math.floor(Math.random() * fakeDisguises.length)]
       : null;
@@ -512,7 +620,7 @@ export default function useBoosterOpening({
     setPackCards(annotatedCards);
     setCurrentCardIdx(0);
     updateStage('tearing');
-    pendingCardsRef.current = annotatedCards;
+    pendingCardsRef.current = cardsForCollection;
 
     preloadNextBooster(nextRolled);
 
@@ -537,19 +645,20 @@ export default function useBoosterOpening({
 
   const handleReopenBooster = () => {
     if (isOpeningRef.current || isFetching) return;
-    const nextIsIconic = getOrRollNextBoosterIsIconic();
-    setIsIconicRoll(nextIsIconic);
-    if (nextIsIconic) {
-      // Affiche le sachet doré Iconique pour que le joueur voie son apparition
+    const nextType = getOrRollNextBoosterType();
+    setBoosterTypeRoll(nextType);
+    const nextCfg = getBoosterTypeConfig(nextType);
+    if (nextCfg.isSpecial || nextType === 'free_surprise') {
+      // Affiche le sachet spécial/saisonnier/offert pour que le joueur voie son apparition
       // et puisse choisir de l'ouvrir ou de le passer au booster standard.
       soundManager.playBoosterCharge();
       updateStage('pack');
       setPackCards([]);
       setCurrentCardIdx(0);
-      preloadNextBooster(true);
+      preloadNextBooster(nextType);
       return;
     }
-    handleOpenPack(false);
+    handleOpenPack('standard');
   };
 
   const handleNextCard = () => {
@@ -575,28 +684,28 @@ export default function useBoosterOpening({
     if (isOpeningRef.current || isFetching) return;
     soundManager.playBoosterCharge();
     setLockedPackState(null);
-    const nextIsIconic = getOrRollNextBoosterIsIconic();
-    setIsIconicRoll(nextIsIconic);
+    const nextType = getOrRollNextBoosterType();
+    setBoosterTypeRoll(nextType);
     updateStage('pack');
     setPackCards([]);
     setCurrentCardIdx(0);
-    preloadNextBooster(nextIsIconic);
+    preloadNextBooster(nextType);
   };
 
   const handleSkipIconicToStandard = () => {
     if (isOpeningRef.current || isFetching || stageRef.current !== 'pack') return;
     setErrorMsg(null);
     setLockedPackState(null);
-    setIsIconicRoll(false);
+    setBoosterTypeRoll('standard');
     try {
-      localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_ICONIC, 'false');
+      localStorage.setItem(STORAGE_KEY_NEXT_BOOSTER_TYPE, 'standard');
     } catch {
       // ignore
     }
     globalPreloadedPack = null;
     globalPreloadPromise = null;
     savePersistedPreloadedPack(null);
-    preloadNextBooster(false);
+    preloadNextBooster('standard');
   };
 
   const currentCard = packCards[currentCardIdx] || null;
@@ -638,6 +747,9 @@ export default function useBoosterOpening({
     isFetching,
     isOpening,
     errorMsg,
+    boosterType: activeBoosterType,
+    boosterConfig: activeBoosterConfig,
+    openedBoosterConfig: getBoosterTypeConfig(openedBoosterType),
     isIconicPack,
     isFreeStandardPack,
     activePrice,
