@@ -59,7 +59,6 @@ export default function BoosterOpening({
     isIconicPack,
     activePrice,
     packRef,
-    revealCardRef,
     glare,
     handlePackMouseMove,
     handlePackMouseLeave,
@@ -110,7 +109,6 @@ export default function BoosterOpening({
           />
         ) : stage === 'card_by_card' && currentCard ? (
           <BoosterRevealView
-            revealCardRef={revealCardRef}
             currentCard={currentCard}
             nextCard={nextCard}
             currentCardIdx={currentCardIdx}

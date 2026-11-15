@@ -1,6 +1,6 @@
 /**
  * @file Rôle : Vue 3D du sachet de booster fermé et animation de déchirure physique du pack.
- * Dépendances : React, `framer-motion`, `lucide-react`, `../WikithuneIcon`.
+ * Dépendances : React, `framer-motion`, `lucide-react`, `../WikithuneIcon`, `./PackDecorations`.
  * Effets de bord : Déclenche l'ouverture du booster au clic.
  */
 
@@ -8,6 +8,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import WikithuneIcon from '../WikithuneIcon';
+import { PackBodyDecoration, PackMedallionDecoration } from './PackDecorations';
 
 /**
  * Vue interactive de présentation et de déchirure du sachet de booster.
@@ -633,128 +634,8 @@ export default function BoosterPackView({
               />
             </svg>
 
-            {/* Motifs saisonniers (Flocons pour Noël, Étoiles mystiques pour Halloween, Feuilles/Fleurs pour Printemps) */}
-            {visualKey === 'christmas' && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-90">
-                {[
-                  { top: '13%', left: '12%', size: '17px', rotate: '-10deg' },
-                  { top: '19%', right: '8%', size: '30px', rotate: '15deg' },
-                  { top: '48%', left: '9%', size: '18px', rotate: '8deg' },
-                  { top: '57%', right: '11%', size: '22px', rotate: '-14deg' },
-                  { top: '63%', left: '6%', size: '32px', rotate: '-18deg' },
-                  { top: '76%', left: '18%', size: '16px', rotate: '12deg' },
-                  { top: '73%', right: '16%', size: '18px', rotate: '-8deg' },
-                ].map((flake, idx) => (
-                  <span
-                    key={idx}
-                    className="absolute text-white/90 select-none drop-shadow-[0_0_8px_rgba(255,255,255,0.95)]"
-                    style={{
-                      top: flake.top,
-                      left: flake.left,
-                      right: flake.right,
-                      fontSize: flake.size,
-                      transform: `rotate(${flake.rotate})`,
-                    }}
-                  >
-                    ❄
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {visualKey === 'halloween' && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-75">
-                {[
-                  { top: '16%', left: '15%', size: '12px', color: '#fb923c' },
-                  { top: '24%', right: '14%', size: '14px', color: '#c084fc' },
-                  { top: '54%', left: '13%', size: '13px', color: '#c084fc' },
-                  { top: '60%', right: '14%', size: '12px', color: '#fb923c' },
-                  { top: '75%', left: '18%', size: '11px', color: '#fb923c' },
-                  { top: '73%', right: '18%', size: '13px', color: '#c084fc' },
-                ].map((spark, idx) => (
-                  <span
-                    key={idx}
-                    className="absolute select-none"
-                    style={{
-                      top: spark.top,
-                      left: spark.left,
-                      right: spark.right,
-                      fontSize: spark.size,
-                      color: spark.color,
-                      textShadow: `0 0 8px ${spark.color}`,
-                    }}
-                  >
-                    ✦
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {visualKey === 'spring' && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-85">
-                {[
-                  { top: '16%', left: '14%', size: '14px', color: '#f472b6' },
-                  { top: '25%', right: '13%', size: '13px', color: '#10b981' },
-                  { top: '55%', left: '11%', size: '13px', color: '#10b981' },
-                  { top: '58%', right: '12%', size: '14px', color: '#f472b6' },
-                ].map((petal, idx) => (
-                  <span
-                    key={idx}
-                    className="absolute select-none"
-                    style={{
-                      top: petal.top,
-                      left: petal.left,
-                      right: petal.right,
-                      fontSize: petal.size,
-                      color: petal.color,
-                    }}
-                  >
-                    ❀
-                  </span>
-                ))}
-                {/* Feuilles printanières dans les coins */}
-                <svg
-                  viewBox="0 0 44 44"
-                  className="absolute top-[13%] right-[9%] w-8 h-8 drop-shadow-[0_2px_4px_rgba(16,185,129,0.25)]"
-                >
-                  <path
-                    d="M34 8 C18 8 10 20 12 36 C28 36 36 24 34 8 Z"
-                    fill="#6ee7b7"
-                    fillOpacity="0.65"
-                    stroke="#10b981"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M12 36 C19 27 25 19 32 10"
-                    fill="none"
-                    stroke="#059669"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <svg
-                  viewBox="0 0 44 44"
-                  className="absolute top-[65%] left-[9%] w-8 h-8 drop-shadow-[0_2px_4px_rgba(16,185,129,0.25)]"
-                >
-                  <path
-                    d="M36 14 C22 10 10 18 8 32 C22 36 34 28 36 14 Z"
-                    fill="#6ee7b7"
-                    fillOpacity="0.65"
-                    stroke="#10b981"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M6 34 C16 28 25 22 34 15"
-                    fill="none"
-                    stroke="#059669"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            )}
+            {/* Motifs saisonniers répartis sur le sachet (flocons, étoiles mystiques, fleurs et feuilles) */}
+            <PackBodyDecoration visualKey={visualKey} />
 
             <div
               className="absolute top-0 left-0 w-12 h-12 pointer-events-none opacity-40"
@@ -799,172 +680,9 @@ export default function BoosterPackView({
             </div>
 
             <div className="relative z-10 my-2 flex items-center justify-center">
-              {/* Rayons de soleil autour du médaillon pour le Booster Estival */}
-              {visualKey === 'summer' && (
-                <svg
-                  viewBox="0 0 236 236"
-                  className="absolute w-[228px] h-[228px] pointer-events-none select-none z-0 drop-shadow-[0_2px_6px_rgba(234,179,8,0.45)]"
-                >
-                  <defs>
-                    <linearGradient
-                      id="summerSunRayGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#fef08a" />
-                      <stop offset="55%" stopColor="#facc15" />
-                      <stop offset="100%" stopColor="#eab308" />
-                    </linearGradient>
-                  </defs>
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const angle = i * 30 - 15;
-                    const isLong = i % 2 === 0;
-                    const tipY = isLong ? 6 : 16;
-                    const baseHalf = isLong ? 11.5 : 8.5;
-                    return (
-                      <polygon
-                        key={i}
-                        points={`118,${tipY} ${118 - baseHalf},45 ${118 + baseHalf},45`}
-                        fill="url(#summerSunRayGrad)"
-                        stroke="#ca8a04"
-                        strokeWidth="1.1"
-                        strokeLinejoin="round"
-                        transform={`rotate(${angle} 118 118)`}
-                      />
-                    );
-                  })}
-                </svg>
-              )}
-
-              {/* Pétales de fleur autour du médaillon pour le Booster de Printemps */}
-              {visualKey === 'spring' && (
-                <svg
-                  viewBox="0 0 236 236"
-                  className="absolute w-[226px] h-[226px] pointer-events-none select-none z-0 drop-shadow-[0_3px_8px_rgba(236,72,153,0.28)]"
-                >
-                  <defs>
-                    <radialGradient
-                      id="springPetalGrad"
-                      cx="50%"
-                      cy="30%"
-                      r="70%"
-                    >
-                      <stop offset="0%" stopColor="#fdf2f8" />
-                      <stop offset="55%" stopColor="#fbcfe8" />
-                      <stop offset="100%" stopColor="#f472b6" />
-                    </radialGradient>
-                  </defs>
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const angle = i * 45;
-                    return (
-                      <g key={i} transform={`rotate(${angle} 118 118)`}>
-                        <path
-                          d="M 95 48 C 86 20, 103 6, 118 13 C 133 6, 150 20, 141 48 Z"
-                          fill="url(#springPetalGrad)"
-                          stroke="#ec4899"
-                          strokeWidth="1.8"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M 118 44 L 118 22"
-                          stroke="#f472b6"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          opacity="0.65"
-                        />
-                      </g>
-                    );
-                  })}
-                </svg>
-              )}
-
-              {/* Couronne de branches de laurier dorées pour le Booster Iconique */}
-              {visualKey === 'iconic' && (
-                <svg
-                  viewBox="0 0 244 220"
-                  className="absolute w-[238px] h-[214px] pointer-events-none select-none z-0 drop-shadow-[0_2px_5px_rgba(180,130,20,0.38)]"
-                >
-                  <defs>
-                    <linearGradient
-                      id="iconicLaurelGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="0%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#fef08a" />
-                      <stop offset="45%" stopColor="#eab308" />
-                      <stop offset="100%" stopColor="#b45309" />
-                    </linearGradient>
-                  </defs>
-                  {[-1, 1].map((dir) => (
-                    <g
-                      key={dir}
-                      transform={
-                        dir === -1 ? undefined : 'translate(244, 0) scale(-1, 1)'
-                      }
-                    >
-                      {/* Tige principale arquée */}
-                      <path
-                        d="M 92 194 C 36 178, 16 116, 40 44"
-                        fill="none"
-                        stroke="url(#iconicLaurelGrad)"
-                        strokeWidth="2.6"
-                        strokeLinecap="round"
-                      />
-                      {/* Paires de feuilles le long de la branche */}
-                      {[
-                        { x: 76, y: 187, rot: -25, scale: 0.92 },
-                        { x: 54, y: 171, rot: -45, scale: 0.98 },
-                        { x: 37, y: 147, rot: -68, scale: 1.02 },
-                        { x: 29, y: 118, rot: -88, scale: 1.02 },
-                        { x: 29, y: 88, rot: -106, scale: 0.96 },
-                        { x: 35, y: 61, rot: -122, scale: 0.88 },
-                      ].map((leaf, idx) => (
-                        <g
-                          key={idx}
-                          transform={`translate(${leaf.x}, ${leaf.y}) rotate(${leaf.rot}) scale(${leaf.scale})`}
-                        >
-                          {/* Feuille extérieure */}
-                          <path
-                            d="M 0 0 C -10 -7, -14 -19, -4 -26 C 3 -18, 4 -8, 0 0 Z"
-                            fill="url(#iconicLaurelGrad)"
-                            stroke="#9a6b05"
-                            strokeWidth="0.9"
-                          />
-                          {/* Feuille intérieure */}
-                          <path
-                            d="M 0 0 C 10 -6, 15 -17, 6 -25 C -1 -18, -2 -8, 0 0 Z"
-                            fill="url(#iconicLaurelGrad)"
-                            stroke="#9a6b05"
-                            strokeWidth="0.9"
-                          />
-                        </g>
-                      ))}
-                      {/* Feuille terminale au sommet */}
-                      <path
-                        d="M 40 44 C 35 31, 41 20, 49 17 C 52 27, 47 38, 40 44 Z"
-                        fill="url(#iconicLaurelGrad)"
-                        stroke="#9a6b05"
-                        strokeWidth="0.9"
-                      />
-                    </g>
-                  ))}
-                  {/* Croisement des rubans à la base de la couronne */}
-                  <path
-                    d="M 104 192 Q 122 200 140 192"
-                    fill="none"
-                    stroke="#b45309"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
-
+              <PackMedallionDecoration visualKey={visualKey} layer="back" />
               <div
-                className={`w-[148px] h-[148px] rounded-full flex items-center justify-center p-4 border relative z-10 ${packTheme.medallionBorderClass}`}
+                className={`w-[148px] h-[148px] rounded-full flex items-center justify-center p-4 border relative ${packTheme.medallionBorderClass}`}
                 style={{
                   background: packTheme.medallionBg,
                   boxShadow: packTheme.medallionShadow,
@@ -975,93 +693,8 @@ export default function BoosterPackView({
                   alt="Globe Wikipédia"
                   className="w-full h-full object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.18)]"
                 />
-
-                {/* Gros ruban / nœud de cadeau sur le sommet du globe pour le Booster de Noël */}
-                {visualKey === 'christmas' && (
-                  <svg
-                    viewBox="0 0 180 120"
-                    className="absolute -top-[22px] left-1/2 -translate-x-1/2 w-[156px] h-[104px] pointer-events-none select-none z-20 drop-shadow-[0_5px_8px_rgba(0,0,0,0.38)]"
-                  >
-                    <defs>
-                      <linearGradient
-                        id="christmasRibbonGrad"
-                        x1="0%"
-                        y1="0%"
-                        x2="100%"
-                        y2="100%"
-                      >
-                        <stop offset="0%" stopColor="#ef4444" />
-                        <stop offset="50%" stopColor="#dc2626" />
-                        <stop offset="100%" stopColor="#991b1b" />
-                      </linearGradient>
-                      <linearGradient
-                        id="christmasRibbonDarkGrad"
-                        x1="0%"
-                        y1="0%"
-                        x2="0%"
-                        y2="100%"
-                      >
-                        <stop offset="0%" stopColor="#b91c1c" />
-                        <stop offset="100%" stopColor="#7f1d1d" />
-                      </linearGradient>
-                    </defs>
-                    {/* Pans tombants du ruban */}
-                    <path
-                      d="M 82 50 C 72 72, 58 92, 46 108 L 64 104 L 72 114 C 80 94, 86 72, 89 52 Z"
-                      fill="url(#christmasRibbonDarkGrad)"
-                      stroke="#fde047"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M 98 50 C 108 72, 122 92, 134 108 L 116 104 L 108 114 C 100 94, 94 72, 91 52 Z"
-                      fill="url(#christmasRibbonDarkGrad)"
-                      stroke="#fde047"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                    {/* Boucle gauche */}
-                    <path
-                      d="M 86 44 C 58 14, 16 18, 20 48 C 24 74, 62 66, 86 48 Z"
-                      fill="url(#christmasRibbonGrad)"
-                      stroke="#fde047"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                    />
-                    {/* Pli interne boucle gauche */}
-                    <path
-                      d="M 78 46 C 56 32, 34 36, 34 48 C 34 58, 58 56, 78 48 Z"
-                      fill="#7f1d1d"
-                      opacity="0.45"
-                    />
-                    {/* Boucle droite */}
-                    <path
-                      d="M 94 44 C 122 14, 164 18, 160 48 C 156 74, 118 66, 94 48 Z"
-                      fill="url(#christmasRibbonGrad)"
-                      stroke="#fde047"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                    />
-                    {/* Pli interne boucle droite */}
-                    <path
-                      d="M 102 46 C 124 32, 146 36, 146 48 C 146 58, 122 56, 102 48 Z"
-                      fill="#7f1d1d"
-                      opacity="0.45"
-                    />
-                    {/* Nœud central */}
-                    <rect
-                      x="77"
-                      y="34"
-                      width="26"
-                      height="24"
-                      rx="7"
-                      fill="url(#christmasRibbonGrad)"
-                      stroke="#fde047"
-                      strokeWidth="2.2"
-                    />
-                  </svg>
-                )}
               </div>
+              <PackMedallionDecoration visualKey={visualKey} layer="front" />
             </div>
 
             <div className="relative z-10 w-full flex flex-col items-center text-center">

@@ -286,11 +286,11 @@ export default function useBoosterOpening({
     : liveActivePrice;
 
   const packRef = useRef(null);
-  const revealCardRef = useRef(null);
   const [glare, setGlare] = useState({ x: 50, y: 35, isHovered: false });
 
   const tearTimerRef = useRef(null);
   const fakeOutTimerRef = useRef(null);
+  const confettiRafRef = useRef(null);
   const isOpeningRef = useRef(false);
   const stageRef = useRef(stage);
   const pendingCardsRef = useRef(null);
@@ -364,6 +364,9 @@ export default function useBoosterOpening({
       if (fakeOutTimerRef.current) {
         clearTimeout(fakeOutTimerRef.current);
       }
+      if (confettiRafRef.current) {
+        cancelAnimationFrame(confettiRafRef.current);
+      }
       if (pendingCardsRef.current && onCardsOpenedRef.current) {
         onCardsOpenedRef.current(pendingCardsRef.current);
         pendingCardsRef.current = null;
@@ -384,40 +387,31 @@ export default function useBoosterOpening({
     setGlare({ x: 50, y: 35, isHovered: false });
   };
 
-  const lastPackCenterRef = useRef(null);
-
-  const capturePackCenter = () => {
-    if (typeof window === 'undefined') return;
-    const el = revealCardRef.current || packRef.current;
-    if (el && typeof el.getBoundingClientRect === 'function') {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0 && window.innerWidth > 0 && window.innerHeight > 0) {
-        lastPackCenterRef.current = {
-          x: Math.min(0.95, Math.max(0.05, (rect.left + rect.width / 2) / window.innerWidth)),
-          y: Math.min(0.95, Math.max(0.05, (rect.top + rect.height / 2) / window.innerHeight)),
-        };
-      }
-    }
-  };
-
+  /**
+   * Calcule l'origine normalisée (0-1) des confettis au centre de la carte révélée
+   * (ou du sachet en repli), plutôt qu'au centre de la fenêtre.
+   * @returns {{x: number, y: number}|null} Origine normalisée ou null si l'élément n'est pas encore monté
+   */
   const getConfettiOrigin = () => {
-    if (typeof window === 'undefined') return { x: 0.5, y: 0.55 };
-    const targetEl = revealCardRef.current || packRef.current;
-    if (targetEl && typeof targetEl.getBoundingClientRect === 'function') {
-      const rect = targetEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0 && window.innerWidth > 0 && window.innerHeight > 0) {
-        const x = Math.min(0.95, Math.max(0.05, (rect.left + rect.width / 2) / window.innerWidth));
-        const y = Math.min(0.95, Math.max(0.05, (rect.top + rect.height / 2) / window.innerHeight));
-        return { x, y };
-      }
+    if (typeof document === 'undefined' || typeof window === 'undefined') {
+      return null;
     }
-    return lastPackCenterRef.current || { x: 0.5, y: 0.55 };
+    const focusEl = document.querySelector('[data-booster-focus="true"]');
+    if (!focusEl) return null;
+    const rect = focusEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {
+      x: (rect.left + rect.width / 2) / window.innerWidth,
+      y: (rect.top + rect.height / 2) / window.innerHeight,
+    };
   };
 
   const triggerCardConfettiIfRare = (card) => {
     if (!card) return;
-    const fire = () => {
-      const origin = getConfettiOrigin();
+    const isRareBurst = card.isShiny || card.rarity === 'L' || card.rarity === 'UR';
+    if (!isRareBurst) return;
+
+    const fireBurst = (origin) => {
       if (card.isShiny) {
         confetti({
           particleCount: 55,
@@ -425,7 +419,7 @@ export default function useBoosterOpening({
           origin,
           colors: ['#ff6ec4', '#7873f5', '#4adede', '#fff677'],
         });
-      } else if (card.rarity === 'L' || card.rarity === 'UR') {
+      } else {
         confetti({
           particleCount: card.rarity === 'L' ? 65 : 35,
           spread: 65,
@@ -437,11 +431,24 @@ export default function useBoosterOpening({
         });
       }
     };
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(fire);
-    } else {
-      fire();
+
+    // La vue de révélation peut ne pas encore être montée (transition AnimatePresence) :
+    // on attend quelques frames que la carte soit dans le DOM pour viser son centre.
+    if (confettiRafRef.current) {
+      cancelAnimationFrame(confettiRafRef.current);
     }
+    let attempts = 0;
+    const tryFire = () => {
+      const origin = getConfettiOrigin();
+      if (origin || attempts >= 40) {
+        confettiRafRef.current = null;
+        fireBurst(origin || { x: 0.5, y: 0.55 });
+        return;
+      }
+      attempts += 1;
+      confettiRafRef.current = requestAnimationFrame(tryFire);
+    };
+    tryFire();
   };
 
   const handleOpenPack = async (overrideType = null) => {
@@ -456,7 +463,6 @@ export default function useBoosterOpening({
     isOpeningRef.current = true;
     setIsOpening(true);
     setErrorMsg(null);
-    capturePackCenter();
 
     const chosenType =
       overrideType !== null && overrideType !== undefined
@@ -794,7 +800,6 @@ export default function useBoosterOpening({
     isFreeStandardPack,
     activePrice,
     packRef,
-    revealCardRef,
     glare,
     handlePackMouseMove,
     handlePackMouseLeave,
