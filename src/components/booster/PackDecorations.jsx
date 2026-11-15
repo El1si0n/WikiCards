@@ -1,11 +1,10 @@
 /**
- * @file Rôle : Ornements visuels thématiques des sachets de booster (rayons de soleil, ruban, flocons, lauriers, pétales).
- * Dépendances : React, `framer-motion`.
+ * @file Rôle : Ornements visuels statiques des sachets de booster (rayons de soleil, flocons, lauriers, pétales).
+ * Dépendances : React.
  * Effets de bord : Aucun (rendu SVG purement décoratif, non interactif).
  */
 
 import React from 'react';
-import { motion } from 'framer-motion';
 
 /** Taille (px) de la zone d'ornement centrée sur le médaillon du globe. */
 const MEDALLION_DECOR_SIZE = 260;
@@ -123,13 +122,11 @@ function Snowflake({ size, color = '#bae6fd' }) {
 }
 
 /**
- * Ornement centré sur le médaillon du globe Wikipédia.
- * La couche `back` est peinte sous le médaillon, la couche `front` par-dessus.
+ * Ornement statique centré sur le médaillon du globe Wikipédia (peint sous le médaillon).
  * @param {Object} props
- * @param {string} props.visualKey - Thème visuel du sachet (`summer`, `christmas`, `iconic`, `spring`...)
- * @param {'back'|'front'} props.layer - Couche de rendu par rapport au médaillon
+ * @param {string} props.visualKey - Thème visuel du sachet (`summer`, `iconic`, `spring`...)
  */
-export function PackMedallionDecoration({ visualKey, layer }) {
+export function PackMedallionDecoration({ visualKey }) {
   const boxStyle = {
     width: MEDALLION_DECOR_SIZE,
     height: MEDALLION_DECOR_SIZE,
@@ -138,16 +135,15 @@ export function PackMedallionDecoration({ visualKey, layer }) {
     marginLeft: -CENTER,
     marginTop: -CENTER,
   };
+  const viewBox = `0 0 ${MEDALLION_DECOR_SIZE} ${MEDALLION_DECOR_SIZE}`;
 
-  if (layer === 'back' && visualKey === 'summer') {
+  if (visualKey === 'summer') {
     return (
-      <motion.svg
+      <svg
         aria-hidden="true"
         className="absolute pointer-events-none"
         style={boxStyle}
-        viewBox={`0 0 ${MEDALLION_DECOR_SIZE} ${MEDALLION_DECOR_SIZE}`}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 60, ease: 'linear', repeat: Infinity }}
+        viewBox={viewBox}
       >
         <defs>
           <radialGradient id="pack-sun-ray" cx="50%" cy="50%" r="50%">
@@ -165,18 +161,19 @@ export function PackMedallionDecoration({ visualKey, layer }) {
             style={{ filter: 'drop-shadow(0 0 3px rgba(245, 158, 11, 0.45))' }}
           />
         ))}
-      </motion.svg>
+      </svg>
     );
   }
 
-  if (layer === 'back' && visualKey === 'iconic') {
+  if (visualKey === 'iconic') {
+    const laurelGreen = '#3f9a4f';
     const branch = (
       <g>
         <path
           d={LAUREL_BRANCH.stem}
           fill="none"
-          stroke="#9a6b05"
-          strokeWidth="2.4"
+          stroke={laurelGreen}
+          strokeWidth="2.2"
           strokeLinecap="round"
         />
         {LAUREL_BRANCH.leaves.map((leaf, idx) => (
@@ -184,9 +181,7 @@ export function PackMedallionDecoration({ visualKey, layer }) {
             key={idx}
             d={leafPath(leaf.length)}
             transform={`translate(${leaf.x.toFixed(1)} ${leaf.y.toFixed(1)}) rotate(${leaf.angle.toFixed(1)})`}
-            fill="url(#pack-laurel-leaf)"
-            stroke="#14532d"
-            strokeWidth="0.7"
+            fill={laurelGreen}
           />
         ))}
       </g>
@@ -195,106 +190,46 @@ export function PackMedallionDecoration({ visualKey, layer }) {
       <svg
         aria-hidden="true"
         className="absolute pointer-events-none"
-        style={{ ...boxStyle, filter: 'drop-shadow(0 2px 3px rgba(110, 79, 0, 0.25))' }}
-        viewBox={`0 0 ${MEDALLION_DECOR_SIZE} ${MEDALLION_DECOR_SIZE}`}
+        style={boxStyle}
+        viewBox={viewBox}
       >
-        <defs>
-          <linearGradient id="pack-laurel-leaf" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#4ade80" />
-            <stop offset="55%" stopColor="#16a34a" />
-            <stop offset="100%" stopColor="#166534" />
-          </linearGradient>
-        </defs>
         {branch}
         <g transform={`translate(${MEDALLION_DECOR_SIZE} 0) scale(-1 1)`}>{branch}</g>
       </svg>
     );
   }
 
-  if (layer === 'back' && visualKey === 'spring') {
-    const outerPetals = Array.from({ length: 8 }, (_, i) => i * 45);
-    const innerPetals = outerPetals.map((deg) => deg + 22.5);
+  if (visualKey === 'spring') {
+    // Corolle fine : 12 pétales effilés + 12 pétales plus courts intercalés, teintes pastel unies
+    const mainPetals = Array.from({ length: 12 }, (_, i) => i * 30);
+    const innerPetals = mainPetals.map((deg) => deg + 15);
+    const petal = (baseR, tipR, halfWidth) =>
+      `M${CENTER},${CENTER - baseR} C${CENTER - halfWidth},${CENTER - baseR - 9} ${CENTER - halfWidth * 0.8},${CENTER - tipR + 7} ${CENTER},${CENTER - tipR} C${CENTER + halfWidth * 0.8},${CENTER - tipR + 7} ${CENTER + halfWidth},${CENTER - baseR - 9} ${CENTER},${CENTER - baseR} Z`;
     return (
       <svg
         aria-hidden="true"
         className="absolute pointer-events-none"
-        style={{ ...boxStyle, filter: 'drop-shadow(0 3px 5px rgba(219, 39, 119, 0.22))' }}
-        viewBox={`0 0 ${MEDALLION_DECOR_SIZE} ${MEDALLION_DECOR_SIZE}`}
+        style={boxStyle}
+        viewBox={viewBox}
       >
-        <defs>
-          <radialGradient id="pack-petal-outer" cx="50%" cy="80%" r="75%">
-            <stop offset="0%" stopColor="#fdf2f8" />
-            <stop offset="60%" stopColor="#f9a8d4" />
-            <stop offset="100%" stopColor="#ec4899" />
-          </radialGradient>
-          <radialGradient id="pack-petal-inner" cx="50%" cy="80%" r="75%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="100%" stopColor="#fbcfe8" />
-          </radialGradient>
-        </defs>
         {innerPetals.map((deg) => (
-          <ellipse
+          <path
             key={`in-${deg}`}
-            cx={CENTER}
-            cy={CENTER - 84}
-            rx="17"
-            ry="24"
-            fill="url(#pack-petal-inner)"
-            stroke="#f9a8d4"
-            strokeWidth="0.8"
+            d={petal(70, 92, 8)}
+            fill="#fbcfe8"
+            opacity="0.85"
             transform={`rotate(${deg} ${CENTER} ${CENTER})`}
           />
         ))}
-        {outerPetals.map((deg) => (
-          <ellipse
-            key={`out-${deg}`}
-            cx={CENTER}
-            cy={CENTER - 90}
-            rx="24"
-            ry="30"
-            fill="url(#pack-petal-outer)"
-            stroke="#db2777"
-            strokeOpacity="0.45"
-            strokeWidth="0.9"
+        {mainPetals.map((deg) => (
+          <path
+            key={`main-${deg}`}
+            d={petal(70, 104, 10)}
+            fill="#f9a8d4"
+            opacity="0.9"
             transform={`rotate(${deg} ${CENTER} ${CENTER})`}
           />
         ))}
-      </svg>
-    );
-  }
-
-  if (layer === 'front' && visualKey === 'christmas') {
-    return (
-      <svg
-        aria-hidden="true"
-        className="absolute pointer-events-none"
-        style={{
-          width: 124,
-          height: 94,
-          left: '50%',
-          top: -30,
-          marginLeft: -62,
-          filter: 'drop-shadow(0 4px 6px rgba(20, 83, 45, 0.45))',
-        }}
-        viewBox="0 0 120 92"
-      >
-        <defs>
-          <linearGradient id="pack-ribbon" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#166534" />
-          </linearGradient>
-        </defs>
-        {/* Rubans pendants */}
-        <path d="M56,44 L36,86 L45,82 L49,91 L62,47 Z" fill="url(#pack-ribbon)" stroke="#fde047" strokeWidth="1" />
-        <path d="M64,44 L84,86 L75,82 L71,91 L58,47 Z" fill="url(#pack-ribbon)" stroke="#fde047" strokeWidth="1" />
-        {/* Boucles du nœud */}
-        <path d="M60,40 C42,6 6,8 10,32 C13,52 42,52 60,40 Z" fill="url(#pack-ribbon)" stroke="#fde047" strokeWidth="1.2" />
-        <path d="M60,40 C78,6 114,8 110,32 C107,52 78,52 60,40 Z" fill="url(#pack-ribbon)" stroke="#fde047" strokeWidth="1.2" />
-        <path d="M54,38 C42,20 22,18 20,30" fill="none" stroke="#86efac" strokeWidth="1.6" strokeLinecap="round" opacity="0.8" />
-        <path d="M66,38 C78,20 98,18 100,30" fill="none" stroke="#86efac" strokeWidth="1.6" strokeLinecap="round" opacity="0.8" />
-        {/* Nœud central */}
-        <ellipse cx="60" cy="41" rx="10" ry="9" fill="#15803d" stroke="#fde047" strokeWidth="1.2" />
-        <ellipse cx="57" cy="38" rx="3.5" ry="2.5" fill="#bbf7d0" opacity="0.7" />
       </svg>
     );
   }
@@ -303,15 +238,15 @@ export function PackMedallionDecoration({ visualKey, layer }) {
 }
 
 /**
- * Motifs répartis sur tout le corps du sachet (flocons, étoiles mystiques, fleurs et feuilles).
+ * Motifs statiques répartis sur le corps du sachet (flocons de Noël, étoiles mystiques d'Halloween).
  * @param {Object} props
  * @param {string} props.visualKey - Thème visuel du sachet
  */
 export function PackBodyDecoration({ visualKey }) {
   if (visualKey === 'christmas') {
     const flakes = [
-      { top: '17%', right: '5%', size: 42, spin: 1 },
-      { top: '60%', left: '4%', size: 46, spin: -1 },
+      { top: '17%', right: '5%', size: 42 },
+      { top: '60%', left: '4%', size: 46 },
       { top: '14%', left: '13%', size: 16 },
       { top: '42%', left: '9%', size: 20 },
       { top: '48%', right: '10%', size: 18 },
@@ -321,23 +256,19 @@ export function PackBodyDecoration({ visualKey }) {
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {flakes.map((flake, idx) => (
-          <motion.div
+          <div
             key={idx}
             className="absolute"
             style={{
               top: flake.top,
               left: flake.left,
               right: flake.right,
-              opacity: flake.spin ? 0.95 : 0.75,
-              filter: 'drop-shadow(0 0 5px rgba(186, 230, 253, 0.85))',
+              opacity: 0.85,
+              filter: 'drop-shadow(0 0 5px rgba(224, 242, 254, 0.8))',
             }}
-            animate={flake.spin ? { rotate: 360 * flake.spin } : undefined}
-            transition={
-              flake.spin ? { duration: 24, ease: 'linear', repeat: Infinity } : undefined
-            }
           >
-            <Snowflake size={flake.size} color={flake.spin ? '#7dd3fc' : '#e0f2fe'} />
-          </motion.div>
+            <Snowflake size={flake.size} color="#e0f2fe" />
+          </div>
         ))}
       </div>
     );
@@ -368,60 +299,6 @@ export function PackBodyDecoration({ visualKey }) {
           >
             ✦
           </span>
-        ))}
-      </div>
-    );
-  }
-
-  if (visualKey === 'spring') {
-    const leaves = [
-      { top: '15%', right: '9%', rotate: -60 },
-      { top: '72%', left: '8%', rotate: 130 },
-    ];
-    return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[
-          { top: '14%', left: '13%', size: '13px', color: '#f472b6' },
-          { top: '66%', right: '11%', size: '13px', color: '#f472b6' },
-        ].map((petal, idx) => (
-          <span
-            key={idx}
-            className="absolute select-none opacity-70"
-            style={{
-              top: petal.top,
-              left: petal.left,
-              right: petal.right,
-              fontSize: petal.size,
-              color: petal.color,
-            }}
-          >
-            ❀
-          </span>
-        ))}
-        {leaves.map((leaf, idx) => (
-          <svg
-            key={`leaf-${idx}`}
-            className="absolute"
-            width="34"
-            height="34"
-            viewBox="-17 -17 34 34"
-            style={{
-              top: leaf.top,
-              left: leaf.left,
-              right: leaf.right,
-              transform: `rotate(${leaf.rotate}deg)`,
-              filter: 'drop-shadow(0 2px 2px rgba(5, 150, 105, 0.25))',
-            }}
-            aria-hidden="true"
-          >
-            <path
-              d="M-14,0 C-8,-10 8,-10 14,0 C8,10 -8,10 -14,0 Z"
-              fill="#6ee7b7"
-              stroke="#059669"
-              strokeWidth="1.2"
-            />
-            <path d="M-12,0 L12,0" stroke="#059669" strokeWidth="1" strokeLinecap="round" />
-          </svg>
         ))}
       </div>
     );

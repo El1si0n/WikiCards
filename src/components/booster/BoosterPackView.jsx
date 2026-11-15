@@ -132,7 +132,7 @@ const PACK_THEMES = {
     medallionShadow:
       '0 10px 26px -4px rgba(0, 0, 0, 0.45), 0 0 18px rgba(253, 224, 71, 0.4), inset 0 2px 4px rgba(255, 255, 255, 1)',
     badgeClass:
-      'bg-gradient-to-r from-[#991b1b] via-[#b91c1c] to-[#7f1d1d] text-[#fef08a] border border-[#fde047]/70',
+      'bg-gradient-to-r from-[#b91c1c] via-[#dc2626] to-[#b91c1c] text-white',
     subtitleClass: 'text-[#fef9c3]',
   },
   halloween: {
@@ -167,7 +167,7 @@ const PACK_THEMES = {
     medallionShadow:
       '0 10px 28px -4px rgba(249, 115, 22, 0.48), 0 0 20px rgba(168, 85, 247, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.9)',
     badgeClass:
-      'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#9333ea] text-white border border-[#fdba74]/60',
+      'bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#9333ea] text-white',
     subtitleClass: 'text-[#fed7aa]',
   },
   summer: {
@@ -680,7 +680,7 @@ export default function BoosterPackView({
             </div>
 
             <div className="relative z-10 my-2 flex items-center justify-center">
-              <PackMedallionDecoration visualKey={visualKey} layer="back" />
+              <PackMedallionDecoration visualKey={visualKey} />
               <div
                 className={`w-[148px] h-[148px] rounded-full flex items-center justify-center p-4 border relative ${packTheme.medallionBorderClass}`}
                 style={{
@@ -694,7 +694,6 @@ export default function BoosterPackView({
                   className="w-full h-full object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.18)]"
                 />
               </div>
-              <PackMedallionDecoration visualKey={visualKey} layer="front" />
             </div>
 
             <div className="relative z-10 w-full flex flex-col items-center text-center">
