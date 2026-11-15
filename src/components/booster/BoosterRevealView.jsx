@@ -23,6 +23,7 @@ import { getRarityByCode } from '../../config/rarities';
  * @param {function(): void} props.handleSkipToSummary - Callback pour afficher tout le résumé
  */
 export default function BoosterRevealView({
+  revealCardRef,
   currentCard,
   nextCard,
   currentCardIdx,
@@ -72,7 +73,10 @@ export default function BoosterRevealView({
       </div>
 
       {/* Pile de cartes */}
-      <div className="relative z-10 flex items-center justify-center w-full max-w-[284px] aspect-[284/443] px-2">
+      <div
+        ref={revealCardRef}
+        className="relative z-10 flex items-center justify-center w-full max-w-[284px] aspect-[284/443] px-2"
+      >
         {nextCard && (
           <motion.div
             key={`next-${nextCard.id}`}

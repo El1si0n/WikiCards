@@ -286,6 +286,7 @@ export default function useBoosterOpening({
     : liveActivePrice;
 
   const packRef = useRef(null);
+  const revealCardRef = useRef(null);
   const [glare, setGlare] = useState({ x: 50, y: 35, isHovered: false });
 
   const tearTimerRef = useRef(null);
@@ -383,25 +384,63 @@ export default function useBoosterOpening({
     setGlare({ x: 50, y: 35, isHovered: false });
   };
 
+  const lastPackCenterRef = useRef(null);
+
+  const capturePackCenter = () => {
+    if (typeof window === 'undefined') return;
+    const el = revealCardRef.current || packRef.current;
+    if (el && typeof el.getBoundingClientRect === 'function') {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && window.innerWidth > 0 && window.innerHeight > 0) {
+        lastPackCenterRef.current = {
+          x: Math.min(0.95, Math.max(0.05, (rect.left + rect.width / 2) / window.innerWidth)),
+          y: Math.min(0.95, Math.max(0.05, (rect.top + rect.height / 2) / window.innerHeight)),
+        };
+      }
+    }
+  };
+
+  const getConfettiOrigin = () => {
+    if (typeof window === 'undefined') return { x: 0.5, y: 0.55 };
+    const targetEl = revealCardRef.current || packRef.current;
+    if (targetEl && typeof targetEl.getBoundingClientRect === 'function') {
+      const rect = targetEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && window.innerWidth > 0 && window.innerHeight > 0) {
+        const x = Math.min(0.95, Math.max(0.05, (rect.left + rect.width / 2) / window.innerWidth));
+        const y = Math.min(0.95, Math.max(0.05, (rect.top + rect.height / 2) / window.innerHeight));
+        return { x, y };
+      }
+    }
+    return lastPackCenterRef.current || { x: 0.5, y: 0.55 };
+  };
+
   const triggerCardConfettiIfRare = (card) => {
     if (!card) return;
-    if (card.isShiny) {
-      confetti({
-        particleCount: 55,
-        spread: 70,
-        origin: { y: 0.55 },
-        colors: ['#ff6ec4', '#7873f5', '#4adede', '#fff677'],
-      });
-    } else if (card.rarity === 'L' || card.rarity === 'UR') {
-      confetti({
-        particleCount: card.rarity === 'L' ? 65 : 35,
-        spread: 65,
-        origin: { y: 0.55 },
-        colors:
-          card.rarity === 'L'
-            ? ['#ffea5a', '#deb226', '#ffffff']
-            : ['#ffa73b', '#ffe2b0', '#ffffff'],
-      });
+    const fire = () => {
+      const origin = getConfettiOrigin();
+      if (card.isShiny) {
+        confetti({
+          particleCount: 55,
+          spread: 70,
+          origin,
+          colors: ['#ff6ec4', '#7873f5', '#4adede', '#fff677'],
+        });
+      } else if (card.rarity === 'L' || card.rarity === 'UR') {
+        confetti({
+          particleCount: card.rarity === 'L' ? 65 : 35,
+          spread: 65,
+          origin,
+          colors:
+            card.rarity === 'L'
+              ? ['#ffea5a', '#deb226', '#ffffff']
+              : ['#ffa73b', '#ffe2b0', '#ffffff'],
+        });
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(fire);
+    } else {
+      fire();
     }
   };
 
@@ -417,6 +456,7 @@ export default function useBoosterOpening({
     isOpeningRef.current = true;
     setIsOpening(true);
     setErrorMsg(null);
+    capturePackCenter();
 
     const chosenType =
       overrideType !== null && overrideType !== undefined
@@ -754,6 +794,7 @@ export default function useBoosterOpening({
     isFreeStandardPack,
     activePrice,
     packRef,
+    revealCardRef,
     glare,
     handlePackMouseMove,
     handlePackMouseLeave,
