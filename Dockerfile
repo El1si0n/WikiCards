@@ -12,6 +12,9 @@ RUN npm run build
 FROM node:24-alpine AS runner
 WORKDIR /app
 
+# curl est requis par le Healthcheck HTTP de Coolify v4 sur les images Alpine
+RUN apk add --no-cache curl
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
