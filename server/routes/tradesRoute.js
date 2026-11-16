@@ -1,21 +1,43 @@
 /**
- * @file Rôle : Contrôleur des routes d'échanges (/api/trades) : consultation, création, acceptation atomique, refus et annulation.
+ * @file Rôle : Contrôleur des routes d'échanges (/api/trades) : consultation, création, acceptation atomique SQLite, refus et annulation.
  * Dépendances : `../utils/jsonStorage.js`, `../utils/validators.js`.
- * Effets de bord : Lecture et écriture atomique dans `data/trades.json` sous verrou de concurrence ('trades') et mise à jour des inventaires dans `data/users/`.
+ * Effets de bord : Transactions SQLite atomiques sur `kv_store('trades')` et mise à jour des inventaires `users`.
  */
 
 import {
   tradesFile,
   loadUserFile,
   saveUserFile,
+  resolveUserCode,
   loadJsonArrayFile,
   saveJsonArrayFile,
   addCardsToUserCollection,
   removeCardsFromUserCollection,
   readJsonBody,
-  withLock,
+  withTransaction,
 } from '../utils/jsonStorage.js';
-import { sanitizeCode } from '../utils/validators.js';
+import {
+  sanitizeCode,
+  isPublicUserId,
+  maskCodeForViewer,
+} from '../utils/validators.js';
+
+/**
+ * Masque les codes secrets (`fromCode`, `toCode`) d'une offre d'échange
+ * pour les joueurs tiers tout en conservant le code du joueur authentifié.
+ *
+ * @param {object} trade - Offre d'échange brute stockée en base
+ * @param {string} viewerCode - Code secret du joueur effectuant la requête
+ * @returns {object} Offre sécurisée pour la réponse HTTP
+ */
+function formatTradeForClient(trade, viewerCode) {
+  if (!trade || typeof trade !== 'object') return trade;
+  return {
+    ...trade,
+    fromCode: maskCodeForViewer(trade.fromCode, viewerCode),
+    toCode: maskCodeForViewer(trade.toCode, viewerCode),
+  };
+}
 
 /**
  * Traite les requêtes HTTP ciblant les routes d'échanges `/api/trades`.
@@ -27,64 +49,83 @@ import { sanitizeCode } from '../utils/validators.js';
  * @returns {Promise<boolean>} Vrai si la requête a été prise en charge
  */
 export async function handleTradesRoute(req, res, pathname, urlObj) {
+  const headerViewerCode = sanitizeCode(req.headers?.['x-user-code'] || '');
+
   // 1. Lister les échanges : GET /api/trades (avec filtre optionnel ?code=...)
   if (req.method === 'GET' && pathname === '/api/trades') {
-    const filterCode = sanitizeCode(urlObj.searchParams.get('code') || '');
+    const rawQueryCode = sanitizeCode(urlObj.searchParams.get('code') || '');
+    const viewerCode =
+      headerViewerCode ||
+      (rawQueryCode && !isPublicUserId(rawQueryCode) ? rawQueryCode : '');
+    const filterCode = rawQueryCode ? resolveUserCode(rawQueryCode) : '';
+
     const allTrades = loadJsonArrayFile(tradesFile);
-    const filtered = filterCode
-      ? allTrades.filter(
-          (t) => t.fromCode === filterCode || t.toCode === filterCode
-        )
+    const filtered = rawQueryCode
+      ? filterCode
+        ? allTrades.filter(
+            (t) => t.fromCode === filterCode || t.toCode === filterCode
+          )
+        : []
       : allTrades;
     filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    const safeTrades = filtered.map((t) => formatTradeForClient(t, viewerCode));
     res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, trades: filtered }));
+    res.end(JSON.stringify({ ok: true, trades: safeTrades }));
     return true;
   }
 
   // 2. Créer une nouvelle offre d'échange : POST /api/trades
   if (req.method === 'POST' && pathname === '/api/trades') {
-    return await withLock('trades', async () => {
-      const body = await readJsonBody(req);
-      const fromCode = sanitizeCode(body.fromCode);
-      const toCode = sanitizeCode(body.toCode);
+    const body = await readJsonBody(req);
+    const fromCode = sanitizeCode(body.fromCode);
+    const viewerCode = headerViewerCode || fromCode;
 
-      if (!fromCode || !toCode || fromCode === toCode) {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Codes utilisateurs invalides pour cet échange.',
-          })
-        );
-        return true;
+    if (!fromCode || isPublicUserId(fromCode)) {
+      res.statusCode = 403;
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'Code utilisateur émetteur invalide.',
+        })
+      );
+      return true;
+    }
+
+    const offeredCards = Array.isArray(body.offeredCards)
+      ? body.offeredCards
+      : [];
+    const requestedCards = Array.isArray(body.requestedCards)
+      ? body.requestedCards
+      : [];
+
+    if (offeredCards.length === 0 && requestedCards.length === 0) {
+      res.statusCode = 400;
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'Sélectionnez au moins une carte pour créer une offre.',
+        })
+      );
+      return true;
+    }
+
+    const outcome = withTransaction(() => {
+      const toCode = resolveUserCode(body.toCode);
+      if (!toCode || fromCode === toCode) {
+        return {
+          status: 400,
+          error: 'Codes utilisateurs invalides pour cet échange.',
+        };
       }
 
       const fromUser = loadUserFile(fromCode);
       const toUser = loadUserFile(toCode);
       if (!fromUser || !toUser) {
-        res.statusCode = 404;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Un des deux profils est introuvable.',
-          })
-        );
-        return true;
-      }
-
-      const offeredCards = Array.isArray(body.offeredCards) ? body.offeredCards : [];
-      const requestedCards = Array.isArray(body.requestedCards) ? body.requestedCards : [];
-
-      if (offeredCards.length === 0 && requestedCards.length === 0) {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Sélectionnez au moins une carte pour créer une offre.',
-          })
-        );
-        return true;
+        return {
+          status: 404,
+          error: 'Un des deux profils est introuvable.',
+        };
       }
 
       const allTrades = loadJsonArrayFile(tradesFile);
@@ -109,10 +150,19 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
       allTrades.unshift(newTrade);
       saveJsonArrayFile(tradesFile, allTrades);
 
-      res.statusCode = 200;
-      res.end(JSON.stringify({ ok: true, trade: newTrade }));
-      return true;
+      return {
+        status: 200,
+        trade: formatTradeForClient(newTrade, viewerCode),
+      };
     });
+
+    res.statusCode = outcome.status;
+    if (outcome.error) {
+      res.end(JSON.stringify({ ok: false, error: outcome.error }));
+    } else {
+      res.end(JSON.stringify({ ok: true, trade: outcome.trade }));
+    }
+    return true;
   }
 
   // 3. Actions sur une offre : POST /api/trades/:id/(accept|decline|cancel)
@@ -121,52 +171,54 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
   );
   if (req.method === 'POST' && tradeActionMatch) {
     const rawBody = await readJsonBody(req).catch(() => ({}));
-    const actorCode = sanitizeCode(rawBody?.userCode || '');
-    return await withLock('trades', async () => {
-      const tradeId = decodeURIComponent(tradeActionMatch[1]);
-      const action = tradeActionMatch[2];
+    const actorCode = sanitizeCode(rawBody?.userCode || '') || headerViewerCode;
+    const tradeId = decodeURIComponent(tradeActionMatch[1]);
+    const action = tradeActionMatch[2];
+
+    if (!actorCode || isPublicUserId(actorCode)) {
+      res.statusCode = 403;
+      res.end(JSON.stringify({ ok: false, error: 'Action non autorisée.' }));
+      return true;
+    }
+
+    const outcome = withTransaction(() => {
       const allTrades = loadJsonArrayFile(tradesFile);
       const idx = allTrades.findIndex((t) => t.id === tradeId);
 
       if (idx === -1) {
-        res.statusCode = 404;
-        res.end(JSON.stringify({ ok: false, error: 'Offre introuvable.' }));
-        return true;
+        return { status: 404, error: 'Offre introuvable.' };
       }
 
       const trade = allTrades[idx];
       if (trade.status !== 'pending') {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Cette offre a déjà été traitée.',
-          })
-        );
-        return true;
+        return { status: 400, error: 'Cette offre a déjà été traitée.' };
+      }
+
+      if (action === 'cancel' && trade.fromCode !== actorCode) {
+        return { status: 403, error: 'Action non autorisée.' };
+      }
+      if (
+        (action === 'accept' || action === 'decline') &&
+        trade.toCode !== actorCode
+      ) {
+        return { status: 403, error: 'Action non autorisée.' };
       }
 
       if (action === 'decline' || action === 'cancel') {
         trade.status = action === 'decline' ? 'declined' : 'cancelled';
         trade.resolvedAt = Date.now();
         saveJsonArrayFile(tradesFile, allTrades);
-        res.statusCode = 200;
-        res.end(JSON.stringify({ ok: true, trade }));
-        return true;
+        return {
+          status: 200,
+          trade: formatTradeForClient(trade, actorCode),
+        };
       }
 
       // Action === 'accept' : transfert atomique croisé des cartes entre fromUser et toUser
       const fromUser = loadUserFile(trade.fromCode);
       const toUser = loadUserFile(trade.toCode);
       if (!fromUser || !toUser) {
-        res.statusCode = 404;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Un des joueurs est introuvable.',
-          })
-        );
-        return true;
+        return { status: 404, error: 'Un des joueurs est introuvable.' };
       }
 
       const remFrom = removeCardsFromUserCollection(
@@ -174,14 +226,10 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
         trade.offeredCards || []
       );
       if (!remFrom.ok) {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: `${trade.fromUsername} ne possède plus toutes les cartes proposées.`,
-          })
-        );
-        return true;
+        return {
+          status: 400,
+          error: `${trade.fromUsername} ne possède plus toutes les cartes proposées.`,
+        };
       }
 
       const remTo = removeCardsFromUserCollection(
@@ -189,14 +237,11 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
         trade.requestedCards || []
       );
       if (!remTo.ok) {
-        res.statusCode = 400;
-        res.end(
-          JSON.stringify({
-            ok: false,
-            error: 'Vous ne possédez plus toutes les cartes demandées dans cet échange.',
-          })
-        );
-        return true;
+        return {
+          status: 400,
+          error:
+            'Vous ne possédez plus toutes les cartes demandées dans cet échange.',
+        };
       }
 
       const nextFromCol = addCardsToUserCollection(
@@ -222,20 +267,28 @@ export async function handleTradesRoute(req, res, pathname, urlObj) {
       saveJsonArrayFile(tradesFile, allTrades);
 
       const updatedUser =
-        actorCode && actorCode === trade.fromCode ? updatedFrom : updatedTo;
+        actorCode === trade.fromCode ? updatedFrom : updatedTo;
 
-      res.statusCode = 200;
+      return {
+        status: 200,
+        trade: formatTradeForClient(trade, actorCode),
+        updatedUser,
+      };
+    });
+
+    res.statusCode = outcome.status;
+    if (outcome.error) {
+      res.end(JSON.stringify({ ok: false, error: outcome.error }));
+    } else {
       res.end(
         JSON.stringify({
           ok: true,
-          trade,
-          updatedUser,
-          updatedFrom,
-          updatedTo,
+          trade: outcome.trade,
+          updatedUser: outcome.updatedUser,
         })
       );
-      return true;
-    });
+    }
+    return true;
   }
 
   return false;

@@ -23,14 +23,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('booster');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Maintient en permanence un booster préchargé en mémoire et dans localStorage,
-  // même lorsque l'utilisateur navigue dans le Classeur, le Casino, le Marché ou le Social.
+  // Maintient un booster préchargé en mémoire et dans localStorage au chargement et lors des changements d'onglet.
   useEffect(() => {
     ensureBoosterPreloaded();
-    const interval = setInterval(() => {
-      ensureBoosterPreloaded();
-    }, 6000);
-    return () => clearInterval(interval);
   }, [activeTab]);
 
   const [readNotifIds, setReadNotifIds] = useState(() => {

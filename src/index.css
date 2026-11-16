@@ -612,6 +612,8 @@ html.dark .wiki-range-slider {
 .wiki-card-root {
   container-type: inline-size;
   container-name: wikicard;
+  content-visibility: auto;
+  contain-intrinsic-size: 284px 443px;
 }
 
 @container wikicard (max-width: 184px) {

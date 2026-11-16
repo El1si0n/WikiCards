@@ -702,7 +702,7 @@ export function usePlayerAccount({
       if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
         reconcileWithServer();
       }
-    }, 6000);
+    }, 12000);
 
     return () => {
       isCancelled = true;
@@ -719,7 +719,7 @@ export function usePlayerAccount({
     }
   }, []);
 
-  // Synchronisation automatique vers data/users/<CODE>.json
+  // Synchronisation automatique vers SQLite (data/wikicards.db)
   useEffect(() => {
     if (!userCode || userCode === LOCAL_DEV_USER_CODE || !isServerHydratedRef.current) return;
     if (skipNextPushRef.current) {
@@ -750,7 +750,7 @@ export function usePlayerAccount({
         const syncedTs = setStoredUpdatedAt(result.user.updatedAt);
         setLocalUpdatedAt((prev) => Math.max(prev, syncedTs));
       }
-    }, 250);
+    }, 600);
     return () => clearTimeout(timer);
   }, [
     userCode,
@@ -910,8 +910,16 @@ export function usePlayerAccount({
             obtainedAt: now + idx,
           });
         } else {
+          const compactExtract =
+            typeof card.extract === 'string' ? card.extract.slice(0, 450) : '';
+          const compactDescription =
+            typeof card.description === 'string'
+              ? card.description.slice(0, 300)
+              : '';
           map.set(card.id, {
             ...card,
+            extract: compactExtract,
+            description: compactDescription,
             theme: resolvedTheme,
             count: 1,
             firstObtainedAt: now + idx,

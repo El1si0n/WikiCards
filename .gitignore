@@ -28,7 +28,11 @@ dist-ssr
 .env.local
 .env.*.local
 
-# User database files (keep structure but ignore user accounts)
+# Base de données SQLite locale (mode WAL) et fichiers temporaires
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite*
 data/users/*.json
 !data/users/.gitkeep
 

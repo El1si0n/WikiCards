@@ -47,16 +47,23 @@ const USER_UPDATED_AT_STORAGE_KEY = 'wikicards_updated_at_v1';
 const LOCAL_USERS_DIRECTORY_KEY = 'wikicards_local_users_dir_v1';
 
 /**
- * Génère un code unique au format WIKI-XXXX (4 caractères alphanumériques non ambigus).
+ * Génère un code unique sécurisé au format WIKI-XXXX-XXXX (8 caractères alphanumériques non ambigus).
  * @returns {string} Nouveau code généré
  */
 export function generateUniqueUserCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const block = Array.from(
-    { length: 4 },
-    () => chars[Math.floor(Math.random() * chars.length)]
-  ).join('');
-  return `WIKI-${block}`;
+  const pickBlock = (len) => {
+    if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+      const buf = new Uint32Array(len);
+      window.crypto.getRandomValues(buf);
+      return Array.from(buf, (v) => chars[v % chars.length]).join('');
+    }
+    return Array.from(
+      { length: len },
+      () => chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+  };
+  return `WIKI-${pickBlock(4)}-${pickBlock(4)}`;
 }
 
 /**
@@ -96,6 +103,37 @@ export function normalizeUserCode(input) {
  */
 export function isValidUserCode(code) {
   return /^WIKI-[A-Z0-9]{4}(-[A-Z0-9]{4})?$/.test(normalizeUserCode(code));
+}
+
+/**
+ * Vérifie si un identifiant correspond au format d'identifiant public (PUB-XXXXXXXX).
+ * @param {string} id - Identifiant à valider
+ * @returns {boolean} Vrai s'il s'agit d'un identifiant public
+ */
+export function isPublicUserId(id) {
+  return /^PUB-[A-F0-9]{8}$/.test(normalizeUserCode(id));
+}
+
+/**
+ * Vérifie si un identifiant est soit un code privé WIKI-*, soit un identifiant public PUB-*.
+ * @param {string} id - Identifiant à valider
+ * @returns {boolean} Vrai si le format est acceptable pour une consultation API
+ */
+export function isValidPeerOrUserCode(id) {
+  return isValidUserCode(id) || isPublicUserId(id);
+}
+
+/**
+ * Construit les en-têtes HTTP avec le code du joueur courant pour identifier ses propres entrées masquées.
+ * @param {Record<string, string>} [extra={}] - En-têtes supplémentaires
+ * @returns {Record<string, string>} En-têtes HTTP complets
+ */
+function getAuthHeaders(extra = {}) {
+  const storedCode = getStoredUserCode();
+  return {
+    ...extra,
+    ...(storedCode ? { 'X-User-Code': storedCode } : {}),
+  };
 }
 
 /**
@@ -396,31 +434,19 @@ export function isAccountStateNewer(candidate, baseline) {
   return candDraws > baseDraws;
 }
 
-// Sauvegarde de secours dans localStorage au cas où l'utilisateur ouvre le build statique sans serveur
-function saveToLocalDirectoryFallback(code, payload, timestamp) {
+// Purge l'ancien annuaire local dupliqué afin de libérer 50 % du quota localStorage
+function saveToLocalDirectoryFallback() {
   try {
-    const raw = localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY);
-    const dir = raw ? JSON.parse(raw) : {};
-    dir[code] = {
-      ...payload,
-      code,
-      updatedAt: timestamp || payload?.clientUpdatedAt || payload?.updatedAt || Date.now(),
-    };
-    localStorage.setItem(LOCAL_USERS_DIRECTORY_KEY, JSON.stringify(dir));
+    if (localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY) !== null) {
+      localStorage.removeItem(LOCAL_USERS_DIRECTORY_KEY);
+    }
   } catch {
-    // ignore quota
+    // ignore
   }
 }
 
-function loadFromLocalDirectoryFallback(code) {
-  try {
-    const raw = localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY);
-    if (!raw) return null;
-    const dir = JSON.parse(raw);
-    return dir[code] || null;
-  } catch {
-    return null;
-  }
+function loadFromLocalDirectoryFallback() {
+  return null;
 }
 
 /**
@@ -435,6 +461,7 @@ export async function fetchServerUserAccount(code) {
   }
   try {
     const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
+      headers: getAuthHeaders(),
       cache: 'no-store',
     });
     if (res.status === 404) {
@@ -468,12 +495,12 @@ export async function syncUserAccountToServer(code, data, options = {}) {
     getStoredUpdatedAt(cleanCode, data?.collection) ||
     Date.now();
 
-  saveToLocalDirectoryFallback(cleanCode, data, clientUpdatedAt);
+  saveToLocalDirectoryFallback();
 
   try {
     const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       cache: 'no-store',
       body: JSON.stringify({
         code: cleanCode,
@@ -484,9 +511,6 @@ export async function syncUserAccountToServer(code, data, options = {}) {
     });
     if (!res.ok) return null;
     const json = await res.json();
-    if (json.user) {
-      saveToLocalDirectoryFallback(cleanCode, json.user, json.user.updatedAt);
-    }
     return {
       user: json.user || null,
       serverIsNewer: Boolean(json.serverIsNewer),
@@ -497,34 +521,52 @@ export async function syncUserAccountToServer(code, data, options = {}) {
 }
 
 /**
- * Charge un compte utilisateur par son code unique depuis l'API ou le fallback local.
- * @param {string} code - Code du compte à charger
+ * Charge un compte utilisateur par son code unique ou identifiant public depuis l'API.
+ * @param {string} code - Code du compte ou identifiant public à charger
+ * @param {{ forLogin?: boolean }} [options={}] - Options (ex: connexion stricte)
  * @returns {Promise<UserAccount>}
  */
-export async function fetchUserAccountByCode(code) {
+export async function fetchUserAccountByCode(code, options = {}) {
   const cleanCode = normalizeUserCode(code);
-  if (!isValidUserCode(cleanCode)) {
+  const forLogin = Boolean(options.forLogin);
+  const isValid = forLogin
+    ? isValidUserCode(cleanCode)
+    : isValidPeerOrUserCode(cleanCode);
+
+  if (!isValid) {
     throw new Error(
       'Format de code invalide. Exemple attendu : WIKI-4GU5'
     );
   }
 
+  let serverErrorMessage = null;
   try {
-    const res = await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
-      cache: 'no-store',
-    });
+    const query = forLogin ? '?login=1' : '';
+    const res = await fetch(
+      `/api/users/${encodeURIComponent(cleanCode)}${query}`,
+      {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      }
+    );
     if (res.ok) {
       const json = await res.json();
       if (json.ok && json.user) {
         return json.user;
       }
+    } else if (res.status === 429 || res.status === 403) {
+      const errJson = await res.json().catch(() => null);
+      if (errJson?.error) {
+        serverErrorMessage = errJson.error;
+      }
     }
   } catch {
-    // fallback localStorage
+    // erreur réseau
   }
 
-  const fallback = loadFromLocalDirectoryFallback(cleanCode);
-  if (fallback) return fallback;
+  if (serverErrorMessage) {
+    throw new Error(serverErrorMessage);
+  }
 
   throw new Error(`Aucun compte trouvé pour le code ${cleanCode}.`);
 }
@@ -539,7 +581,10 @@ export async function fetchUserAccountByCode(code) {
  */
 export async function fetchAllUsersDirectory() {
   try {
-    const res = await fetch('/api/users', { cache: 'no-store' });
+    const res = await fetch('/api/users', {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.users)) {
@@ -561,7 +606,10 @@ export async function fetchUserTrades(userCode) {
   try {
     const res = await fetch(
       `/api/trades?code=${encodeURIComponent(normalizeUserCode(userCode))}`,
-      { cache: 'no-store' }
+      {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      }
     );
     if (res.ok) {
       const json = await res.json();
@@ -579,7 +627,7 @@ export async function fetchUserTrades(userCode) {
  * Propose une nouvelle offre d'échange de cartes à un joueur tiers.
  * @param {Object} params
  * @param {string} params.fromCode - Code de l'émetteur
- * @param {string} params.toCode - Code du destinataire
+ * @param {string} params.toCode - Code du destinataire (ou identifiant public PUB-XXXXXXXX)
  * @param {Array<Object>} params.offeredCards - Cartes proposées
  * @param {Array<Object>} params.requestedCards - Cartes demandées
  * @returns {Promise<Object>} Échange créé
@@ -592,7 +640,7 @@ export async function createTradeOffer({
 }) {
   const res = await fetch('/api/trades', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       fromCode: normalizeUserCode(fromCode),
       toCode: normalizeUserCode(toCode),
@@ -620,7 +668,7 @@ export async function respondToTradeOffer(tradeId, action, userCode) {
     `/api/trades/${encodeURIComponent(tradeId)}/${action}`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ userCode: userCode || '' }),
     }
   );
@@ -641,7 +689,10 @@ export async function respondToTradeOffer(tradeId, action, userCode) {
  */
 export async function fetchMarketListings() {
   try {
-    const res = await fetch('/api/market', { cache: 'no-store' });
+    const res = await fetch('/api/market', {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.listings)) {
@@ -671,7 +722,7 @@ export async function createMarketListing({
 }) {
   const res = await fetch('/api/market', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       sellerCode: normalizeUserCode(sellerCode),
       cardId,
@@ -699,7 +750,7 @@ export async function performMarketAction(listingId, action, payload = {}) {
     `/api/market/${encodeURIComponent(listingId)}/${action}`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     }
   );
@@ -729,26 +780,15 @@ export async function deleteUserAccount(code) {
   try {
     await fetch(`/api/users/${encodeURIComponent(cleanCode)}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       cache: 'no-store',
     });
   } catch (err) {
     console.warn('[deleteUserAccount] Serveur non joignable:', err);
   }
 
-  // 2. Nettoyage de l'annuaire local de secours
-  try {
-    const raw = localStorage.getItem(LOCAL_USERS_DIRECTORY_KEY);
-    if (raw) {
-      const dir = JSON.parse(raw);
-      if (dir[cleanCode]) {
-        delete dir[cleanCode];
-        localStorage.setItem(LOCAL_USERS_DIRECTORY_KEY, JSON.stringify(dir));
-      }
-    }
-  } catch {
-    // ignore
-  }
+  // 2. Suppression de l'ancien annuaire local de secours s'il existe encore
+  saveToLocalDirectoryFallback();
 
   // 3. Suppression des clés locales liées à l'identification
   try {

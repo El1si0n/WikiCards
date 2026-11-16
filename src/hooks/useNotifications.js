@@ -359,7 +359,7 @@ export function useNotifications({
       if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
         loadNotifs();
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       isMounted = false;

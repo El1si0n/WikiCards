@@ -1,101 +1,81 @@
 /**
- * @file Rôle : Contrôleur des routes utilisateurs (/api/users) : annuaire mis en cache TTL, consultation, synchronisation et suppression.
- * Dépendances : `node:fs`, `node:path`, `../utils/jsonStorage.js`, `../utils/validators.js`.
- * Effets de bord : Lecture, écriture atomique et suppression des fichiers de compte dans `data/users/`, cache mémoire d'annuaire.
+ * @file Rôle : Contrôleur des routes utilisateurs (/api/users) : annuaire SQLite pré-indexé, anonymisation publique (`publicId`), rate-limiting Cloudflare, synchronisation et suppression.
+ * Dépendances : `../utils/jsonStorage.js`, `../utils/validators.js`, `./marketRoute.js`.
+ * Effets de bord : Lecture, écriture transactionnelle SQLite et limitation de débit en mémoire.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
 import {
-  usersDir,
   marketFile,
   tradesFile,
-  ensureDir,
-  getUserFilePath,
-  atomicWriteJsonSync,
+  loadUserFile,
+  saveUserFile,
+  deleteUserFile,
+  getAllUserSummaries,
   loadJsonArrayFile,
   saveJsonArrayFile,
   addCardsToUserCollection,
   readJsonBody,
-  registerDirectoryCacheInvalidator,
-  withLock,
+  withTransaction,
 } from '../utils/jsonStorage.js';
-import { sanitizeCode, sanitizeUserPayload } from '../utils/validators.js';
+import {
+  sanitizeCode,
+  isValidUserCode,
+  sanitizeUserPayload,
+  toPublicUserId,
+  isPublicUserId,
+  maskCodeForViewer,
+} from '../utils/validators.js';
 import { resolveExpiredMarketAuctions } from './marketRoute.js';
 
-let cachedUsersDirectoryJson = null;
-let cachedUsersDirectoryExpiry = 0;
-const DIRECTORY_CACHE_TTL_MS = 5000;
+const failedLookupAttempts = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_FAILED_LOOKUPS_PER_MIN = 20;
 
 /**
- * Détecte si le fichier JSON sur le disque a été modifié manuellement (hors API)
- * en comparant son horodatage système (`mtimeMs`) au champ `updatedAt` interne.
- * Si le fichier a été édité manuellement (ex: modération anti-triche), met à jour `updatedAt`,
- * ajuste automatiquement `stats.wonCards` et `stats.totalCardsDrawn` si des cartes dupliquées
- * ont été retirées, et active un jeton `adminOverrideAt` pour forcer le navigateur du joueur à adopter cet état.
- *
- * @param {string} filePath - Chemin absolu du fichier JSON
- * @param {object} parsed - Contenu JSON désérialisé
- * @returns {{ user: object, changed: boolean }} Objet utilisateur éventuellement mis à jour
+ * Extrait l'adresse IP réelle du client en tenant compte de Cloudflare Tunnel (`CF-Connecting-IP`).
+ * @param {import('node:http').IncomingMessage} req - Requête HTTP entrante
+ * @returns {string} Adresse IP du client
  */
-function detectAndApplyManualFileEdit(filePath, parsed) {
-  if (!filePath || !parsed || typeof parsed !== 'object') {
-    return { user: parsed, changed: false };
+function getClientIp(req) {
+  const cfIp = req.headers?.['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.trim()) return cfIp.trim();
+  const xff = req.headers?.['x-forwarded-for'];
+  if (typeof xff === 'string' && xff.trim()) {
+    return xff.split(',')[0].trim();
   }
-  try {
-    const stat = fs.statSync(filePath);
-    const fileMtime = Math.floor(stat.mtimeMs || 0);
-    const jsonUpdatedAt = Number(parsed.updatedAt || 0);
+  return req.socket?.remoteAddress || 'unknown';
+}
 
-    // Marge de 1500ms pour ignorer le léger décalage naturel entre Date.now() et fs.writeFileSync
-    if (fileMtime > jsonUpdatedAt + 1500) {
-      const col = Array.isArray(parsed.collection) ? parsed.collection : [];
-      const actualCopies = col.reduce((s, c) => s + (Number(c?.count) || 1), 0);
-      const rawStats = parsed.stats && typeof parsed.stats === 'object' ? parsed.stats : {};
-      const boostersOpened = Number(rawStats.boostersOpened || 0);
-      const lostCards = Number(rawStats.lostCards || 0);
-      const wonCards = Number(rawStats.wonCards || 0);
+function isLookupRateLimited(ip) {
+  const now = Date.now();
+  const entry = failedLookupAttempts.get(ip);
+  if (!entry) return false;
+  if (now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    failedLookupAttempts.delete(ip);
+    return false;
+  }
+  return entry.count >= MAX_FAILED_LOOKUPS_PER_MIN;
+}
 
-      // Si des cartes ont été supprimées manuellement de `collection`, le net de cartes gagnées
-      // ne peut pas excéder le nombre réel de cartes possédées au-delà des boosters ouverts
-      const maxPlausibleWonCards = Math.max(
-        0,
-        actualCopies + lostCards - Math.min(actualCopies, boostersOpened * 6)
-      );
-      const adjustedWonCards = Math.min(wonCards, maxPlausibleWonCards);
-      const rawDraws = Number(rawStats.totalCardsDrawn || 0);
-      const adjustedTotalDraws =
-        boostersOpened > 0
-          ? rawDraws >= boostersOpened * 4 && rawDraws <= boostersOpened * 12
-            ? rawDraws
-            : boostersOpened * 6
-          : Math.min(rawDraws, actualCopies + lostCards);
-
-      const updatedUser = {
-        ...parsed,
-        stats: {
-          ...rawStats,
-          wonCards: adjustedWonCards,
-          totalCardsDrawn: adjustedTotalDraws,
-        },
-        updatedAt: fileMtime,
-        adminOverrideAt: fileMtime,
-      };
-      return { user: updatedUser, changed: true };
+function recordFailedLookup(ip) {
+  const now = Date.now();
+  const entry = failedLookupAttempts.get(ip);
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    if (failedLookupAttempts.size > 2000) {
+      failedLookupAttempts.clear();
     }
-  } catch {
-    // ignore
+    failedLookupAttempts.set(ip, { windowStart: now, count: 1 });
+    return;
   }
-  return { user: parsed, changed: false };
+  entry.count += 1;
 }
 
 /**
- * Vérifie dans `market.json` si l'utilisateur a remporté des enchères (status === 'sold')
+ * Vérifie dans le registre `market` si l'utilisateur a remporté des enchères (`status === 'sold'`)
  * dont les cartes n'auraient pas encore été intégrées ou acquittées dans son profil.
- * Protège également contre la perte de cartes si une synchro client intervient au même instant.
  *
  * @param {object} userObj - Données actuelles du joueur
- * @param {string} cleanCode - Code normalisé du joueur
+ * @param {string} cleanCode - Code secret normalisé du joueur
  * @returns {{ user: object, changed: boolean }} Objet joueur consolidé
  */
 function ensureUnclaimedMarketWinsApplied(userObj, cleanCode) {
@@ -114,7 +94,8 @@ function ensureUnclaimedMarketWinsApplied(userObj, cleanCode) {
       if (
         listing &&
         (listing.status === 'sold' || listing.status === 'ended') &&
-        (listing.buyerCode === cleanCode || listing.highestBidderCode === cleanCode) &&
+        (listing.buyerCode === cleanCode ||
+          listing.highestBidderCode === cleanCode) &&
         listing.sellerCode !== cleanCode &&
         listing.card &&
         listing.id &&
@@ -147,15 +128,88 @@ function ensureUnclaimedMarketWinsApplied(userObj, cleanCode) {
 }
 
 /**
- * Invalide immédiatement le cache mémoire de l'annuaire des utilisateurs.
+ * Compare rapidement deux états d'un compte joueur sans re-sérialiser toute la collection ni les snapshots.
+ * @param {object|null} existing - État actuel en base
+ * @param {object} merged - Nouvel état fusionné
+ * @param {number} clientTimestamp - Horodatage soumis par le client
+ * @returns {boolean} Vrai si une écriture en base est nécessaire
  */
-export function invalidateUsersDirectoryCache() {
-  cachedUsersDirectoryJson = null;
-  cachedUsersDirectoryExpiry = 0;
+function hasUserAccountChanged(existing, merged, clientTimestamp) {
+  if (!existing || !existing.code) return true;
+  if (existing.wikithunes !== merged.wikithunes) return true;
+  if (existing.freeBoostersCount !== merged.freeBoostersCount) return true;
+  if (existing.lastDailyClaimDate !== merged.lastDailyClaimDate) return true;
+  if (existing.lastFreeBoostersResetTime !== merged.lastFreeBoostersResetTime)
+    return true;
+
+  const existingCol = Array.isArray(existing.collection) ? existing.collection : [];
+  const mergedCol = Array.isArray(merged.collection) ? merged.collection : [];
+  if (existingCol.length !== mergedCol.length) return true;
+
+  const sumCopies = (col) =>
+    col.reduce((acc, c) => acc + (Number(c?.count) || 1), 0);
+  if (sumCopies(existingCol) !== sumCopies(mergedCol)) return true;
+
+  if (
+    (existing.claimedMarketWins?.length || 0) !==
+    (merged.claimedMarketWins?.length || 0)
+  )
+    return true;
+  if (
+    (existing.readNotifIds?.length || 0) !==
+    (merged.readNotifIds?.length || 0)
+  )
+    return true;
+  if (
+    (existing.dismissedNotifIds?.length || 0) !==
+    (merged.dismissedNotifIds?.length || 0)
+  )
+    return true;
+  if ((existing.snapshots?.length || 0) !== (merged.snapshots?.length || 0))
+    return true;
+
+  if (clientTimestamp > 0 && clientTimestamp !== Number(existing.updatedAt || 0))
+    return true;
+
+  if (
+    JSON.stringify(existing.favorites || []) !==
+    JSON.stringify(merged.favorites || [])
+  )
+    return true;
+  if (
+    JSON.stringify(existing.stats || {}) !== JSON.stringify(merged.stats || {})
+  )
+    return true;
+  if (
+    JSON.stringify(existing.profile || {}) !==
+    JSON.stringify(merged.profile || {})
+  )
+    return true;
+
+  return false;
 }
 
-// Raccorde l'invalidation automatique lors de toute modification par saveUserFile
-registerDirectoryCacheInvalidator(invalidateUsersDirectoryCache);
+/**
+ * Construit la représentation publique sécurisée d'un joueur lors de l'inspection par un pair (`PUB-XXXXXXXX`).
+ * Ne contient jamais le code secret `WIKI-...` ni les paramètres privés.
+ *
+ * @param {object} user - Données complètes du joueur en base
+ * @returns {object} Profil public anonymisé
+ */
+function buildPublicPeerProfile(user) {
+  const pubId = user.publicId || toPublicUserId(user.code);
+  return {
+    code: pubId,
+    publicId: pubId,
+    profile: user.profile || {},
+    collection: Array.isArray(user.collection) ? user.collection : [],
+    wikithunes: typeof user.wikithunes === 'number' ? user.wikithunes : 0,
+    stats: user.stats || {},
+    createdAt: user.createdAt || 0,
+    snapshots: Array.isArray(user.snapshots) ? user.snapshots.slice(-30) : [],
+    updatedAt: user.updatedAt || 0,
+  };
+}
 
 /**
  * Traite les requêtes HTTP ciblant les routes `/api/users`.
@@ -163,143 +217,24 @@ registerDirectoryCacheInvalidator(invalidateUsersDirectoryCache);
  * @param {import('node:http').IncomingMessage} req - Requête HTTP entrante
  * @param {import('node:http').ServerResponse} res - Réponse HTTP sortante
  * @param {string} pathname - Chemin d'accès de l'URL
+ * @param {URL} [urlObj] - Objet URL complet
  * @returns {Promise<boolean>} Vrai si la requête a été prise en charge
  */
-export async function handleUsersRoute(req, res, pathname) {
-  // 1. Annuaire public des joueurs : GET /api/users (avec cache mémoire TTL 5s)
+export async function handleUsersRoute(req, res, pathname, urlObj) {
+  const viewerCode = sanitizeCode(req.headers?.['x-user-code'] || '');
+
+  // 1. Annuaire public des joueurs : GET /api/users (pré-indexé en SQLite, codes secrets masqués)
   if (req.method === 'GET' && pathname === '/api/users') {
-    const now = Date.now();
-    if (cachedUsersDirectoryJson && now < cachedUsersDirectoryExpiry) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(cachedUsersDirectoryJson);
-      return true;
-    }
-
-    ensureDir();
-    const files = fs
-      .readdirSync(usersDir)
-      .filter((f) => f.endsWith('.json') && !f.startsWith('.tmp.'));
-    const users = [];
-
-    for (const file of files) {
-      try {
-        const fullPath = path.join(usersDir, file);
-        const raw = fs.readFileSync(fullPath, 'utf-8');
-        let parsed = JSON.parse(raw);
-        const manualEdit = detectAndApplyManualFileEdit(fullPath, parsed);
-        if (manualEdit.changed) {
-          parsed = manualEdit.user;
-          atomicWriteJsonSync(fullPath, parsed);
-        }
-        const col = Array.isArray(parsed.collection) ? parsed.collection : [];
-        const showcaseIds = Array.isArray(parsed.profile?.showcaseIds)
-          ? parsed.profile.showcaseIds
-          : [];
-        const showcaseCards = showcaseIds
-          .map((id) =>
-            id && id !== 'null'
-              ? col.find((c) => String(c.id) === String(id)) || null
-              : null
-          )
-          .filter(Boolean);
-
-        const rawShelves =
-          Array.isArray(parsed.profile?.shelves) &&
-          parsed.profile.shelves.length > 0
-            ? parsed.profile.shelves
-            : [
-                {
-                  id: 'shelf-1',
-                  name: 'Vitrine du collectionneur',
-                  cardIds: showcaseIds,
-                },
-              ];
-
-        const resolvedShelves = rawShelves.slice(0, 4).map((shelf, idx) => {
-          const cardIds = [0, 1, 2, 3, 4, 5].map((i) =>
-            shelf?.cardIds?.[i] && shelf.cardIds[i] !== 'null'
-              ? String(shelf.cardIds[i])
-              : null
-          );
-          const fallbackName =
-            idx === 0 ? 'Vitrine du collectionneur' : `Étagère ${idx + 1}`;
-          return {
-            id: String(shelf?.id || `shelf-${idx + 1}`).slice(0, 40),
-            name: String(shelf?.name || fallbackName).trim().slice(0, 45) || fallbackName,
-            cardIds,
-            cards: cardIds.map((id) =>
-              id ? col.find((c) => String(c.id) === String(id)) || null : null
-            ),
-          };
-        });
-
-        users.push({
-          code: parsed.code,
-          username: parsed.profile?.username || 'Wikipédien',
-          avatar:
-            parsed.profile?.avatar ||
-            'https://fr.wikipedia.org/static/images/icons/wikipedia.png',
-          avatarTitle: parsed.profile?.avatarTitle || '',
-          avatarUrl: parsed.profile?.avatarUrl || '',
-          bio: parsed.profile?.bio || '',
-          showcaseIds,
-          showcaseCards,
-          shelves: resolvedShelves,
-          uniqueCardsCount: col.length,
-          totalCardsCount: col.reduce((s, c) => s + (c.count || 1), 0),
-          legendaryCount: col
-            .filter((c) => c.rarity === 'L')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          ultraRareCount: col
-            .filter((c) => c.rarity === 'UR')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          superRareCount: col
-            .filter((c) => c.rarity === 'SR')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          rareCount: col
-            .filter((c) => c.rarity === 'R')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          uncommonCount: col
-            .filter((c) => c.rarity === 'PC')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          commonCount: col
-            .filter((c) => c.rarity === 'C')
-            .reduce((s, c) => s + (c.count || 1), 0),
-          gifCount: col.reduce((s, c) => {
-            const isGifCard = Boolean(
-              c.isFoil ||
-                c.isShiny ||
-                c.isGif ||
-                (typeof c.image === 'string' && c.image.toLowerCase().includes('.gif'))
-            );
-            return isGifCard ? s + (c.count || 1) : s;
-          }, 0),
-          collectionValue: col.reduce((s, c) => {
-            const baseMap = { C: 10, PC: 35, R: 125, SR: 420, UR: 710, L: 2100 };
-            const base = baseMap[c.rarity] || 10;
-            const mult = c.isShiny ? 3 : 1;
-            return s + base * mult * (c.count || 1);
-          }, 0),
-          wikithunes: typeof parsed.wikithunes === 'number' ? parsed.wikithunes : 0,
-          stats: parsed.stats || {},
-          createdAt: parsed.createdAt || 0,
-          snapshots: Array.isArray(parsed.snapshots) ? parsed.snapshots.slice(-30) : [],
-          updatedAt: parsed.updatedAt || 0,
-        });
-      } catch {
-        // Ignorer les fichiers temporaires ou malformés
-      }
-    }
-
-    users.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    const responseBody = JSON.stringify({ ok: true, users });
-    cachedUsersDirectoryJson = responseBody;
-    cachedUsersDirectoryExpiry = Date.now() + DIRECTORY_CACHE_TTL_MS;
+    const summaries = getAllUserSummaries();
+    const users = summaries.map((u) => ({
+      ...u,
+      code: maskCodeForViewer(u.code, viewerCode),
+      publicId: u.publicId || toPublicUserId(u.code),
+    }));
 
     res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(responseBody);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ ok: true, users }));
     return true;
   }
 
@@ -309,76 +244,132 @@ export async function handleUsersRoute(req, res, pathname) {
     return false;
   }
 
-  const code = decodeURIComponent(userMatch[1]);
-  const filePath = getUserFilePath(code);
-  if (!filePath) {
+  const rawId = decodeURIComponent(userMatch[1]);
+  const cleanCode = sanitizeCode(rawId);
+  const isPublicLookup = isPublicUserId(cleanCode);
+
+  if (!cleanCode || (!isPublicLookup && !isValidUserCode(cleanCode))) {
     res.statusCode = 400;
     res.end(JSON.stringify({ ok: false, error: 'Code invalide' }));
     return true;
   }
 
-  // GET /api/users/:code
+  // GET /api/users/:id (connexion par code secret OU inspection publique par PUB-XXXXXXXX)
   if (req.method === 'GET') {
-    if (!fs.existsSync(filePath)) {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ ok: false, error: 'Utilisateur introuvable' }));
+    if (isPublicLookup) {
+      if (urlObj?.searchParams?.get('login') === '1') {
+        res.statusCode = 403;
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: 'Ce code public ne permet pas de se connecter.',
+          })
+        );
+        return true;
+      }
+
+      const peer = loadUserFile(cleanCode);
+      if (!peer) {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ ok: false, error: 'Utilisateur introuvable' }));
+        return true;
+      }
+
+      const responseUser =
+        viewerCode && peer.code === viewerCode
+          ? peer
+          : buildPublicPeerProfile(peer);
+      res.statusCode = 200;
+      res.end(JSON.stringify({ ok: true, user: responseUser }));
       return true;
     }
-    try {
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      let parsed = JSON.parse(raw);
-      const manualEdit = detectAndApplyManualFileEdit(filePath, parsed);
-      const cleanCode = sanitizeCode(code);
-      const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
-        manualEdit.user,
-        cleanCode
+
+    const clientIp = getClientIp(req);
+    if (isLookupRateLimited(clientIp)) {
+      res.statusCode = 429;
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'Trop de tentatives. Réessayez dans une minute.',
+        })
       );
-      if (manualEdit.changed || changed) {
-        atomicWriteJsonSync(filePath, consolidated);
-        invalidateUsersDirectoryCache();
+      return true;
+    }
+
+    try {
+      const consolidated = withTransaction(() => {
+        const loaded = loadUserFile(cleanCode);
+        if (!loaded) return null;
+        const { user, changed } = ensureUnclaimedMarketWinsApplied(
+          loaded,
+          cleanCode
+        );
+        if (changed) {
+          return saveUserFile(cleanCode, user, { preserveUpdatedAt: true });
+        }
+        return user;
+      });
+
+      if (!consolidated) {
+        recordFailedLookup(clientIp);
+        res.statusCode = 404;
+        res.end(JSON.stringify({ ok: false, error: 'Utilisateur introuvable' }));
+        return true;
       }
+
       res.statusCode = 200;
       res.end(JSON.stringify({ ok: true, user: consolidated }));
     } catch {
       res.statusCode = 500;
-      res.end(JSON.stringify({ ok: false, error: 'Erreur de lecture du profil' }));
+      res.end(
+        JSON.stringify({ ok: false, error: 'Erreur de lecture du profil' })
+      );
     }
     return true;
   }
 
-  // POST ou PUT /api/users/:code (synchronisation avec protection anti-écrasement)
+  // POST ou PUT /api/users/:code (synchronisation atomique avec protection anti-écrasement)
   if (req.method === 'POST' || req.method === 'PUT') {
-    const rawBody = await readJsonBody(req);
-    const cleanCode = sanitizeCode(code);
-    return await withLock(`user:${cleanCode}`, async () => {
-      const fileExists = fs.existsSync(filePath);
-      let existing = {};
+    if (isPublicLookup) {
+      res.statusCode = 403;
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error: 'Action non autorisée avec un identifiant public.',
+        })
+      );
+      return true;
+    }
 
-      if (fileExists) {
-        try {
-          const rawExisting = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          const manualEdit = detectAndApplyManualFileEdit(filePath, rawExisting);
-          const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
-            manualEdit.user,
-            cleanCode
-          );
-          existing = consolidated;
-          if (manualEdit.changed || changed) {
-            atomicWriteJsonSync(filePath, existing);
-            invalidateUsersDirectoryCache();
-          }
-        } catch {
-          existing = {};
+    const rawBody = await readJsonBody(req);
+
+    const result = withTransaction(() => {
+      let existing = loadUserFile(cleanCode);
+      const exists = Boolean(existing && existing.code);
+
+      if (exists) {
+        const { user: consolidated, changed } = ensureUnclaimedMarketWinsApplied(
+          existing,
+          cleanCode
+        );
+        existing = consolidated;
+        if (changed) {
+          existing = saveUserFile(cleanCode, existing, {
+            preserveUpdatedAt: true,
+          });
         }
+      } else {
+        existing = {};
       }
 
       const body = sanitizeUserPayload(rawBody, existing);
-      if (rawBody.forceOverwrite !== undefined) body.forceOverwrite = rawBody.forceOverwrite;
-      if (rawBody.clientUpdatedAt !== undefined) body.clientUpdatedAt = rawBody.clientUpdatedAt;
+      if (rawBody.forceOverwrite !== undefined)
+        body.forceOverwrite = rawBody.forceOverwrite;
+      if (rawBody.clientUpdatedAt !== undefined)
+        body.clientUpdatedAt = rawBody.clientUpdatedAt;
 
-      // Protection anti-écrasement : si le serveur a reçu une mutation asynchrone plus récente
-      // (ex: édition manuelle sur le disque, gain d'enchère, vente créditée ou échange accepté)
-      if (fileExists && existing.code && !body.forceOverwrite) {
+      // Protection anti-écrasement : si le serveur possède une mutation asynchrone plus récente
+      if (exists && existing.code && !body.forceOverwrite) {
         const existingDraws = Number(existing.stats?.totalCardsDrawn || 0);
         const existingBoosters = Number(existing.stats?.boostersOpened || 0);
         const incomingDraws = Number(
@@ -392,11 +383,12 @@ export async function handleUsersRoute(req, res, pathname) {
             : existingBoosters
         );
         const existingUpdatedAt = Number(existing.updatedAt || 0);
-        const incomingUpdatedAt = Number(body.clientUpdatedAt || body.updatedAt || 0);
+        const incomingUpdatedAt = Number(
+          body.clientUpdatedAt || body.updatedAt || 0
+        );
         const serverAdminOverrideAt = Number(existing.adminOverrideAt || 0);
         const clientAdminOverrideAt = Number(rawBody.adminOverrideAt || 0);
 
-        // Si le fichier a été modifié manuellement sur le serveur et que le client n'a pas encore reçu cette révision
         const hasUnacknowledgedManualEdit =
           serverAdminOverrideAt > 0 &&
           clientAdminOverrideAt < serverAdminOverrideAt;
@@ -419,26 +411,26 @@ export async function handleUsersRoute(req, res, pathname) {
           hasServerAsyncUpdate ||
           (isIncomingBehindInProgress && incomingUpdatedAt <= existingUpdatedAt)
         ) {
-          res.statusCode = 200;
-          res.end(
-            JSON.stringify({
-              ok: true,
-              user: existing,
-              serverIsNewer: true,
-            })
-          );
-          return true;
+          return { user: existing, serverIsNewer: true };
         }
       }
 
       const now = Date.now();
-      const clientTimestamp = Number(body.clientUpdatedAt || body.updatedAt || 0);
-      const { clientUpdatedAt: _omitClientTs, forceOverwrite: _omitForce, ...cleanBody } = body;
+      const clientTimestamp = Number(
+        body.clientUpdatedAt || body.updatedAt || 0
+      );
+      const {
+        clientUpdatedAt: _omitClientTs,
+        forceOverwrite: _omitForce,
+        ...cleanBody
+      } = body;
 
       const existingClaimDate = String(existing.lastDailyClaimDate || '');
       const incomingClaimDate = String(cleanBody.lastDailyClaimDate || '');
       const resolvedClaimDate =
-        incomingClaimDate > existingClaimDate ? incomingClaimDate : existingClaimDate;
+        incomingClaimDate > existingClaimDate
+          ? incomingClaimDate
+          : existingClaimDate;
 
       const existingWins = Array.isArray(existing.claimedMarketWins)
         ? existing.claimedMarketWins
@@ -446,16 +438,21 @@ export async function handleUsersRoute(req, res, pathname) {
       const incomingWins = Array.isArray(cleanBody.claimedMarketWins)
         ? cleanBody.claimedMarketWins
         : [];
-      const mergedWins = Array.from(new Set([...existingWins, ...incomingWins])).slice(-200);
+      const mergedWins = Array.from(
+        new Set([...existingWins, ...incomingWins])
+      ).slice(-200);
 
-      // Si le serveur vient de créditer une enchère qui n'était pas encore connue du client
-      // au moment où le client a ouvert un booster simultanément, on fusionne la carte gagnée
       let mergedCollection = Array.isArray(cleanBody.collection)
         ? cleanBody.collection
         : existing.collection || [];
 
-      if (existingWins.length > incomingWins.length && Array.isArray(cleanBody.collection)) {
-        const missingWinIds = existingWins.filter((id) => !incomingWins.includes(id));
+      if (
+        existingWins.length > incomingWins.length &&
+        Array.isArray(cleanBody.collection)
+      ) {
+        const missingWinIds = existingWins.filter(
+          (id) => !incomingWins.includes(id)
+        );
         if (missingWinIds.length > 0) {
           try {
             const allListings = loadJsonArrayFile(marketFile);
@@ -473,7 +470,7 @@ export async function handleUsersRoute(req, res, pathname) {
               }
             }
           } catch {
-            // ignore
+            // Ignorer
           }
         }
       }
@@ -484,6 +481,7 @@ export async function handleUsersRoute(req, res, pathname) {
         collection: mergedCollection,
         claimedMarketWins: mergedWins,
         code: cleanCode,
+        publicId: toPublicUserId(cleanCode),
         lastDailyClaimDate: resolvedClaimDate,
         createdAt: existing.createdAt || cleanBody.createdAt || now,
         updatedAt: existing.updatedAt || clientTimestamp || now,
@@ -505,83 +503,69 @@ export async function handleUsersRoute(req, res, pathname) {
           .map((s) => ({ ...s, userCode: cleanCode }));
       }
 
-      const prevComparable = JSON.stringify({ ...existing, updatedAt: 0 });
-      const nextComparable = JSON.stringify({ ...merged, updatedAt: 0 });
-
-      if (prevComparable !== nextComparable || !fileExists) {
-        merged.updatedAt = fileExists
+      let persisted = merged;
+      if (hasUserAccountChanged(existing, merged, clientTimestamp)) {
+        merged.updatedAt = exists
           ? Math.max(now, clientTimestamp)
           : clientTimestamp || now;
-        atomicWriteJsonSync(filePath, merged);
-        invalidateUsersDirectoryCache();
+        persisted = saveUserFile(cleanCode, merged, {
+          preserveUpdatedAt: true,
+        });
       }
 
-      res.statusCode = 200;
-      res.end(
-        JSON.stringify({
-          ok: true,
-          user: merged,
-          serverIsNewer: false,
-        })
-      );
-      return true;
+      return { user: persisted, serverIsNewer: false };
     });
+
+    res.statusCode = 200;
+    res.end(
+      JSON.stringify({
+        ok: true,
+        user: result.user,
+        serverIsNewer: result.serverIsNewer,
+      })
+    );
+    return true;
   }
 
-  // DELETE /api/users/:code (suppression de compte et nettoyage en cascade)
+  // DELETE /api/users/:code (suppression de compte et nettoyage en cascade transactionnel)
   if (req.method === 'DELETE') {
-    const cleanCode = sanitizeCode(code);
-    return await withLock(`user:${cleanCode}`, async () => {
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-          invalidateUsersDirectoryCache();
-        } catch (unlinkErr) {
-          console.error('[WikiCards Delete User Error]:', unlinkErr);
-          res.statusCode = 500;
-          res.end(
-            JSON.stringify({
-              ok: false,
-              error: 'Erreur lors de la suppression du fichier utilisateur',
-            })
-          );
-          return true;
-        }
-      }
-
-      // Nettoyer en cascade les annonces du marché créées par cet utilisateur
-      try {
-        const allListings = loadJsonArrayFile(marketFile);
-        const nextListings = allListings.filter((l) => l.sellerCode !== cleanCode);
-        if (nextListings.length !== allListings.length) {
-          saveJsonArrayFile(marketFile, nextListings);
-        }
-      } catch (marketErr) {
-        console.error('[Clean Market Error]:', marketErr);
-      }
-
-      // Nettoyer en cascade les offres d'échange impliquant cet utilisateur
-      try {
-        const allTrades = loadJsonArrayFile(tradesFile);
-        const nextTrades = allTrades.filter(
-          (t) => t.fromCode !== cleanCode && t.toCode !== cleanCode
-        );
-        if (nextTrades.length !== allTrades.length) {
-          saveJsonArrayFile(tradesFile, nextTrades);
-        }
-      } catch (tradeErr) {
-        console.error('[Clean Trades Error]:', tradeErr);
-      }
-
-      res.statusCode = 200;
+    if (isPublicLookup) {
+      res.statusCode = 403;
       res.end(
         JSON.stringify({
-          ok: true,
-          message: 'Compte supprimé avec succès',
+          ok: false,
+          error: 'Action non autorisée avec un identifiant public.',
         })
       );
       return true;
+    }
+
+    withTransaction(() => {
+      deleteUserFile(cleanCode);
+
+      const allListings = loadJsonArrayFile(marketFile);
+      const nextListings = allListings.filter((l) => l.sellerCode !== cleanCode);
+      if (nextListings.length !== allListings.length) {
+        saveJsonArrayFile(marketFile, nextListings);
+      }
+
+      const allTrades = loadJsonArrayFile(tradesFile);
+      const nextTrades = allTrades.filter(
+        (t) => t.fromCode !== cleanCode && t.toCode !== cleanCode
+      );
+      if (nextTrades.length !== allTrades.length) {
+        saveJsonArrayFile(tradesFile, nextTrades);
+      }
     });
+
+    res.statusCode = 200;
+    res.end(
+      JSON.stringify({
+        ok: true,
+        message: 'Compte supprimé avec succès',
+      })
+    );
+    return true;
   }
 
   return false;

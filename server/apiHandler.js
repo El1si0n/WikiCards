@@ -1,9 +1,10 @@
 /**
- * @file Rôle : Contrôleur et routeur HTTP autonome pour l'ensemble des routes /api/* (users, trades, market, proxy).
- * Dépendances : `./routes/pageviewsRoute.js`, `./routes/usersRoute.js`, `./routes/tradesRoute.js`, `./routes/marketRoute.js`.
- * Effets de bord : Dispatch des requêtes API et écriture de réponses HTTP JSON.
+ * @file Rôle : Contrôleur et routeur HTTP autonome pour l'ensemble des routes /api/* avec compression Gzip adaptive.
+ * Dépendances : `node:zlib`, `./routes/pageviewsRoute.js`, `./routes/usersRoute.js`, `./routes/tradesRoute.js`, `./routes/marketRoute.js`.
+ * Effets de bord : Dispatch des requêtes API, compression gzip et écriture de réponses HTTP JSON.
  */
 
+import zlib from 'node:zlib';
 import { handlePageviewsRoute } from './routes/pageviewsRoute.js';
 import { handleUsersRoute } from './routes/usersRoute.js';
 import { handleTradesRoute } from './routes/tradesRoute.js';
@@ -11,7 +12,7 @@ import { handleMarketRoute } from './routes/marketRoute.js';
 
 /**
  * Traite les requêtes HTTP entrantes préfixées par `/api/`.
- * Distribue les requêtes vers les sous-routeurs spécialisés et intercepte toute exception.
+ * Distribue les requêtes vers les sous-routeurs spécialisés et compresse les réponses JSON > 1 Ko en Gzip.
  *
  * @param {import('node:http').IncomingMessage} req - Requête HTTP entrante
  * @param {import('node:http').ServerResponse} res - Réponse HTTP sortante
@@ -27,9 +28,40 @@ export async function handleApiRequest(req, res) {
   }
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  // Compression Gzip native pour les payloads JSON volumineux (annuaire, collections, marché)
+  const acceptEncoding = String(req.headers?.['accept-encoding'] || '');
+  if (/\bgzip\b/i.test(acceptEncoding)) {
+    const rawEnd = res.end.bind(res);
+    res.end = (chunk, encoding, cb) => {
+      const callback = typeof encoding === 'function' ? encoding : cb;
+      const enc = typeof encoding === 'string' ? encoding : 'utf-8';
+      if (
+        !res.headersSent &&
+        chunk !== undefined &&
+        chunk !== null &&
+        !res.getHeader('Content-Encoding')
+      ) {
+        const buf = Buffer.isBuffer(chunk)
+          ? chunk
+          : Buffer.from(String(chunk), enc);
+        if (buf.length > 1024) {
+          const compressed = zlib.gzipSync(buf, { level: 6 });
+          res.setHeader('Content-Encoding', 'gzip');
+          res.setHeader('Vary', 'Accept-Encoding');
+          res.removeHeader('Content-Length');
+          return rawEnd(compressed, callback);
+        }
+      }
+      return rawEnd(chunk, encoding, cb);
+    };
+  }
 
   try {
     const urlObj = new URL(req.url, 'http://localhost');
@@ -48,7 +80,7 @@ export async function handleApiRequest(req, res) {
     }
 
     // 3. Utilisateurs (/api/users)
-    if (await handleUsersRoute(req, res, pathname)) {
+    if (await handleUsersRoute(req, res, pathname, urlObj)) {
       return true;
     }
 

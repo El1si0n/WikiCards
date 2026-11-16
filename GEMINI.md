@@ -35,11 +35,11 @@ Composants d'interface React (Tailwind CSS, Lucide Icons, Framer Motion) :
 - `WikiCard.jsx` : Rendu visuel normalisé d'une carte (284 × 443 px) avec badge de rareté, hologramme et animation GIF.
 
 ### `server/apiHandler.js`
-Contrôleur HTTP autonome Node.js sans framework lourd, exécuté directement par Vite en développement et par le serveur Node de production :
-- `/api/users` : Annuaire global et synchronisation bidirectionnelle des comptes joueurs (`data/users/*.json`).
-- `/api/trades` : Création, acceptation, refus et annulation d'échanges de cartes entre joueurs (`data/trades.json`).
-- `/api/market` : Publication d'annonces, enchères avec compte à rebours de 24h, achat immédiat et résolution d'expiration (`data/market.json`).
-- `/api/pageviews` : Proxy cache vers l'API Wikimedia Pageviews pour sécuriser les requêtes et masquer les erreurs 404 du navigateur.
+Contrôleur HTTP autonome Node.js (avec compression Gzip adaptive) sans framework lourd, exécuté directement par Vite en développement et par le serveur Node de production avec persistance SQLite native (`node:sqlite` en mode WAL dans `data/wikicards.db`) :
+- `/api/users` : Annuaire global pré-indexé (avec anonymisation des codes secrets par `publicId` `PUB-XXXXXXXX` pour les tiers), rate-limiting compatible Cloudflare (`CF-Connecting-IP`), synchronisation bidirectionnelle transactionnelle des comptes joueurs (`users`) et suppression en cascade.
+- `/api/trades` : Création, acceptation atomique ACID, refus et annulation d'échanges de cartes entre joueurs (`kv_store('trades')`).
+- `/api/market` : Publication d'annonces, enchères avec compte à rebours de 24h, achat immédiat atomique ACID et résolution d'expiration (`kv_store('market')`).
+- `/api/pageviews` : Proxy cache mémoire et Edge Cloudflare 24h (`Cache-Control: public, max-age=86400, s-maxage=86400`) vers l'API Wikimedia Pageviews pour sécuriser les requêtes et masquer les erreurs 404 du navigateur.
 - `/api/health` : Endpoint de contrôle de santé du conteneur.
 
 ---
@@ -69,10 +69,11 @@ interface Card {
 ```
 
 ### 2.2. Objet `User` (Compte Joueur)
-Structure complète du compte persistée côté serveur (`data/users/<CODE>.json`) et synchronisée côté client :
+Structure complète du compte persistée côté serveur (table SQLite `users` dans `data/wikicards.db` en mode WAL) et synchronisée côté client :
 ```typescript
 interface UserAccount {
-  code: string;            // Code unique du compte, format normalisé "WIKI-XXXX-XXXX"
+  code: string;            // Code secret unique du compte, format normalisé "WIKI-XXXX-XXXX" (jamais exposé aux tiers)
+  publicId?: string;       // Identifiant public irréversible ("PUB-XXXXXXXX") exposé dans l'annuaire, le marché et les échanges
   profile: {
     username: string;      // Pseudonyme visible par la communauté
     avatar: string;        // URL de l'avatar du profil
@@ -103,7 +104,7 @@ interface UserAccount {
 ```
 
 ### 2.3. Objet `MarketListing` (Annonce du Marché)
-Entrée stockée dans le registre central `data/market.json` :
+Entrée stockée dans le registre SQLite `kv_store('market')` de `data/wikicards.db` (les codes exposés aux tiers sont masqués en `PUB-XXXXXXXX`) :
 ```typescript
 interface MarketListing {
   id: string;              // Identifiant unique préfixé, ex: "MKT-1730000000000-ABCD"
@@ -123,7 +124,7 @@ interface MarketListing {
 ```
 
 ### 2.4. Objet `Trade` (Offre d'Échange)
-Entrée stockée dans le registre central `data/trades.json` :
+Entrée stockée dans le registre SQLite `kv_store('trades')` de `data/wikicards.db` (les codes exposés aux tiers sont masqués en `PUB-XXXXXXXX`) :
 ```typescript
 interface Trade {
   id: string;              // Identifiant unique préfixé, ex: "TRD-1730000000000-ABCD"
@@ -169,7 +170,7 @@ Tout intervenant, qu'il s'agisse d'une IA ou d'un humain, doit respecter sans ex
 1. **Intégrité documentaire** : Vérifier que tous les fichiers créés ou modifiés possèdent leur en-tête de 3 lignes (`Rôle`, `Dépendances`, `Effets de bord`) et leurs annotations JSDoc à jour.
 2. **Contrôle statique (`oxlint`)** : Exécuter obligatoirement `cmd /c npx oxlint` (doit retourner **0 erreur**).
 3. **Compilation de production (`build`)** : Exécuter obligatoirement `cmd /c npm run build` (doit compiler avec succès).
-4. **Intégrité du stockage local** : Vérifier qu'aucun fichier temporaire (`.tmp`) ni aucune donnée ou compte de test parasite ne subsiste dans `data/users/` ou `data/`.
+4. **Intégrité du stockage local** : Vérifier qu'aucun fichier temporaire (`.tmp`) ni aucune base/compte de test parasite (`data/*.db*`, `data/users/*.json`) ne subsiste dans `data/` avant commit.
 5. **Auto-commit Git local** :
    - Si et seulement si `oxlint` et `build` sont 100% verts, localiser le binaire Git de GitHub Desktop :
      `$gitExe = (Resolve-Path "$env:LOCALAPPDATA\GitHubDesktop\app-*\resources\app\git\cmd\git.exe" | Select-Object -Last 1).Path`

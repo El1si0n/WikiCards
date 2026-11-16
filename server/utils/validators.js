@@ -1,8 +1,10 @@
 /**
- * @file Rôle : Fonctions pures de validation et sanitization pour les données API du backend.
- * Dépendances : Aucune.
+ * @file Rôle : Fonctions pures de validation, sanitization et anonymisation publique pour les données API du backend.
+ * Dépendances : `node:crypto`.
  * Effets de bord : Aucun (fonctions pures).
  */
+
+import crypto from 'node:crypto';
 
 /**
  * Nettoie et normalise un code de compte joueur (ex: "WIKI-ABCD-1234").
@@ -13,6 +15,50 @@ export function sanitizeCode(code) {
   return String(code || '')
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, '');
+}
+
+/**
+ * Génère un identifiant public irréversible (PUB-XXXXXXXX) à partir du code secret d'un joueur.
+ * @param {string} code - Code secret normalisé
+ * @returns {string} Identifiant public de 12 caractères (ex: "PUB-8F3A9C12")
+ */
+export function toPublicUserId(code) {
+  const clean = sanitizeCode(code);
+  if (!clean) return '';
+  if (clean.startsWith('PUB-')) return clean;
+  const hash = crypto
+    .createHash('sha256')
+    .update(`wikicards-public-id-v1:${clean}`)
+    .digest('hex')
+    .slice(0, 8)
+    .toUpperCase();
+  return `PUB-${hash}`;
+}
+
+/**
+ * Indique si l'identifiant fourni est un identifiant public (PUB-XXXXXXXX) et non un code secret.
+ * @param {string} id - Identifiant à tester
+ * @returns {boolean} Vrai si c'est un identifiant public
+ */
+export function isPublicUserId(id) {
+  return /^PUB-[A-F0-9]{8}$/.test(sanitizeCode(id));
+}
+
+/**
+ * Masque le code secret d'un joueur par son identifiant public (PUB-XXXXXXXX)
+ * sauf s'il s'agit du joueur actuellement connecté (viewerCode).
+ * @param {string|null} targetCode - Code cible à masquer
+ * @param {string|null} viewerCode - Code du joueur effectuant la requête
+ * @returns {string|null} Code original (si soi-même) ou identifiant public
+ */
+export function maskCodeForViewer(targetCode, viewerCode) {
+  if (!targetCode) return targetCode;
+  const cleanTarget = sanitizeCode(targetCode);
+  const cleanViewer = sanitizeCode(viewerCode);
+  if (cleanViewer && cleanTarget === cleanViewer) {
+    return cleanTarget;
+  }
+  return toPublicUserId(cleanTarget);
 }
 
 /**

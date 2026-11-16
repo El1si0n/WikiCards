@@ -1,3 +1,9 @@
+/**
+ * @file Rôle : Portail d'authentification par code secret unique WIKI-XXXX-XXXX et création de nouveaux comptes joueurs.
+ * Dépendances : React, `lucide-react`, `./WikithuneIcon`, `../services/userStorage`, `../config/rarities`.
+ * Effets de bord : Création/chargement de compte via `/api/users` et persistance du code en `localStorage`.
+ */
+
 import React, { useState } from 'react';
 import {
   KeyRound,
@@ -21,6 +27,12 @@ import {
 } from '../services/userStorage';
 import { INITIAL_WIKITHUNES } from '../config/rarities';
 
+/**
+ * Portail d'accueil pour se connecter avec un code existant ou générer un nouveau compte.
+ * @param {Object} props
+ * @param {function(Object): void} props.onLoginSuccess - Callback déclenché après connexion ou création réussie
+ * @returns {JSX.Element} Écran d'authentification WikiCards
+ */
 export default function AuthGateway({ onLoginSuccess }) {
   const [inputCode, setInputCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +65,7 @@ export default function AuthGateway({ onLoginSuccess }) {
 
     setIsLoading(true);
     try {
-      const account = await fetchUserAccountByCode(formatted);
+      const account = await fetchUserAccountByCode(formatted, { forLogin: true });
       if (!account) {
         throw new Error(
           `Aucun compte n'a été trouvé pour le code ${formatted}.`
@@ -307,7 +319,7 @@ export default function AuthGateway({ onLoginSuccess }) {
                             <strong>Sur votre appareil habituel :</strong> si vous ne vous êtes pas déconnecté, votre code est conservé et visible dans l'onglet <em>Profil</em>.
                           </li>
                           <li>
-                            <strong>Sur le serveur (vous ou un ami) :</strong> l'administrateur qui héberge le projet peut retrouver votre code dans le dossier <code className="bg-[#eaecf0] dark:bg-[#252a30] text-[#202122] dark:text-white px-1 py-0.5 rounded">data/users/</code> (les fichiers <code className="text-[#202122] dark:text-white">.json</code> contiennent votre pseudo).
+                            <strong>Sur le serveur (vous ou un ami) :</strong> l'administrateur qui héberge le projet peut retrouver votre code dans la base de données <code className="bg-[#eaecf0] dark:bg-[#252a30] text-[#202122] dark:text-white px-1 py-0.5 rounded">data/wikicards.db</code> (la table <code className="text-[#202122] dark:text-white">users</code> contient votre pseudo et votre code).
                           </li>
                         </ul>
                       </div>
