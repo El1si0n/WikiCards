@@ -142,6 +142,47 @@ export async function fetchPageViews30Days(title) {
 }
 
 /**
+ * Récupère en une seule requête HTTP (`POST /api/pageviews/batch`) les vues mensuelles de plusieurs articles.
+ * Réduit la latence réseau des boosters de 6 allers-retours à 1 seul appel.
+ *
+ * @param {string[]} titles - Titres d'articles Wikipédia
+ * @returns {Promise<Record<string, number>>} Dictionnaire `{ [title]: views }`
+ */
+export async function fetchPageViewsBatch(titles = []) {
+  const cleanTitles = Array.from(
+    new Set(titles.map((t) => String(t || '').trim()).filter(Boolean))
+  );
+  if (cleanTitles.length === 0) return {};
+
+  const { start, end } = getPageviewsDateRange();
+
+  try {
+    const proxyRes = await fetchWithTimeout(
+      '/api/pageviews/batch',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titles: cleanTitles, start, end }),
+      },
+      3500
+    );
+    if (proxyRes.ok) {
+      const json = await proxyRes.json();
+      if (json?.ok && json.viewsByTitle && typeof json.viewsByTitle === 'object') {
+        return json.viewsByTitle;
+      }
+    }
+  } catch {
+    // Repli individuel ci-dessous si l'endpoint batch n'est pas joignable
+  }
+
+  const fallbackEntries = await Promise.all(
+    cleanTitles.map(async (title) => [title, await fetchPageViews30Days(title)])
+  );
+  return Object.fromEntries(fallbackEntries);
+}
+
+/**
  * Vérifie si l'URL d'image Wikipédia correspond à un fichier .gif animé.
  * @param {string} [url=''] - URL de l'illustration
  * @returns {boolean} Vrai si l'extension est .gif
@@ -255,7 +296,7 @@ async function fetchRandomWikiCandidatesBatch(limit = 16) {
       explaintext: '1',
       exLimit: 'max',
       piprop: 'original|thumbnail',
-      pithumbsize: '420',
+      pithumbsize: '330',
       inprop: 'url',
       origin: '*',
     });
@@ -314,6 +355,115 @@ async function fetchRandomWikiCandidatesBatch(limit = 16) {
   }
 }
 
+// Réservoir partagé en mémoire des articles aléatoires Wikipédia déjà récupérés :
+// évite de jeter les ~12 articles excédentaires à chaque appel batch (alimente boosters + casino).
+const MAX_CANDIDATE_POOL_SIZE = 42;
+const LOW_WATER_POOL_SIZE = 10;
+let candidateArticlesPool = [];
+let poolReplenishPromise = null;
+
+/**
+ * Réapprovisionne le réservoir partagé d'articles Wikipédia sans dupliquer les requêtes concurrentes.
+ * @param {number} [batchSize=20] - Nombre d'articles demandés à Wikipédia
+ * @returns {Promise<void>}
+ */
+async function replenishCandidatePool(batchSize = 20) {
+  if (poolReplenishPromise) {
+    return poolReplenishPromise;
+  }
+
+  poolReplenishPromise = (async () => {
+    try {
+      const batch = await fetchRandomWikiCandidatesBatch(batchSize);
+      if (!Array.isArray(batch) || batch.length === 0) return;
+
+      const existingIds = new Set(candidateArticlesPool.map((c) => String(c.id)));
+      const existingTitles = new Set(
+        candidateArticlesPool.map((c) => c.title.trim().toLowerCase())
+      );
+
+      for (const item of batch) {
+        if (candidateArticlesPool.length >= MAX_CANDIDATE_POOL_SIZE) break;
+        const lowerTitle = item.title.trim().toLowerCase();
+        if (existingIds.has(String(item.id)) || existingTitles.has(lowerTitle)) {
+          continue;
+        }
+        existingIds.add(String(item.id));
+        existingTitles.add(lowerTitle);
+        candidateArticlesPool.push(item);
+      }
+    } finally {
+      poolReplenishPromise = null;
+    }
+  })();
+
+  return poolReplenishPromise;
+}
+
+/**
+ * Préchauffe silencieusement le réservoir d'articles en tâche de fond (ex: ouverture du WikiSino).
+ */
+export function warmWikiCandidatePool() {
+  if (candidateArticlesPool.length < LOW_WATER_POOL_SIZE && !poolReplenishPromise) {
+    replenishCandidatePool(20).catch(() => {});
+  }
+}
+
+/**
+ * Pioche jusqu'à `needed` articles uniques depuis le réservoir partagé,
+ * en le réapprovisionnant à la demande si le stock est insuffisant.
+ *
+ * @param {number} needed - Nombre d'articles souhaités
+ * @param {Set<string>} [excludeLowerTitles=new Set()] - Titres en minuscules à exclure
+ * @param {Set<string>} [excludeIds=new Set()] - Identifiants à exclure
+ * @returns {Promise<Array<Omit<WikiCard, 'views' | 'rarity'>>>}
+ */
+async function drawCandidatesFromPool(
+  needed,
+  excludeLowerTitles = new Set(),
+  excludeIds = new Set()
+) {
+  const picked = [];
+  let attempts = 0;
+
+  while (picked.length < needed && attempts < 4) {
+    attempts++;
+    if (candidateArticlesPool.length === 0) {
+      await replenishCandidatePool(20);
+    }
+
+    const remainingPool = [];
+    for (const candidate of candidateArticlesPool) {
+      const lowerTitle = candidate.title.trim().toLowerCase();
+      const idStr = String(candidate.id);
+      if (
+        picked.length < needed &&
+        !excludeLowerTitles.has(lowerTitle) &&
+        !excludeIds.has(idStr) &&
+        !excludeIds.has(idStr.toLowerCase())
+      ) {
+        excludeLowerTitles.add(lowerTitle);
+        excludeIds.add(idStr);
+        picked.push(candidate);
+      } else {
+        remainingPool.push(candidate);
+      }
+    }
+    candidateArticlesPool = remainingPool;
+
+    if (picked.length < needed) {
+      await replenishCandidatePool(20);
+    }
+  }
+
+  // Maintien du réservoir chaud en arrière-plan pour l'action suivante
+  if (candidateArticlesPool.length < LOW_WATER_POOL_SIZE) {
+    warmWikiCandidatePool();
+  }
+
+  return picked;
+}
+
 /**
  * Récupère des titres 100 % aléatoires depuis l'espace encyclopédique de fr.wikipedia.org
  */
@@ -357,20 +507,13 @@ export async function fetchBoosterPackCards(count = 6, options = {}) {
   const seenIds = new Set();
   const seenTitles = new Set();
 
-  // 1. Récupération ultra-rapide par lot via MediaWiki generator=random (1 requête = ~18 articles complets)
-  let batchAttempts = 0;
-  while (baseCandidates.length < count && batchAttempts < 4) {
-    batchAttempts++;
-    const batch = await fetchRandomWikiCandidatesBatch(18);
-    for (const candidate of batch) {
-      if (baseCandidates.length >= count) break;
-      const lowerTitle = candidate.title.toLowerCase();
-      if (seenIds.has(candidate.id) || seenTitles.has(lowerTitle)) continue;
-      seenIds.add(candidate.id);
-      seenTitles.add(lowerTitle);
-      baseCandidates.push(candidate);
-    }
-  }
+  // 1. Récupération instantanée depuis le réservoir partagé (1 seul appel MediaWiki alimente plusieurs boosters)
+  const pooledCandidates = await drawCandidatesFromPool(
+    count,
+    seenTitles,
+    seenIds
+  );
+  baseCandidates.push(...pooledCandidates);
 
   // 2. Fallback parallèle via REST summary si le lot MediaWiki n'a pas suffi à réunir les 6 cartes
   let fallbackAttempts = 0;
@@ -431,21 +574,28 @@ export async function fetchBoosterPackCards(count = 6, options = {}) {
 
   const selectedSix = baseCandidates.slice(0, count);
 
-  // 4. Récupération en parallèle des vues sur 30 jours uniquement pour les 6 cartes retenues
-  const cardsWithViews = await Promise.all(
-    selectedSix.map(async (card) => {
-      if (typeof card.views === 'number' && card.rarity) {
-        return card;
-      }
-      const views = await fetchPageViews30Days(card.title);
-      const tier = getRarityByViews(views);
-      return {
-        ...card,
-        views,
-        rarity: tier.code,
-      };
-    })
-  );
+  // 4. Récupération groupée en 1 seule requête batch des vues sur 30 jours pour les cartes retenues
+  const titlesToFetchViews = selectedSix
+    .filter((c) => !(typeof c.views === 'number' && c.rarity))
+    .map((c) => c.title);
+
+  const viewsByTitle =
+    titlesToFetchViews.length > 0
+      ? await fetchPageViewsBatch(titlesToFetchViews)
+      : {};
+
+  const cardsWithViews = selectedSix.map((card) => {
+    if (typeof card.views === 'number' && card.rarity) {
+      return card;
+    }
+    const views = Number(viewsByTitle[card.title] ?? 0);
+    const tier = getRarityByViews(views);
+    return {
+      ...card,
+      views,
+      rarity: tier.code,
+    };
+  });
 
   const drawnCards = cardsWithViews.sort(
     (a, b) => (a.views || 0) - (b.views || 0)
@@ -520,33 +670,34 @@ function getSimulatedViewsForTier(rarityCode, actualViews = 0) {
  * @returns {Promise<WikiCard|null>}
  */
 export async function fetchWikiCardByRarity(targetRarityCode = 'PC', excludeTitles = []) {
-  const excludeSet = new Set(
+  const excludeLowerTitles = new Set(
     (Array.isArray(excludeTitles) ? excludeTitles : [excludeTitles])
       .map((t) => String(t || '').trim().toLowerCase())
       .filter(Boolean)
   );
+  const excludeIds = new Set(excludeLowerTitles);
 
-  let attempts = 0;
-  while (attempts < 4) {
-    attempts++;
-    const batch = await fetchRandomWikiCandidatesBatch(12);
-    for (const candidate of batch) {
-      if (
-        excludeSet.has(candidate.title.trim().toLowerCase()) ||
-        excludeSet.has(String(candidate.id).toLowerCase())
-      ) {
-        continue;
-      }
-      const views = await fetchPageViews30Days(candidate.title);
-      return {
-        ...candidate,
-        rarity: targetRarityCode,
-        views: getSimulatedViewsForTier(targetRarityCode, views),
-      };
-    }
+  const [candidate] = await drawCandidatesFromPool(
+    1,
+    excludeLowerTitles,
+    excludeIds
+  );
+  if (!candidate) return null;
+
+  if (targetRarityCode !== 'C') {
+    return {
+      ...candidate,
+      rarity: targetRarityCode,
+      views: getSimulatedViewsForTier(targetRarityCode, 0),
+    };
   }
 
-  return null;
+  const views = await fetchPageViews30Days(candidate.title);
+  return {
+    ...candidate,
+    rarity: targetRarityCode,
+    views: getSimulatedViewsForTier(targetRarityCode, views),
+  };
 }
 
 /**
@@ -647,38 +798,29 @@ export async function fetchRandomDuelCard(
 
   let card = null;
 
-  // Tirage ultra-rapide par lot MediaWiki sur Wikipédia FR (2,6 millions d'articles)
-  let duelAttempts = 0;
-  while (!card && duelAttempts < 4) {
-    duelAttempts++;
-    try {
-      const batch = await fetchRandomWikiCandidatesBatch(14);
-      for (const candidate of batch) {
-        if (
-          excludeSet.has(candidate.title.trim().toLowerCase()) ||
-          excludeSet.has(String(candidate.id).toLowerCase())
-        ) {
-          continue;
-        }
-        const actualViews = await fetchPageViews30Days(candidate.title);
-        const actualTier = getRarityByViews(actualViews);
-        if (pickedTier && pickedTier !== 'C') {
-          card = {
-            ...candidate,
-            rarity: pickedTier,
-            views: getSimulatedViewsForTier(pickedTier, actualViews),
-          };
-        } else {
-          card = {
-            ...candidate,
-            rarity: actualTier.code,
-            views: actualViews,
-          };
-        }
-        break;
-      }
-    } catch {
-      // Continue
+  // Tirage instantané depuis le réservoir partagé (évite 28 articles téléchargés par duel)
+  const duelExcludeTitles = new Set(excludeSet);
+  const duelExcludeIds = new Set(excludeSet);
+  const [candidate] = await drawCandidatesFromPool(
+    1,
+    duelExcludeTitles,
+    duelExcludeIds
+  );
+  if (candidate) {
+    if (pickedTier && pickedTier !== 'C') {
+      card = {
+        ...candidate,
+        rarity: pickedTier,
+        views: getSimulatedViewsForTier(pickedTier, 0),
+      };
+    } else {
+      const actualViews = await fetchPageViews30Days(candidate.title);
+      const actualTier = getRarityByViews(actualViews);
+      card = {
+        ...candidate,
+        rarity: actualTier.code,
+        views: actualViews,
+      };
     }
   }
 

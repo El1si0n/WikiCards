@@ -352,6 +352,13 @@ export function getDb() {
       data_json TEXT NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS pageviews_cache (
+      cache_key TEXT PRIMARY KEY,
+      views INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pageviews_expires_at ON pageviews_cache(expires_at);
   `);
 
   migrateLegacyJsonFiles(db);
@@ -601,6 +608,69 @@ export function saveJsonArrayFile(filePath, arr) {
       data_json = excluded.data_json,
       updated_at = excluded.updated_at
   `).run(kvKey, JSON.stringify(safeArr), now);
+}
+
+/**
+ * Lit un lot de compteurs Pageviews encore valides depuis le cache SQLite.
+ * @param {string[]} cacheKeys - Clés normalisées `titre::start::end`
+ * @returns {Map<string, number>} Dictionnaire des vues trouvées en cache
+ */
+export function getCachedPageviewsBatch(cacheKeys = []) {
+  const result = new Map();
+  if (!Array.isArray(cacheKeys) || cacheKeys.length === 0) return result;
+
+  const uniqueKeys = Array.from(new Set(cacheKeys.filter(Boolean))).slice(0, 30);
+  if (uniqueKeys.length === 0) return result;
+
+  const db = getDb();
+  const now = Date.now();
+  const placeholders = uniqueKeys.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT cache_key, views FROM pageviews_cache WHERE cache_key IN (${placeholders}) AND expires_at > ?`
+    )
+    .all(...uniqueKeys, now);
+
+  for (const row of rows) {
+    if (row?.cache_key) {
+      result.set(row.cache_key, Number(row.views || 0));
+    }
+  }
+  return result;
+}
+
+/**
+ * Enregistre un lot de compteurs Pageviews en cache SQLite (24h par défaut) et purge les entrées expirées si besoin.
+ * @param {Array<{ cacheKey: string, views: number, expiresAt: number }>} entries - Entrées à persister
+ */
+export function saveCachedPageviewsBatch(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) return;
+
+  withTransaction(() => {
+    const db = getDb();
+    const upsertStmt = db.prepare(`
+      INSERT INTO pageviews_cache (cache_key, views, expires_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(cache_key) DO UPDATE SET
+        views = excluded.views,
+        expires_at = excluded.expires_at
+    `);
+    for (const entry of entries) {
+      if (!entry?.cacheKey) continue;
+      upsertStmt.run(
+        entry.cacheKey,
+        Math.max(0, Math.floor(Number(entry.views) || 0)),
+        Number(entry.expiresAt) || Date.now() + 24 * 60 * 60 * 1000
+      );
+    }
+
+    // Purge occasionnelle des entrées expirées pour garder la base légère
+    if (Math.random() < 0.05) {
+      db.prepare('DELETE FROM pageviews_cache WHERE expires_at <= ?').run(
+        Date.now()
+      );
+    }
+  });
 }
 
 /**

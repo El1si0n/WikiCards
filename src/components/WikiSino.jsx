@@ -4,7 +4,8 @@
  * Effets de bord : Navigation par sous-onglets MediaWiki Vector 2022.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { warmWikiCandidatePool } from '../services/wikipedia';
 import UpgraderGame from './casino/UpgraderGame';
 import HigherLowerGame from './HigherLowerGame';
 import DoubleOrNothingGame from './DoubleOrNothingGame';
@@ -58,6 +59,10 @@ export default function WikiSino({
   onUpdateStats,
 }) {
   const [activeGame, setActiveGame] = useState('upgrader');
+
+  useEffect(() => {
+    warmWikiCandidatePool();
+  }, []);
 
   return (
     <div className="space-y-5">

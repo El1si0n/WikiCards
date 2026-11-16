@@ -22,10 +22,13 @@ const STORAGE_KEY_NEXT_BOOSTER_TYPE = 'wikicards_next_booster_type_v2';
 const STORAGE_KEY_PRELOADED_PACK = 'wikicards_preloaded_booster_pack_v2';
 
 // Cache global de module : persiste entre les changements d'onglets (Classeur, Casino, Marché, Social -> Accueil)
-// et démarre dès l'import du module pour que le 1er booster soit déjà prêt au clic.
+// et maintient une file d'attente de 2 boosters standard préchargés pour les ouvertures enchaînées.
+const STANDARD_PRELOAD_QUEUE_SIZE = 2;
 let globalPreloadedPack = null;
 let globalPreloadPromise = null;
 let globalIsPreloading = false;
+let globalStandardPackQueue = [];
+let globalIsRefillingQueue = false;
 let globalForceNextFakeOut = false;
 
 /**
@@ -143,6 +146,41 @@ function rollAndSaveNextBoosterType() {
 }
 
 /**
+ * Remplit silencieusement la file d'attente de réserve jusqu'à 2 boosters standard complets,
+ * afin que les ouvertures enchaînées ("Ouvrir un autre booster") soient instantanées.
+ */
+async function refillStandardPackQueue() {
+  if (
+    typeof window === 'undefined' ||
+    globalIsRefillingQueue ||
+    globalStandardPackQueue.length >= STANDARD_PRELOAD_QUEUE_SIZE
+  ) {
+    return;
+  }
+  globalIsRefillingQueue = true;
+  try {
+    const stdCfg = getBoosterTypeConfig('standard');
+    while (globalStandardPackQueue.length < STANDARD_PRELOAD_QUEUE_SIZE) {
+      const cards = await fetchBoosterPackCards(stdCfg.cardCount, {
+        isIconic: false,
+        excludeCommon: false,
+      });
+      if (!Array.isArray(cards) || cards.length < stdCfg.cardCount) break;
+      const sliced = cards.slice(0, stdCfg.cardCount);
+      preloadCardImages(sliced);
+      globalStandardPackQueue.push({
+        boosterType: 'standard',
+        cards: sliced,
+      });
+    }
+  } catch {
+    // Ignoré silencieusement en arrière-plan
+  } finally {
+    globalIsRefillingQueue = false;
+  }
+}
+
+/**
  * Assure qu'un booster est toujours préchargé en mémoire et dans localStorage,
  * quelle que soit la page ou l'onglet visité par le joueur.
  * @param {string|boolean} [targetType] - Identifiant du type de booster à préparer
@@ -161,6 +199,22 @@ export function ensureBoosterPreloaded(
     }
   }
 
+  // Si un booster standard est demandé et disponible dans la file de réserve, promotion instantanée
+  if (
+    !globalPreloadedPack &&
+    (desiredType === 'standard' || desiredType === 'free_surprise') &&
+    globalStandardPackQueue.length > 0
+  ) {
+    const queued = globalStandardPackQueue.shift();
+    if (queued?.cards?.length >= cfg.cardCount) {
+      globalPreloadedPack = {
+        boosterType: desiredType,
+        cards: queued.cards.slice(0, cfg.cardCount),
+      };
+      savePersistedPreloadedPack(globalPreloadedPack);
+    }
+  }
+
   if (
     globalPreloadedPack &&
     globalPreloadedPack.boosterType === desiredType &&
@@ -168,6 +222,7 @@ export function ensureBoosterPreloaded(
     globalPreloadedPack.cards.length >= cfg.cardCount
   ) {
     preloadCardImages(globalPreloadedPack.cards);
+    refillStandardPackQueue();
     return Promise.resolve(globalPreloadedPack.cards);
   }
 
@@ -202,6 +257,7 @@ export function ensureBoosterPreloaded(
     } finally {
       globalIsPreloading = false;
       globalPreloadPromise = null;
+      refillStandardPackQueue();
     }
     return null;
   })();
@@ -519,6 +575,14 @@ export default function useBoosterOpening({
       cards = globalPreloadedPack.cards.slice(0, targetCardCount);
       globalPreloadedPack = null;
       savePersistedPreloadedPack(null);
+    } else if (
+      (chosenType === 'standard' || chosenType === 'free_surprise') &&
+      globalStandardPackQueue.length > 0
+    ) {
+      const queuedPack = globalStandardPackQueue.shift();
+      if (queuedPack?.cards?.length >= targetCardCount) {
+        cards = queuedPack.cards.slice(0, targetCardCount);
+      }
     } else if (
       globalIsPreloading &&
       globalPreloadPromise &&

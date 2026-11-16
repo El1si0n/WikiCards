@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import WikiCard from './WikiCard';
 import WikithuneIcon from './WikithuneIcon';
-import { fetchRandomDuelCard } from '../services/wikipedia';
+import { fetchRandomDuelCard, warmWikiCandidatePool } from '../services/wikipedia';
 import { soundManager } from '../services/sound';
 import { getMultiplierForStreak } from '../config/casino';
 import {
@@ -105,6 +105,10 @@ export default function HigherLowerGame({
   );
 
   const preloadedNextCardPromiseRef = useRef(null);
+
+  useEffect(() => {
+    warmWikiCandidatePool();
+  }, []);
 
   // Sauvegarde automatique de la série en cours dans sessionStorage (anti-perte F5 ou changement d'onglet)
   useEffect(() => {
