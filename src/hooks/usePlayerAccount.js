@@ -449,6 +449,13 @@ export function usePlayerAccount({
     }
   }, [userProfile, userCode]);
 
+  const onHydrateDarkModeRef = useRef(onHydrateDarkMode);
+  const onHydrateNotifIdsRef = useRef(onHydrateNotifIds);
+  useEffect(() => {
+    onHydrateDarkModeRef.current = onHydrateDarkMode;
+    onHydrateNotifIdsRef.current = onHydrateNotifIds;
+  }, [onHydrateDarkMode, onHydrateNotifIds]);
+
   const applyServerAccountState = useCallback(
     (serverAccount) => {
       if (!serverAccount) return;
@@ -458,8 +465,8 @@ export function usePlayerAccount({
           ...getDefaultProfile(serverAccount.code || userCode),
           ...serverAccount.profile,
         });
-        if (serverAccount.profile.themePreference && typeof onHydrateDarkMode === 'function') {
-          onHydrateDarkMode(serverAccount.profile.themePreference === 'dark');
+        if (serverAccount.profile.themePreference && typeof onHydrateDarkModeRef.current === 'function') {
+          onHydrateDarkModeRef.current(serverAccount.profile.themePreference === 'dark');
         }
       }
       if (Array.isArray(serverAccount.collection)) {
@@ -477,9 +484,9 @@ export function usePlayerAccount({
       if (typeof serverAccount.wikithunes === 'number') {
         setWikithunes(serverAccount.wikithunes);
       }
-      if (typeof onHydrateNotifIds === 'function') {
+      if (typeof onHydrateNotifIdsRef.current === 'function') {
         if (Array.isArray(serverAccount.readNotifIds) || Array.isArray(serverAccount.dismissedNotifIds)) {
-          onHydrateNotifIds({
+          onHydrateNotifIdsRef.current({
             read: serverAccount.readNotifIds,
             dismissed: serverAccount.dismissedNotifIds,
           });
@@ -554,7 +561,7 @@ export function usePlayerAccount({
         setLocalUpdatedAt(syncedTs);
       }
     },
-    [userCode, onHydrateDarkMode, onHydrateNotifIds]
+    [userCode]
   );
 
   const latestAccountRef = useRef({
